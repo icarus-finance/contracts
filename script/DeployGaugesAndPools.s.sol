@@ -50,7 +50,7 @@ contract DeployGaugesAndPools is Script {
         jsonOutput = vm.readFile(path);
         factory = PoolFactory(abi.decode(jsonOutput.parseRaw(".PoolFactory"), (address)));
         voter = Voter(abi.decode(jsonOutput.parseRaw(".Voter"), (address)));
-        AERO = abi.decode(jsonOutput.parseRaw(".AERO"), (address));
+        AERO = abi.decode(jsonOutput.parseRaw(".IRS"), (address));
 
         vm.startBroadcast(deployerAddress);
 

@@ -1,0 +1,41 @@
+{
+    "allowedManager": "0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813",
+    "feeManager": "0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813",
+    "emergencyCouncil": "0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813",
+    "team": "0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813",
+    "WETH": "0x4200000000000000000000000000000000000006",
+    "whitelistTokens": [
+        "0x4200000000000000000000000000000000000006"
+    ],
+    "pools": [
+        {
+            "stable": false,
+            "tokenA": "0xF32D39ff9f6Aa7a7A64d7a4F00a54826Ef791a55",
+            "tokenB": "0x4200000000000000000000000000000000000006"
+        }
+    ],
+    "poolsAero": [
+        {
+            "stable": false,
+            "token": "0xF32D39ff9f6Aa7a7A64d7a4F00a54826Ef791a55"
+        },
+        {
+            "stable": false,
+            "token": "0x4200000000000000000000000000000000000006"
+        }
+    ],
+    "minter": {
+        "liquid": [
+            {
+                "amount": 50000000000000000000000000,
+                "wallet": "0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813"
+            }
+        ],
+        "locked": [
+            {
+                "amount": 150000000000000000000000000,
+                "wallet": "0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813"
+            }
+        ]
+    }
+}

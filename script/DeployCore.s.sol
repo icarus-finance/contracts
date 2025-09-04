@@ -89,7 +89,7 @@ contract DeployCore is Base {
         vm.stopBroadcast();
 
         // write to file
-        vm.writeJson(vm.serializeAddress("v2", "AERO", address(AERO)), path);
+        vm.writeJson(vm.serializeAddress("v2", "IRS", address(AERO)), path);
         vm.writeJson(vm.serializeAddress("v2", "VotingEscrow", address(escrow)), path);
         vm.writeJson(vm.serializeAddress("v2", "Forwarder", address(forwarder)), path);
         vm.writeJson(vm.serializeAddress("v2", "ArtProxy", address(artProxy)), path);

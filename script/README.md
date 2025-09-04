@@ -26,24 +26,34 @@ source .env
 
 1. Deploy the Protocol Core
 ```
-forge script script/DeployCore.s.sol:DeployCore --broadcast --slow --rpc-url base --verify -vvvv
+forge script script/DeployCore.s.sol:DeployCore --broadcast --slow --rpc-url "rise_testnet" --verify --verifier "blockscout" -vvvv --verifier-url "https://explorer.testnet.riselabs.xyz/api"
 ```
 2. Accept pending team as team. This needs to be done by the `minter.pendingTeam()` address. Within the deployed `Minter` contract call `acceptTeam()`.
 
 3. Deploy gauges and pools.  These gauges are built on the Protocol using the newly created pools.
 ```
-forge script script/DeployGaugesAndPools.s.sol:DeployGaugesAndPools --broadcast --slow --rpc-url base --verify -vvvv
+forge script script/DeployGaugesAndPools.s.sol:DeployGaugesAndPools --broadcast --slow --rpc-url "rise_testnet" --verify --verifier "blockscout" -vvvv --verifier-url "https://explorer.testnet.riselabs.xyz/api"
 ```
 
-4. Distribute locked NFTs using the AirdropDistributor. This needs to be done by the `airdrop.owner()` address.
+<!-- 4. Distribute locked NFTs using the AirdropDistributor. This needs to be done by the `airdrop.owner()` address.
 ```
 forge script script/DistributeAirdrops.s.sol:DistributeAirdrops --broadcast --slow --gas-estimate-multiplier 200 --legacy --rpc-url base --verify -vvvv
+``` -->
+
+4. Deploy governor contracts
+```
+forge script script/DeployGovernors.s.sol:DeployGovernors --broadcast --slow --rpc-url "rise_testnet" --verify --verifier "blockscout" -vvvv --verifier-url "https://explorer.testnet.riselabs.xyz/api"
 ```
 
-5. Deploy governor contracts
+5. Verify Governors
 ```
-forge script script/DeployGovernors.s.sol:DeployGovernors --broadcast --slow --rpc-url base --verify -vvvv
+forge verify-contract "0xFc715cBfCba62c5fd349E27147a75aDaAA40F8d6" "contracts/ProtocolGovernor.sol:ProtocolGovernor" --guess-constructor-args --rpc-url "rise_testnet" --verifier "blockscout" --verifier-url "https://explorer.testnet.riselabs.xyz/api"
 ```
+
+```
+forge verify-contract "0x100412461Ff1e1d647E0A5E5D0DDaf6eD0273e0b" "contracts/EpochGovernor.sol:EpochGovernor" --guess-constructor-args --rpc-url "rise_testnet" --verifier "blockscout" --verifier-url "https://explorer.testnet.riselabs.xyz/api"
+```
+
 6.  Update the governor addresses.  This needs to be done by the `escrow.team()` address.  Within `voter`:
  - call `setEpochGovernor()` using the `EpochGovernor` address located in `script/constants/output/{OUTPUT_FILENAME}`
  - call `setGovernor()` using the `Governor` address located in the same file.

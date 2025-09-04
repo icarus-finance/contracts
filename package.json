@@ -1,6 +1,6 @@
 {
-  "name": "aerodrome",
-  "version": "2.0.0",
+  "name": "icarus",
+  "version": "1.0.0",
   "description": "Base layer AMM on EVMs",
   "directories": {
     "lib": "lib"

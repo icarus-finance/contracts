@@ -33,7 +33,7 @@ contract DistributeAirdrops is Script {
         path = string.concat(path, outputFilename);
         jsonConstants = vm.readFile(path);
 
-        AERO = Aero(abi.decode(jsonConstants.parseRaw(".AERO"), (address)));
+        AERO = Aero(abi.decode(jsonConstants.parseRaw(".IRS"), (address)));
         airdrop = AirdropDistributor(abi.decode(jsonConstants.parseRaw(".AirdropDistributor"), (address)));
 
         path = string.concat(basePath, airdropFilename);
