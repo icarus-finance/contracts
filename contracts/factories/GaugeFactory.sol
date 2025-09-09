@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0
 pragma solidity 0.8.19;
 
 import {IGaugeFactory} from "../interfaces/factories/IGaugeFactory.sol";
