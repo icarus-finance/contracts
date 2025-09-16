@@ -1,7 +1,7 @@
-import * as dotenv from "dotenv";
-import * as tdly from "@tenderly/hardhat-tenderly";
 import "@nomicfoundation/hardhat-toolbox";
+import "@nomicfoundation/hardhat-network-helpers";
 import "@nomicfoundation/hardhat-foundry";
+import * as dotenv from "dotenv";
 
 dotenv.config();
 // tdly.setup({ automaticVerifications: true });
@@ -10,6 +10,13 @@ dotenv.config();
 export default {
     // defaultNetwork: "tenderly",
     networks: {
+        hardhat: {
+            forking: {
+                enabled: true,
+                // blockNumber: 36063418,
+                url: `https://rise-testnet.g.alchemy.com/v2/nVgJ07m4qes-NhJrwjAWGnPwFaixV5E9`,
+            },
+        },
         // hardhat: {
         // },
         // tenderly: {
@@ -25,6 +32,7 @@ export default {
         version: "0.8.19",
         settings: {
             evmVersion: 'paris',
+            viaIR: true,
             optimizer: {
                 enabled: true,
                 runs: 200

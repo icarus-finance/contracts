@@ -12,7 +12,7 @@ package-lock.json
 # Hardhat
 solidity-files-cache.json
 deployments/
-
+cache_hardhat/
 artifacts/
 
 # Coverage
