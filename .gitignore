@@ -17,3 +17,6 @@ artifacts/
 
 # Coverage
 lcov.info
+
+# Mac
+.DS_Store

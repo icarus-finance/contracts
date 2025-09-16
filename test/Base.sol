@@ -43,6 +43,7 @@ abstract contract Base is Script, Test {
     }
     /// @dev Determines whether or not to use the base set up configuration
     ///      Local deployment used by default
+
     Deployment deploymentType;
 
     IWETH public WETH;
@@ -88,13 +89,8 @@ abstract contract Base is Script, Test {
         escrow.setAllowedManager(allowedManager);
 
         // Setup router
-        router = new Router(
-            address(forwarder),
-            address(factoryRegistry),
-            address(factory),
-            address(voter),
-            address(WETH)
-        );
+        router =
+            new Router(address(forwarder), address(factoryRegistry), address(factory), address(voter), address(WETH));
 
         // Setup minter
         minter = new Minter(address(voter), address(escrow), address(distributor));
@@ -115,10 +111,7 @@ abstract contract Base is Script, Test {
         gaugeFactory = new GaugeFactory();
         managedRewardsFactory = new ManagedRewardsFactory();
         factoryRegistry = new FactoryRegistry(
-            address(factory),
-            address(votingRewardsFactory),
-            address(gaugeFactory),
-            address(managedRewardsFactory)
+            address(factory), address(votingRewardsFactory), address(gaugeFactory), address(managedRewardsFactory)
         );
     }
 }

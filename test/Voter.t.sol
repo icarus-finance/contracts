@@ -456,7 +456,9 @@ contract VoterTest is BaseTest {
         vm.expectRevert(IVoter.NotWhitelistedNFT.selector);
         voter.vote(1, pools, weights);
 
-        skip(1 hours - 2); /// one second prior to epoch flip
+        skip(1 hours - 2);
+
+        /// one second prior to epoch flip
         vm.expectRevert(IVoter.NotWhitelistedNFT.selector);
         voter.vote(1, pools, weights);
 
@@ -464,7 +466,9 @@ contract VoterTest is BaseTest {
         voter.whitelistNFT(1, true);
         voter.vote(1, pools, weights);
 
-        skipToNextEpoch(1 hours + 1); /// new epoch
+        skipToNextEpoch(1 hours + 1);
+
+        /// new epoch
         voter.vote(1, pools, weights);
     }
 
@@ -929,11 +933,15 @@ contract VoterTest is BaseTest {
         vm.expectRevert(IVoter.SpecialVotingWindow.selector);
         voter.depositManaged(tokenId, mTokenId);
 
-        skip(1 hours - 2); /// one second prior to epoch flip
+        skip(1 hours - 2);
+
+        /// one second prior to epoch flip
         vm.expectRevert(IVoter.SpecialVotingWindow.selector);
         voter.depositManaged(tokenId, mTokenId);
 
-        skipAndRoll(1); /// new epoch
+        skipAndRoll(1);
+
+        /// new epoch
         vm.expectRevert(IVoter.DistributeWindow.selector);
         voter.depositManaged(tokenId, mTokenId);
     }

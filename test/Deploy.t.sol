@@ -106,15 +106,10 @@ contract TestDeploy is BaseTest {
         AirdropDistributor airdrop = deployCore.airdrop();
 
         // Loads Liquid Airdrop information
-        DeployCore.AirdropInfo[] memory infos = abi.decode(
-            jsonConstants.parseRaw(".minter.liquid"),
-            (DeployCore.AirdropInfo[])
-        );
-        (address[] memory liquidWallets, uint256[] memory liquidAmounts) = deployCore._getLiquidAirdropInfo(
-            address(airdrop),
-            deployCore.AIRDROPPER_BALANCE(),
-            infos
-        );
+        DeployCore.AirdropInfo[] memory infos =
+            abi.decode(jsonConstants.parseRaw(".minter.liquid"), (DeployCore.AirdropInfo[]));
+        (address[] memory liquidWallets, uint256[] memory liquidAmounts) =
+            deployCore._getLiquidAirdropInfo(address(airdrop), deployCore.AIRDROPPER_BALANCE(), infos);
 
         // Loads Locked Airdrop information
         infos = abi.decode(jsonConstants.parseRaw(".minter.locked"), (DeployCore.AirdropInfo[]));

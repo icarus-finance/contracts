@@ -39,11 +39,9 @@ contract EpochGovernorTest is BaseTest {
     function testSupportInterfacesExcludesCancel() public {
         assertTrue(
             epochGovernor.supportsInterface(
-                type(IGovernor).interfaceId ^
-                    type(IERC6372).interfaceId ^
-                    IGovernor.castVoteWithReasonAndParams.selector ^
-                    IGovernor.castVoteWithReasonAndParamsBySig.selector ^
-                    IGovernor.getVotesWithParams.selector
+                type(IGovernor).interfaceId ^ type(IERC6372).interfaceId
+                    ^ IGovernor.castVoteWithReasonAndParams.selector ^ IGovernor.castVoteWithReasonAndParamsBySig.selector
+                    ^ IGovernor.getVotesWithParams.selector
             )
         );
         assertTrue(epochGovernor.supportsInterface(type(IGovernor).interfaceId ^ type(IERC6372).interfaceId));
@@ -55,12 +53,9 @@ contract EpochGovernorTest is BaseTest {
         );
         assertFalse(
             epochGovernor.supportsInterface(
-                type(IGovernor).interfaceId ^
-                    type(IERC6372).interfaceId ^
-                    OZGovernor.cancel.selector ^
-                    IGovernor.castVoteWithReasonAndParams.selector ^
-                    IGovernor.castVoteWithReasonAndParamsBySig.selector ^
-                    IGovernor.getVotesWithParams.selector
+                type(IGovernor).interfaceId ^ type(IERC6372).interfaceId ^ OZGovernor.cancel.selector
+                    ^ IGovernor.castVoteWithReasonAndParams.selector ^ IGovernor.castVoteWithReasonAndParamsBySig.selector
+                    ^ IGovernor.getVotesWithParams.selector
             )
         );
     }

@@ -23,10 +23,7 @@ contract MinterAirdrop is BaseTest {
 
     function testInitializeFullAirdrop() public {
         (address[] memory liquidWallets, uint256[] memory liquidAmounts) = _getWalletsAmounts(WALLET_NUMBER, TOKEN_1M);
-        (address[] memory lockedWallets, uint256[] memory lockedAmounts) = _getWalletsAmounts(
-            WALLET_NUMBER,
-            TOKEN_100K
-        );
+        (address[] memory lockedWallets, uint256[] memory lockedAmounts) = _getWalletsAmounts(WALLET_NUMBER, TOKEN_100K);
         uint256 preAeroBal = AERO.balanceOf(address(this));
 
         // Expects all events from the airdrop
@@ -141,10 +138,8 @@ contract MinterAirdrop is BaseTest {
     function testCannotInitializeInvalidParams() public {
         // Creating arrays with different lengths to lead to revert
         (address[] memory liquidWallets, uint256[] memory liquidAmounts) = _getWalletsAmounts(WALLET_NUMBER, TOKEN_1M);
-        (address[] memory lockedWallets, uint256[] memory lockedAmounts) = _getWalletsAmounts(
-            WALLET_NUMBER - 1,
-            TOKEN_100K
-        );
+        (address[] memory lockedWallets, uint256[] memory lockedAmounts) =
+            _getWalletsAmounts(WALLET_NUMBER - 1, TOKEN_100K);
 
         vm.startPrank(minter.team());
         vm.expectRevert(IMinter.InvalidParams.selector);
@@ -217,10 +212,11 @@ contract MinterAirdrop is BaseTest {
         );
     }
 
-    function _getWalletsAmounts(
-        uint256 walletQuantity,
-        uint256 amount
-    ) internal pure returns (address[] memory _wallets, uint256[] memory _amounts) {
+    function _getWalletsAmounts(uint256 walletQuantity, uint256 amount)
+        internal
+        pure
+        returns (address[] memory _wallets, uint256[] memory _amounts)
+    {
         _wallets = new address[](walletQuantity);
         _amounts = new uint256[](walletQuantity);
 

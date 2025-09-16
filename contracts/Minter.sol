@@ -16,6 +16,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 contract Minter is IMinter {
     using SafeERC20 for IAero;
     /// @inheritdoc IMinter
+
     IAero public immutable aero;
     /// @inheritdoc IMinter
     IVoter public immutable voter;
@@ -79,8 +80,8 @@ contract Minter is IMinter {
         if (initialized) revert AlreadyInitialized();
         if (msg.sender != team) revert NotTeam();
         if (
-            (params.liquidWallets.length != params.liquidAmounts.length) ||
-            (params.lockedWallets.length != params.lockedAmounts.length)
+            (params.liquidWallets.length != params.liquidAmounts.length)
+                || (params.lockedWallets.length != params.lockedAmounts.length)
         ) revert InvalidParams();
         initialized = true;
 

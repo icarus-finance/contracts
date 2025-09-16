@@ -10,6 +10,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 contract AirdropDistributor is IAirdropDistributor, Ownable {
     using SafeERC20 for IAero;
     /// @inheritdoc IAirdropDistributor
+
     IAero public immutable aero;
     /// @inheritdoc IAirdropDistributor
     IVotingEscrow public immutable ve;

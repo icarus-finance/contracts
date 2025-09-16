@@ -20,12 +20,14 @@ contract DeployGovernors is Script {
     function run() public {
         vm.startBroadcast(deployAddress);
 
-        address candy = address(new LpCandy(
-            0x2323420F16058D7191deb6758e09Ae3aa9F780E2,
-            0x91bf71bbFe01Bc40579f7060c414a12395d22E8A,
-            0x1111111111111111111111111111111111111111,
-            0xCC4CDa7B1E2202371915541ddD4F01F4120EEA5c
-        ));
+        address candy = address(
+            new LpCandy(
+                0x2323420F16058D7191deb6758e09Ae3aa9F780E2,
+                0x91bf71bbFe01Bc40579f7060c414a12395d22E8A,
+                0x1111111111111111111111111111111111111111,
+                0xCC4CDa7B1E2202371915541ddD4F01F4120EEA5c
+            )
+        );
 
         vm.stopBroadcast();
     }

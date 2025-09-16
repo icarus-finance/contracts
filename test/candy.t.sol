@@ -6,8 +6,7 @@ import {LpCandy, ILpCandy} from "../contracts/candy/LpCandy.sol";
 import "forge-std/console2.sol";
 
 contract CandyTest is BaseTestRiseTestnetFork {
-
-    LpCandy public candy;   
+    LpCandy public candy;
 
     function _setUp() internal override {
         candy = new LpCandy(
@@ -15,7 +14,7 @@ contract CandyTest is BaseTestRiseTestnetFork {
             0x91bf71bbFe01Bc40579f7060c414a12395d22E8A,
             0x1111111111111111111111111111111111111111,
             0xCC4CDa7B1E2202371915541ddD4F01F4120EEA5c
-        ); // set deployed candy address   
+        ); // set deployed candy address
     }
 
     function testCandyAll() public {
@@ -43,19 +42,24 @@ contract CandyTest is BaseTestRiseTestnetFork {
     function testCandUnstakedConcentrated() public {
         // assertEq(candy.convertor(), 0x1111111111111111111111111111111111111111);
         // address[] memory _addresses = new address[](0);
-        ILpCandy.Position[] memory tokens = candy.positionsUnstakedConcentrated(10, 0, 0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813);
+        ILpCandy.Position[] memory tokens =
+            candy.positionsUnstakedConcentrated(10, 0, 0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813);
     }
 
     function testCandPositionsByFactoryV2() public {
         // assertEq(candy.convertor(), 0x1111111111111111111111111111111111111111);
         // address[] memory _addresses = new address[](0);
-        ILpCandy.Position[] memory tokens = candy.positionsByFactory(10, 0, 0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813, 0x0fc0cAF0b23132ED8759d0C48aB0C5fC151b1Ddf);
+        ILpCandy.Position[] memory tokens = candy.positionsByFactory(
+            10, 0, 0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813, 0x0fc0cAF0b23132ED8759d0C48aB0C5fC151b1Ddf
+        );
     }
 
     function testCandPositionsByFactoryV3() public {
         // assertEq(candy.convertor(), 0x1111111111111111111111111111111111111111);
         // address[] memory _addresses = new address[](0);
-        ILpCandy.Position[] memory tokens = candy.positionsByFactory(10, 0, 0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813, 0x5591e3f890725F0f3dbF47B63c81bbb91975483c);
+        ILpCandy.Position[] memory tokens = candy.positionsByFactory(
+            10, 0, 0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813, 0x5591e3f890725F0f3dbF47B63c81bbb91975483c
+        );
     }
 
     // function testCannotDepositWithRecipientWithKilledGauge() public {

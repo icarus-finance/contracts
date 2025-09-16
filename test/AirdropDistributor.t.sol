@@ -84,7 +84,7 @@ contract AirdropDistributorTest is BaseTest {
     }
 
     function testCannotAirdropIfInvalidParams() public {
-        (address[] memory _wallets, ) = _getWalletsAmounts(N_TEST_WALLETS, TOKEN_10K);
+        (address[] memory _wallets,) = _getWalletsAmounts(N_TEST_WALLETS, TOKEN_10K);
         (, uint256[] memory _amounts) = _getWalletsAmounts(N_TEST_WALLETS + 1, TOKEN_10K);
 
         vm.prank(address(owner));
@@ -118,10 +118,11 @@ contract AirdropDistributorTest is BaseTest {
         assertEq(AERO.balanceOf(address(airdrop)), sum - 1);
     }
 
-    function _getWalletsAmounts(
-        uint256 walletQuantity,
-        uint256 amount
-    ) internal pure returns (address[] memory _wallets, uint256[] memory _amounts) {
+    function _getWalletsAmounts(uint256 walletQuantity, uint256 amount)
+        internal
+        pure
+        returns (address[] memory _wallets, uint256[] memory _amounts)
+    {
         _wallets = new address[](walletQuantity);
         _amounts = new uint256[](walletQuantity);
 

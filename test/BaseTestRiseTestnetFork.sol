@@ -14,7 +14,7 @@ abstract contract BaseTestRiseTestnetFork is Test {
         _testSetup();
     }
 
-     /// @dev Implement this if you want a custom configured deployment
+    /// @dev Implement this if you want a custom configured deployment
     function _setUp() internal virtual {}
 
     function _testSetup() internal virtual {}
