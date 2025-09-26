@@ -1,0 +1,26 @@
+{
+  "lib/ds-test": {
+    "rev": "cd98eff28324bfac652e63a239a60632a761790b"
+  },
+  "lib/forge-std": {
+    "tag": {
+      "name": "v1.10.0",
+      "rev": "8bbcf6e3f8f62f419e5429a0bd89331c85c37824"
+    }
+  },
+  "lib/gsn": {
+    "tag": {
+      "name": "v2.2.5",
+      "rev": "8e0c9ed23d9798b7384e8255054631c3cb414fdf"
+    }
+  },
+  "lib/openzeppelin-contracts": {
+    "rev": "7b3e7b7055d6e1226d4920ca7d7c446c0c0bfff5"
+  },
+  "lib/v3-core": {
+    "branch": {
+      "name": "v1.0.0",
+      "rev": "e3589b192d0be27e100cd0daaf6c97204fdb1899"
+    }
+  }
+}
