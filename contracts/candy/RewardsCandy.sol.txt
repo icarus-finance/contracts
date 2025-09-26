@@ -1,0 +1,458 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+pragma solidity 0.8.30;
+
+import {IRewardsCandy} from "./interfaces/IRewardsCandy.sol";
+import {ILpCandy} from "./interfaces/ILpCandy.sol";
+import {IVoter} from "../interfaces/IVoter.sol";
+import {IGauge} from "../interfaces/IGauge.sol";
+import {IPoolFactory} from "../interfaces/factories/IPoolFactory.sol";
+import {IFactoryRegistry} from "../interfaces/factories/IFactoryRegistry.sol";
+
+/**
+ * @title Icarus Finance LP Candy
+ * @author Icarus Finance (https://icarus.finance)
+ */
+contract RewardsCandy is IRewardsCandy {
+    uint256 public constant MAX_EPOCHS = 200;
+    uint256 public constant MAX_REWARDS = 50;
+    uint256 public constant WEEK = 7 * 24 * 60 * 60;
+
+    IVoter public immutable voter;
+    IFactoryRegistry public immutable registry;
+    address public immutable convertor;
+
+    /**
+     * @dev Sets up our external contract addresses
+     * @param _voter Address of the voter contract
+     * @param _registry Address of the registry contract
+     * @param _convertor Address of the convertor contract
+     * @param _slipstream_helper Address of the Slipstream helper contract
+     */
+    constructor(address _voter, address _registry, address _convertor, address _slipstream_helper) {
+        voter = IVoter(_voter);
+        convertor = _convertor;
+        registry = IFactoryRegistry(_registry);
+        cl_helper = ISlipstreamHelper(_slipstream_helper);
+    }
+
+    /**
+     * @notice Returns all pools latest epoch data
+     * @param _limit The max amount of pools to check for epochs
+     * @param _offset The amount of pools to skip
+     * @return Array for LpEpoch structs
+     */
+    function epochsLatest(uint256 _limit, uint256 _offset) 
+        external 
+        view 
+        returns (LpEpoch[] memory) 
+    {
+        ILpCandy.PoolData[] memory pools = _pools(_limit, _offset, address(0));
+        uint256 poolsCount = pools.length;
+        uint256 counted = 0;
+        
+        LpEpoch[] memory tempCol = new LpEpoch[](_limit);
+        uint256 actualCount = 0;
+        
+        for (uint256 index = 0; index < poolsCount && counted < _limit; index++) {
+            ILpCandy.PoolData memory poolData = pools[index];
+            
+            if (!voter.isAlive(poolData.gauge)) {
+                continue;
+            }
+            
+            tempCol[actualCount] = _epochLatestByAddress(poolData.pool, poolData.gauge);
+            actualCount++;
+            counted++;
+        }
+
+        if (actualCount == _limit) {
+            return tempCol;
+        }
+        
+        // Resize array to actual size
+        LpEpoch[] memory col = new LpEpoch[](actualCount);
+        for (uint256 i = 0; i < actualCount; i++) {
+            col[i] = tempCol[i];
+        }
+        
+        return col;
+    }
+
+    /**
+     * @notice Returns all pool epoch data based on the address
+     * @param _limit The max amount of epochs to return
+     * @param _offset The number of epochs to skip
+     * @param _address The address to lookup
+     * @return Array for LpEpoch structs
+     */
+    function epochsByAddress(uint256 _limit, uint256 _offset, address _address) 
+        external 
+        view 
+        returns (LpEpoch[] memory) 
+    {
+        return _epochsByAddress(_limit, _offset, _address);
+    }
+
+    /**
+     * @notice Returns latest pool epoch data based on the address
+     * @param _address The pool address
+     * @param _gauge The pool gauge
+     * @return A LpEpoch struct
+     */
+    function _epochLatestByAddress(address _address, address _gauge) 
+        internal 
+        view 
+        returns (LpEpoch memory) 
+    {
+        IGauge gauge = IGauge(_gauge);
+        IReward bribe = IReward(voter.gaugeToBribe(_gauge));
+        
+        uint256 epoch_start_ts = block.timestamp / WEEK * WEEK;
+        uint256 epoch_end_ts = epoch_start_ts + WEEK - 1;
+        
+        (uint256 ts, uint256 votes) = bribe.supplyCheckpoints(
+            bribe.getPriorSupplyIndex(epoch_end_ts)
+        );
+        
+        return LpEpoch({
+            ts: epoch_start_ts,
+            lp: _address,
+            votes: votes,
+            emissions: gauge.rewardRateByEpoch(epoch_start_ts),
+            bribes: _epochRewards(epoch_start_ts, address(bribe)),
+            fees: _epochRewards(
+                epoch_start_ts, 
+                voter.gaugeToFees(_gauge)
+            )
+        });
+    }
+
+    /**
+     * @notice Returns all pool epoch data based on the address
+     * @param _limit The max amount of epochs to return
+     * @param _offset The number of epochs to skip
+     * @param _address The address to lookup
+     * @return Array for LpEpoch structs
+     */
+    function _epochsByAddress(uint256 _limit, uint256 _offset, address _address) 
+        internal 
+        view 
+        returns (LpEpoch[] memory) 
+    {
+        require(_address != address(0), "Invalid address!");
+        
+        LpEpoch[] memory epochs = new LpEpoch[](_limit);
+        uint256 epochCount = 0;
+        
+        address gauge_addr = voter.gauges(_address);
+        IGauge gauge = IGauge(gauge_addr);
+        
+        if (!voter.isAlive(gauge_addr)) {
+            return new LpEpoch[](0);
+        }
+        
+        IReward bribe = IReward(voter.gaugeToBribe(gauge_addr));
+        
+        uint256 curr_epoch_start_ts = block.timestamp / WEEK * WEEK;
+        
+        for (uint256 noWeeks = _offset; noWeeks < _offset + MAX_EPOCHS && epochCount < _limit; noWeeks++) {
+            uint256 epoch_start_ts = curr_epoch_start_ts - (noWeeks * WEEK);
+            uint256 epoch_end_ts = epoch_start_ts + WEEK - 1;
+            
+            uint256 bribe_supply_index = bribe.getPriorSupplyIndex(epoch_end_ts);
+            (uint256 ts, uint256 votes) = bribe.supplyCheckpoints(bribe_supply_index);
+            
+            epochs[epochCount] = LpEpoch({
+                ts: epoch_start_ts,
+                lp: _address,
+                votes: votes,
+                emissions: gauge.rewardRateByEpoch(epoch_start_ts),
+                bribes: _epochRewards(epoch_start_ts, address(bribe)),
+                fees: _epochRewards(
+                    epoch_start_ts,
+                    voter.gaugeToFees(gauge_addr)
+                )
+            });
+            
+            epochCount++;
+            
+            // If we reach the last supply index...
+            if (bribe_supply_index == 0) {
+                break;
+            }
+        }
+        
+        // Resize array to actual size
+        LpEpoch[] memory finalEpochs = new LpEpoch[](epochCount);
+        for (uint256 i = 0; i < epochCount; i++) {
+            finalEpochs[i] = epochs[i];
+        }
+        
+        return finalEpochs;
+    }
+
+    /**
+     * @notice Returns pool rewards
+     * @param _ts The pool epoch start timestamp
+     * @param _reward The reward address
+     * @return An array of LpEpochReward structs
+     */
+    function _epochRewards(uint256 _ts, address _reward) 
+        internal 
+        view 
+        returns (LpEpochReward[] memory) 
+    {
+        if (_reward == address(0)) {
+            return new LpEpochReward[](0);
+        }
+        
+        IReward reward = IReward(_reward);
+        uint256 rewards_len = reward.rewardsListLength();
+        
+        LpEpochReward[] memory tempRewards = new LpEpochReward[](MAX_REWARDS);
+        uint256 rewardCount = 0;
+        
+        for (uint256 rindex = 0; rindex < rewards_len && rindex < MAX_REWARDS; rindex++) {
+            address reward_token = reward.rewards(rindex);
+            uint256 reward_amount = reward.tokenRewardsPerEpoch(reward_token, _ts);
+            
+            if (reward_amount == 0) {
+                continue;
+            }
+            
+            tempRewards[rewardCount] = LpEpochReward({
+                token: reward_token,
+                amount: reward_amount
+            });
+            rewardCount++;
+        }
+        
+        // Resize array to actual size
+        LpEpochReward[] memory rewards = new LpEpochReward[](rewardCount);
+        for (uint256 i = 0; i < rewardCount; i++) {
+            rewards[i] = tempRewards[i];
+        }
+        
+        return rewards;
+    }
+
+    /**
+     * @notice Returns a collection of veNFT rewards data
+     * @param _limit The max amount of pools to check for rewards
+     * @param _offset The amount of pools to skip checking for rewards
+     * @param _venft_id The veNFT ID to get rewards for
+     * @return Array for VeNFT Reward structs
+     */
+    function rewards(uint256 _limit, uint256 _offset, uint256 _venft_id) 
+        external 
+        view 
+        returns (Reward[] memory) 
+    {
+        ILpCandy.PoolData[] memory pools = _pools(_limit, _offset, address(0));
+        uint256 pools_count = pools.length;
+        uint256 counted = 0;
+        
+        Reward[] memory tempCol = new Reward[](MAX_POOLS);
+        uint256 colIndex = 0;
+        
+        for (uint256 pindex = 0; pindex < pools_count && counted < _limit; pindex++) {
+            ILpCandy.PoolData memory pool_data = pools[pindex];
+            Reward[] memory pcol = _pool_rewards(_venft_id, pool_data.pool, pool_data.gauge);
+            
+            // Merge pool rewards to the rest of the rewards
+            for (uint256 cindex = 0; cindex < pcol.length && colIndex < MAX_POOLS; cindex++) {
+                tempCol[colIndex] = pcol[cindex];
+                colIndex++;
+            }
+            
+            counted++;
+        }
+        
+        // Resize array to actual size
+        Reward[] memory col = new Reward[](colIndex);
+        for (uint256 i = 0; i < colIndex; i++) {
+            col[i] = tempCol[i];
+        }
+        
+        return col;
+    }
+
+    /**
+     * @notice Returns a collection of veNFT rewards data for a specific pool
+     * @param _venft_id The veNFT ID to get rewards for
+     * @param _pool The pool address to get rewards for
+     * @return Array for VeNFT Reward structs
+     */
+    function rewardsByAddress(uint256 _venft_id, address _pool) 
+        external 
+        view 
+        returns (Reward[] memory) 
+    {
+        address gauge_addr = voter.gauges(_pool);
+        return _pool_rewards(_venft_id, _pool, gauge_addr);
+    }
+
+    /**
+     * @notice Returns a collection with veNFT pool rewards
+     * @param _venft_id The veNFT ID to get rewards for
+     * @param _pool The pool address
+     * @param _gauge The pool gauge address
+     * @return Array of Reward structs
+     */
+    function _pool_rewards(uint256 _venft_id, address _pool, address _gauge) 
+        internal 
+        view 
+        returns (Reward[] memory) 
+    {
+        if (_pool == address(0) || _gauge == address(0)) {
+            return new Reward[](0);
+        }
+        
+        IPool pool = IPool(_pool);
+        IReward fee = IReward(voter.gaugeToFees(_gauge));
+        IReward bribe = IReward(voter.gaugeToBribe(_gauge));
+        
+        address token0 = pool.token0();
+        address token1 = pool.token1();
+        
+        uint256 fee0_amount = fee.earned(token0, _venft_id);
+        uint256 fee1_amount = fee.earned(token1, _venft_id);
+        
+        Reward[] memory tempCol = new Reward[](MAX_POOLS);
+        uint256 colIndex = 0;
+        
+        if (fee0_amount > 0) {
+            tempCol[colIndex] = Reward({
+                venft_id: _venft_id,
+                lp: _pool,
+                amount: fee0_amount,
+                token: token0,
+                fee: address(fee),
+                bribe: address(0)
+            });
+            colIndex++;
+        }
+        
+        if (fee1_amount > 0) {
+            tempCol[colIndex] = Reward({
+                venft_id: _venft_id,
+                lp: _pool,
+                amount: fee1_amount,
+                token: token1,
+                fee: address(fee),
+                bribe: address(0)
+            });
+            colIndex++;
+        }
+        
+        if (address(bribe) != address(0)) {
+            uint256 bribes_len = bribe.rewardsListLength();
+            
+            for (uint256 bindex = 0; bindex < bribes_len && bindex < MAX_REWARDS; bindex++) {
+                address bribe_token = bribe.rewards(bindex);
+                uint256 bribe_amount = bribe.earned(bribe_token, _venft_id);
+                
+                if (bribe_amount == 0) {
+                    continue;
+                }
+                
+                tempCol[colIndex] = Reward({
+                    venft_id: _venft_id,
+                    lp: _pool,
+                    amount: bribe_amount,
+                    token: bribe_token,
+                    fee: address(0),
+                    bribe: address(bribe)
+                });
+                colIndex++;
+                
+                if (colIndex >= MAX_POOLS) {
+                    break;
+                }
+            }
+        }
+        
+        // Resize array to actual size
+        Reward[] memory col = new Reward[](colIndex);
+        for (uint256 i = 0; i < colIndex; i++) {
+            col[i] = tempCol[i];
+        }
+        
+        return col;
+    }
+
+    /**
+     * @param _limit The max amount of pools to return
+     * @param _offset The amount of pools to skip (for optimization)
+     * @param _toFind The pool address to find
+     * @notice Returns a compiled list of pool and its factory and gauge
+     * @return Array of four addresses (factory, pool, gauge, nfpm)
+     */
+    function _pools(uint256 _limit, uint256 _offset, address _toFind) internal view returns (address[4][] memory) {
+        address[] memory factories = registry.poolFactories();
+        uint256 factoriesCount = factories.length;
+
+        uint256 toSkip = _offset;
+        uint256 visited = 0;
+
+        // Pre-allocate with maximum size, we'll resize later
+        address[4][] memory pools = new address[4][](MAX_POOLS);
+        uint256 poolCount = 0;
+
+        for (uint256 index = 0; index < MAX_FACTORIES && index < factoriesCount; index++) {
+            IPoolFactory factory = IPoolFactory(factories[index]);
+
+            uint256 poolsCount = factory.allPoolsLength();
+            address nfpm = factories[index] == 0x5591e3f890725F0f3dbF47B63c81bbb91975483c
+                ? 0x425fe0aEAE03E532eDD2524A217016E9D38413C2
+                : address(0);
+
+            for (uint256 pindex = 0; pindex < MAX_ITERATIONS && pindex < poolsCount; pindex++) {
+                if (visited >= _limit + _offset || poolCount >= MAX_POOLS) {
+                    break;
+                }
+
+                // Since the convertor pool, first pool on one of the factories...
+                if (pindex == 0 && factory.allPools(0) == convertor) {
+                    continue;
+                }
+
+                visited++;
+
+                // Basically skip calls for offset records...
+                if (toSkip > 0) {
+                    toSkip--;
+                    continue;
+                }
+
+                address poolAddr = factory.allPools(pindex);
+
+                if (_toFind != address(0) && _toFind != poolAddr) {
+                    continue;
+                }
+
+                address gaugeAddr = voter.gauges(poolAddr);
+
+                pools[poolCount] = [address(factory), poolAddr, gaugeAddr, nfpm];
+                poolCount++;
+
+                if (_toFind != address(0) && _toFind == poolAddr) {
+                    break;
+                }
+            }
+        }
+
+        // If limit is reached just return the array
+        if (poolCount == _limit) {
+            return pools;
+        }
+
+        // Resize the array to the actual number of pools found
+        address[4][] memory result = new address[4][](poolCount);
+        for (uint256 i = 0; i < poolCount; i++) {
+            result[i] = pools[i];
+        }
+
+        return result;
+    }
+}

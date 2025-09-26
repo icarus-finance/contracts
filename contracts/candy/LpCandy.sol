@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity ^0.8.19;
+pragma solidity 0.8.30;
 
 /**
  * @title Icarus Finance LP Candy
@@ -161,7 +161,7 @@ contract LpCandy is ILpCandy {
         view
         returns (Token[] memory)
     {
-        address[4][] memory pools = _pools(_limit, _offset, address(0));
+        PoolData[] memory pools = _pools(_limit, _offset, address(0));
         uint256 poolsCount = pools.length;
         uint256 addressesCount = _addresses.length;
 
@@ -183,8 +183,8 @@ contract LpCandy is ILpCandy {
 
         // Then add tokens from the pools
         for (uint256 index = 0; index < poolsCount && colCount < _limit; index++) {
-            address[4] memory poolData = pools[index];
-            ICandyPool pool = ICandyPool(poolData[1]);
+            PoolData memory poolData = pools[index];
+            ICandyPool pool = ICandyPool(poolData.pool);
             address[2] memory _tokens = [pool.token0(), pool.token1()];
 
             for (uint256 j = 0; j < 2; j++) {
@@ -236,17 +236,17 @@ contract LpCandy is ILpCandy {
         // Pre-allocate with maximum size, we'll resize later
         Lp[] memory col = new Lp[](_limit);
         uint256 colCount = 0;
-        address[4][] memory pools = _pools(_limit, _offset, address(0));
+        PoolData[] memory pools = _pools(_limit, _offset, address(0));
         uint256 poolsCount = pools.length;
 
         for (uint256 index = 0; index < poolsCount && colCount < _limit; index++) {
-            address[4] memory poolData = pools[index];
-            ICandyPool pool = ICandyPool(poolData[1]);
+            PoolData memory poolData = pools[index];
+            ICandyPool pool = ICandyPool(poolData.pool);
             address token0 = pool.token0();
             address token1 = pool.token1();
 
             // If this is a CL factory/NFPM present...
-            if (poolData[3] != address(0)) {
+            if (poolData.nfpm != address(0)) {
                 col[colCount++] = _clLp(poolData, token0, token1);
             } else {
                 col[colCount++] = _v2Lp(poolData, token0, token1);
@@ -274,15 +274,15 @@ contract LpCandy is ILpCandy {
      */
     function byAddress(address _address) external view returns (Lp memory) {
         // Limit is max, internal call will return when _address is hit
-        address[4][] memory poolData = _pools(16000, 0, _address);
+        PoolData[] memory poolData = _pools(16000, 0, _address);
         require(poolData.length > 0, "Pool not found");
 
-        ICandyPool pool = ICandyPool(poolData[0][1]);
+        ICandyPool pool = ICandyPool(poolData[0].pool);
         address token0 = pool.token0();
         address token1 = pool.token1();
 
         // If this is a CL factory/NFPM present...
-        if (poolData[0][3] != address(0)) {
+        if (poolData[0].nfpm != address(0)) {
             return _clLp(poolData[0], token0, token1);
         }
 
@@ -297,15 +297,15 @@ contract LpCandy is ILpCandy {
     function byIndex(uint256 _index) external view returns (Lp memory) {
         // Basically index is the offset and the limit is always one...
         // This will fire if _index is out of bounds
-        address[4][] memory poolData = _pools(1, _index, address(0));
+        PoolData[] memory poolData = _pools(1, _index, address(0));
         require(poolData.length > 0, "Pool index out of bounds");
 
-        ICandyPool pool = ICandyPool(poolData[0][1]);
+        ICandyPool pool = ICandyPool(poolData[0].pool);
         address token0 = pool.token0();
         address token1 = pool.token1();
 
         // If this is a CL factory/NFPM present...
-        if (poolData[0][3] != address(0)) {
+        if (poolData[0].nfpm != address(0)) {
             return _clLp(poolData[0], token0, token1);
         }
 
@@ -727,16 +727,16 @@ contract LpCandy is ILpCandy {
      * @param _token1 Token1 address
      * @return Lp struct
      */
-    function _v2Lp(address[4] memory _data, address _token0, address _token1) internal view returns (Lp memory) {
-        ICandyPool pool = ICandyPool(_data[1]);
-        IGauge gauge = IGauge(_data[2]);
+    function _v2Lp(PoolData memory _data, address _token0, address _token1) internal view returns (Lp memory) {
+        ICandyPool pool = ICandyPool(_data.pool);
+        IGauge gauge = IGauge(_data.gauge);
 
         uint256 poolLiquidity = pool.totalSupply();
         uint256 gaugeLiquidity = 0;
         uint256 emissions = 0;
         address emissionsToken = address(0);
         bool isStable = pool.stable();
-        IPoolFactory factory = IPoolFactory(_data[0]);
+        IPoolFactory factory = IPoolFactory(_data.factory);
         uint256 poolFee = factory.getFee(address(pool), isStable);
         address poolFees = pool.poolFees();
         uint256 token0Fees = _safeBalanceOf(_token0, poolFees);
@@ -761,15 +761,15 @@ contract LpCandy is ILpCandy {
         if (gaugeAlive && gauge.periodFinish() > block.timestamp) {
             emissions = gauge.rewardRate();
             if (gaugeLiquidity > 0) {
-                token0Fees = (pool.claimable0(_data[2]) * poolLiquidity) / gaugeLiquidity;
-                token1Fees = (pool.claimable1(_data[2]) * poolLiquidity) / gaugeLiquidity;
+                token0Fees = (pool.claimable0(_data.gauge) * poolLiquidity) / gaugeLiquidity;
+                token1Fees = (pool.claimable1(_data.gauge) * poolLiquidity) / gaugeLiquidity;
                 staked0 = (reserve0 * gaugeLiquidity) / poolLiquidity;
                 staked1 = (reserve1 * gaugeLiquidity) / poolLiquidity;
             }
         }
 
         return Lp({
-            lp: _data[1],
+            lp: _data.pool,
             symbol: _safeSymbol(address(pool)),
             decimals: decimals,
             liquidity: poolLiquidity,
@@ -787,7 +787,7 @@ contract LpCandy is ILpCandy {
             gauge_alive: gaugeAlive,
             fee: voter.gaugeToFees(address(gauge)),
             bribe: voter.gaugeToBribe(address(gauge)),
-            factory: _data[0],
+            factory: _data.factory,
             emissions: emissions,
             emissions_token: emissionsToken,
             pool_fee: poolFee,
@@ -805,9 +805,9 @@ contract LpCandy is ILpCandy {
      * @param _token1 Token1 address
      * @return Lp struct
      */
-    function _clLp(address[4] memory _data, address _token0, address _token1) internal view returns (Lp memory) {
-        ICandyPool pool = ICandyPool(_data[1]);
-        ICLGauge gauge = ICLGauge(_data[2]);
+    function _clLp(PoolData memory _data, address _token0, address _token1) internal view returns (Lp memory) {
+        ICandyPool pool = ICandyPool(_data.pool);
+        ICLGauge gauge = ICLGauge(_data.gauge);
 
         // This implementation is a placeholder - in a real implementation
         // this would include all the CLPool specific logic
@@ -835,7 +835,7 @@ contract LpCandy is ILpCandy {
         GaugeFees memory gaugeFees = pool.gaugeFees();
 
         return Lp({
-            lp: _data[1],
+            lp: _data.pool,
             symbol: _safeSymbol(address(pool)),
             decimals: 18, // Most CL pools use 18 decimals
             liquidity: totalLiquidity,
@@ -843,24 +843,24 @@ contract LpCandy is ILpCandy {
             tick: slot.tick,
             sqrt_ratio: slot.sqrtPriceX96,
             token0: _token0,
-            reserve0: _safeBalanceOf(_token0, _data[1]),
+            reserve0: _safeBalanceOf(_token0, _data.pool),
             staked0: uint256(gaugeFees.token0),
             token1: _token1,
-            reserve1: _safeBalanceOf(_token1, _data[1]),
+            reserve1: _safeBalanceOf(_token1, _data.pool),
             staked1: uint256(gaugeFees.token1),
             gauge: address(gauge),
             gauge_liquidity: uint256(stakedLiquidity),
             gauge_alive: gaugeAlive,
             fee: voter.gaugeToFees(address(gauge)),
             bribe: voter.gaugeToBribe(address(gauge)),
-            factory: _data[0],
+            factory: _data.factory,
             emissions: emissions,
             emissions_token: emissionsToken,
             pool_fee: uint256(fee),
             unstaked_fee: uint256(unstakedFee),
             token0_fees: uint256(gaugeFees.token0),
             token1_fees: uint256(gaugeFees.token1),
-            nfpm: _data[3]
+            nfpm: _data.nfpm
         });
     }
 
@@ -936,8 +936,6 @@ contract LpCandy is ILpCandy {
         return string(bytesArray);
     }
 
-    // The positions functions would be implemented here
-    // For brevity, we're not including all the position-related functions in this example
     /**
      * @param _limit The max amount of pools to return
      * @param _offset The amount of pools to skip (for optimization)
@@ -945,7 +943,7 @@ contract LpCandy is ILpCandy {
      * @notice Returns a compiled list of pool and its factory and gauge
      * @return Array of four addresses (factory, pool, gauge, nfpm)
      */
-    function _pools(uint256 _limit, uint256 _offset, address _toFind) internal view returns (address[4][] memory) {
+    function _pools(uint256 _limit, uint256 _offset, address _toFind) internal view returns (PoolData[] memory) {
         address[] memory factories = registry.poolFactories();
         uint256 factoriesCount = factories.length;
 
@@ -953,7 +951,7 @@ contract LpCandy is ILpCandy {
         uint256 visited = 0;
 
         // Pre-allocate with maximum size, we'll resize later
-        address[4][] memory pools = new address[4][](MAX_POOLS);
+        PoolData[] memory pools = new PoolData[](MAX_POOLS);
         uint256 poolCount = 0;
 
         for (uint256 index = 0; index < MAX_FACTORIES && index < factoriesCount; index++) {
@@ -990,7 +988,12 @@ contract LpCandy is ILpCandy {
 
                 address gaugeAddr = voter.gauges(poolAddr);
 
-                pools[poolCount] = [address(factory), poolAddr, gaugeAddr, nfpm];
+                pools[poolCount] = PoolData({
+                    factory: address(factory),
+                    pool: poolAddr,
+                    gauge: gaugeAddr,
+                    nfpm: nfpm
+                });
                 poolCount++;
 
                 if (_toFind != address(0) && _toFind == poolAddr) {
@@ -1005,7 +1008,7 @@ contract LpCandy is ILpCandy {
         }
 
         // Resize the array to the actual number of pools found
-        address[4][] memory result = new address[4][](poolCount);
+        PoolData[] memory result = new PoolData[](poolCount);
         for (uint256 i = 0; i < poolCount; i++) {
             result[i] = pools[i];
         }

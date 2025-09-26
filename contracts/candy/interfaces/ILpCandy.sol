@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 interface ILpCandy {
     struct Slot {
@@ -97,6 +97,13 @@ interface ILpCandy {
         uint256 unstaked_fee;
         uint256 token0_fees;
         uint256 token1_fees;
+        address nfpm;
+    }
+
+    struct PoolData {
+        address factory;
+        address pool;
+        address gauge;
         address nfpm;
     }
 }

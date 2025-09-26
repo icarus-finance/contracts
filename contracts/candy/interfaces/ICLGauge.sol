@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 interface ICLGauge {
     function earned(address _account, uint256 _position_id) external view returns (uint256);
