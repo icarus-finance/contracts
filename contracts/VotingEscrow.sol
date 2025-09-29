@@ -22,7 +22,7 @@ import {SafeCastLibrary} from "./libraries/SafeCastLibrary.sol";
 /// @notice Votes have a weight depending on time, so that users are committed to the future of (whatever they are voting for)
 /// @author Modified from Solidly (https://github.com/solidlyexchange/solidly/blob/master/contracts/ve.sol)
 /// @author Modified from Curve (https://github.com/curvefi/curve-dao-contracts/blob/master/contracts/VotingEscrow.vy)
-/// @author velodrome.finance, @figs999, @pegahcarter
+/// @author icarus.finance, velodrome.finance, @figs999, @pegahcarter
 /// @dev Vote weight decays linearly over time. Lock time cannot be more than `MAXTIME` (4 years).
 contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -97,6 +97,27 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
         emit Transfer(address(this), address(0), tokenId);
     }
 
+    /*//////////////////////////////////////////////////////////////
+                               MODIFIERS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @dev Modifier to check if the caller is the `team` address
+    modifier onlyTeam() {
+        if (_msgSender() != team) revert NotTeam();
+        _;
+    }
+
+    /// @dev Modifier to check if the caller is the `voter` address
+    modifier onlyVoter() {
+        if (_msgSender() != voter) revert NotVoter();
+        _;
+    }
+
+    modifier noTeamLocked(uint256 _tokenId) {
+        if (_teamLocks[_tokenId].endTs != 0) revert TeamLocked();
+        _;
+    }
+
     /*///////////////////////////////////////////////////////////////
                             MANAGED NFT STORAGE
     //////////////////////////////////////////////////////////////*/
@@ -141,8 +162,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVotingEscrow
-    function depositManaged(uint256 _tokenId, uint256 _mTokenId) external nonReentrant {
-        if (_msgSender() != voter) revert NotVoter();
+    function depositManaged(uint256 _tokenId, uint256 _mTokenId) external nonReentrant onlyVoter {
         if (escrowType[_mTokenId] != EscrowType.MANAGED) revert NotManagedNFT();
         if (escrowType[_tokenId] != EscrowType.NORMAL) revert NotNormalNFT();
         if (_balanceOfNFTAt(_tokenId, block.timestamp) == 0) revert ZeroBalance();
@@ -179,9 +199,8 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVotingEscrow
-    function withdrawManaged(uint256 _tokenId) external nonReentrant {
+    function withdrawManaged(uint256 _tokenId) external nonReentrant onlyVoter {
         uint256 _mTokenId = idToManaged[_tokenId];
-        if (_msgSender() != voter) revert NotVoter();
         if (_mTokenId == 0) revert InvalidManagedNFTId();
         if (escrowType[_tokenId] != EscrowType.LOCKED) revert NotLockedNFT();
 
@@ -253,14 +272,13 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     string public constant version = "2.0.0";
     uint8 public constant decimals = 18;
 
-    function setTeam(address _team) external {
-        if (_msgSender() != team) revert NotTeam();
+    function setTeam(address _team) external onlyTeam {
         if (_team == address(0)) revert ZeroAddress();
         team = _team;
     }
 
-    function setArtProxy(address _proxy) external {
-        if (_msgSender() != team) revert NotTeam();
+    function setArtProxy(address _proxy) external onlyTeam {
+        if (_proxy == address(0)) revert ZeroAddress();
         artProxy = _proxy;
         emit BatchMetadataUpdate(0, type(uint256).max);
     }
@@ -319,6 +337,10 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
 
     /// @inheritdoc IVotingEscrow
     function isApprovedOrOwner(address _spender, uint256 _tokenId) external view returns (bool) {
+        // This allows Voter functions to be performed by the team on behalf of team locks
+        if (_spender == team && _teamLocks[_tokenId].endTs != 0) {
+            return true;
+        }
         return _isApprovedOrOwner(_spender, _tokenId);
     }
 
@@ -362,7 +384,12 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
 
     /* TRANSFER FUNCTIONS */
 
-    function _transferFrom(address _from, address _to, uint256 _tokenId, address _sender) internal {
+    function _transferFrom(
+        address _from,
+        address _to,
+        uint256 _tokenId,
+        address _sender
+    ) internal noTeamLocked(_tokenId) {
         if (escrowType[_tokenId] == EscrowType.LOCKED) revert NotManagedOrNormalNFT();
         // Check requirements
         if (!_isApprovedOrOwner(_sender, _tokenId)) revert NotApprovedOrOwner();
@@ -556,6 +583,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     /// @inheritdoc IVotingEscrow
     uint256 public supply;
 
+    mapping(uint256 => TeamLock) internal _teamLocks;
     mapping(uint256 => LockedBalance) internal _locked;
     mapping(uint256 => UserPoint[1000000000]) internal _userPointHistory;
     mapping(uint256 => uint256) public userPointEpoch;
@@ -579,6 +607,11 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     /// @inheritdoc IVotingEscrow
     function pointHistory(uint256 _loc) external view returns (GlobalPoint memory) {
         return _pointHistory[_loc];
+    }
+
+    /// @inheritdoc IVotingEscrow
+    function teamLocks(uint256 _tokenId) external view returns (TeamLock memory) {
+        return _teamLocks[_tokenId];
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -838,6 +871,52 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
         return _createLock(_value, _lockDuration, _to);
     }
 
+    /// @inheritdoc IVotingEscrow
+    function createTeamLockFor(
+        uint256 _value,
+        uint256 _lockDuration,
+        address _to,
+        uint256 _teamUnlockTs
+    ) external nonReentrant onlyTeam returns (uint256) {
+        if (_teamUnlockTs <= block.timestamp) revert LockDurationNotInFuture();
+        uint256 lockId = _createLock(_value, _lockDuration, _to);
+        _teamLocks[lockId] = TeamLock({startTs: block.timestamp, endTs: _teamUnlockTs, clawbacked: false});
+        return lockId;
+    }
+
+    /// @inheritdoc IVotingEscrow
+    function unlockTeamLock(uint256 _tokenId) external nonReentrant {
+        TeamLock storage teamLock = _teamLocks[_tokenId];
+        if (teamLock.endTs == 0) revert NotTeamLock();
+        if (teamLock.endTs > block.timestamp) revert LockNotExpired();
+        delete _teamLocks[_tokenId];
+    }
+
+    /// @inheritdoc IVotingEscrow
+    function clawbackTeamLock(
+        uint256 _tokenId
+    ) external nonReentrant onlyTeam returns (uint256 _newTokenId, uint256 _clawbackTokenId) {
+        TeamLock storage teamLock = _teamLocks[_tokenId];
+        if (teamLock.endTs == 0) revert NotTeamLock();
+        if (teamLock.clawbacked) revert AlreadyClawbacked();
+        if (teamLock.endTs <= block.timestamp) revert LockExpired();
+
+        // Calculate amount to be clawed back
+        uint256 amount = _locked[_tokenId].amount.toUint256();
+        uint256 clawbackAmount = (amount * (teamLock.endTs - block.timestamp)) / (teamLock.endTs - teamLock.startTs);
+
+        address owner = _ownerOf(_tokenId);
+        if (owner == address(0)) revert SplitNoOwner();
+        if (escrowType[_tokenId] != EscrowType.NORMAL) revert NotNormalNFT();
+        if (voted[_tokenId]) revert AlreadyVoted();
+
+        (_newTokenId, _clawbackTokenId) = _split(_tokenId, clawbackAmount, owner, owner, team);
+
+        // Copy team lock params to the new token id, mark as clawbacked and delete old token id
+        _teamLocks[_newTokenId] = TeamLock({startTs: teamLock.startTs, endTs: teamLock.endTs, clawbacked: true});
+        delete _teamLocks[_tokenId];
+    }
+
     function _increaseAmountFor(uint256 _tokenId, uint256 _value, DepositType _depositType) internal {
         EscrowType _escrowType = escrowType[_tokenId];
         if (_escrowType == EscrowType.LOCKED) revert NotManagedOrNormalNFT();
@@ -890,7 +969,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVotingEscrow
-    function withdraw(uint256 _tokenId) external nonReentrant {
+    function withdraw(uint256 _tokenId) external nonReentrant noTeamLocked(_tokenId) {
         address sender = _msgSender();
         if (!_isApprovedOrOwner(sender, _tokenId)) revert NotApprovedOrOwner();
         if (voted[_tokenId]) revert AlreadyVoted();
@@ -919,7 +998,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVotingEscrow
-    function merge(uint256 _from, uint256 _to) external nonReentrant {
+    function merge(uint256 _from, uint256 _to) external nonReentrant noTeamLocked(_from) {
         address sender = _msgSender();
         if (voted[_from]) revert AlreadyVoted();
         if (escrowType[_from] != EscrowType.NORMAL) revert NotNormalNFT();
@@ -975,6 +1054,17 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
         if (escrowType[_from] != EscrowType.NORMAL) revert NotNormalNFT();
         if (voted[_from]) revert AlreadyVoted();
         if (!_isApprovedOrOwner(sender, _from)) revert NotApprovedOrOwner();
+
+        return _split(_from, _amount, owner, owner, sender);
+    }
+
+    function _split(
+        uint256 _from,
+        uint256 _amount,
+        address _owner1,
+        address _owner2,
+        address _sender
+    ) internal returns (uint256 _tokenId1, uint256 _tokenId2) {
         LockedBalance memory newLocked = _locked[_from];
         if (newLocked.end <= block.timestamp && !newLocked.isPermanent) revert LockExpired();
         int128 _splitAmount = _amount.toInt128();
@@ -988,17 +1078,17 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
 
         // Create new veNFT using old balance - amount
         newLocked.amount -= _splitAmount;
-        _tokenId1 = _createSplitNFT(owner, newLocked);
+        _tokenId1 = _createSplitNFT(_owner1, newLocked);
 
         // Create new veNFT using amount
         newLocked.amount = _splitAmount;
-        _tokenId2 = _createSplitNFT(owner, newLocked);
+        _tokenId2 = _createSplitNFT(_owner2, newLocked);
 
         emit Split(
             _from,
             _tokenId1,
             _tokenId2,
-            sender,
+            _sender,
             _locked[_tokenId1].amount.toUint256(),
             _splitAmount.toUint256(),
             newLocked.end,
@@ -1014,8 +1104,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVotingEscrow
-    function toggleSplit(address _account, bool _bool) external {
-        if (_msgSender() != team) revert NotTeam();
+    function toggleSplit(address _account, bool _bool) external onlyTeam {
         canSplit[_account] = _bool;
     }
 
@@ -1102,15 +1191,13 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     mapping(uint256 => bool) public voted;
 
     /// @inheritdoc IVotingEscrow
-    function setVoterAndDistributor(address _voter, address _distributor) external {
-        if (_msgSender() != voter) revert NotVoter();
+    function setVoterAndDistributor(address _voter, address _distributor) external onlyVoter {
         voter = _voter;
         distributor = _distributor;
     }
 
     /// @inheritdoc IVotingEscrow
-    function voting(uint256 _tokenId, bool _voted) external {
-        if (_msgSender() != voter) revert NotVoter();
+    function voting(uint256 _tokenId, bool _voted) external onlyVoter {
         voted[_tokenId] = _voted;
     }
 
