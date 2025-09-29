@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import "./BaseTest.sol";
 import {IGovernor as OZGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
@@ -13,25 +13,25 @@ contract EpochGovernorTest is BaseTest {
     function _setUp() public override {
         AERO.approve(address(escrow), 2 * TOKEN_1);
         escrow.createLock(2 * TOKEN_1, MAXTIME); // 1
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
 
         vm.startPrank(address(owner2));
         AERO.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME); // 2
         vm.stopPrank();
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
 
         vm.startPrank(address(owner3));
         AERO.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME); // 3
         vm.stopPrank();
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
 
         vm.startPrank(address(owner4));
         AERO.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME); // 4
         vm.stopPrank();
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
 
         stdstore.target(address(minter)).sig("weekly()").checked_write(4_999_999 * 1e18);
     }
@@ -39,9 +39,11 @@ contract EpochGovernorTest is BaseTest {
     function testSupportInterfacesExcludesCancel() public {
         assertTrue(
             epochGovernor.supportsInterface(
-                type(IGovernor).interfaceId ^ type(IERC6372).interfaceId
-                    ^ IGovernor.castVoteWithReasonAndParams.selector ^ IGovernor.castVoteWithReasonAndParamsBySig.selector
-                    ^ IGovernor.getVotesWithParams.selector
+                type(IGovernor).interfaceId ^
+                    type(IERC6372).interfaceId ^
+                    IGovernor.castVoteWithReasonAndParams.selector ^
+                    IGovernor.castVoteWithReasonAndParamsBySig.selector ^
+                    IGovernor.getVotesWithParams.selector
             )
         );
         assertTrue(epochGovernor.supportsInterface(type(IGovernor).interfaceId ^ type(IERC6372).interfaceId));
@@ -53,9 +55,12 @@ contract EpochGovernorTest is BaseTest {
         );
         assertFalse(
             epochGovernor.supportsInterface(
-                type(IGovernor).interfaceId ^ type(IERC6372).interfaceId ^ OZGovernor.cancel.selector
-                    ^ IGovernor.castVoteWithReasonAndParams.selector ^ IGovernor.castVoteWithReasonAndParamsBySig.selector
-                    ^ IGovernor.getVotesWithParams.selector
+                type(IGovernor).interfaceId ^
+                    type(IERC6372).interfaceId ^
+                    OZGovernor.cancel.selector ^
+                    IGovernor.castVoteWithReasonAndParams.selector ^
+                    IGovernor.castVoteWithReasonAndParamsBySig.selector ^
+                    IGovernor.getVotesWithParams.selector
             )
         );
     }
@@ -285,9 +290,9 @@ contract EpochGovernorTest is BaseTest {
 
         skipAndRoll(15 minutes);
         assertEq(escrow.balanceOfNFT(1), 1994506262572926509); // voting power at proposal start
-        assertEq(escrow.getPastVotes(address(owner), 1, block.timestamp), TOKEN_1 + 1994506262572926509);
+        assertEq(escrow.getPastVotes(address(owner), 1, vm.getBlockTimestamp()), TOKEN_1 + 1994506262572926509);
         assertEq(escrow.balanceOfNFT(4), TOKEN_1);
-        assertEq(escrow.getPastVotes(address(owner4), 4, block.timestamp), 0);
+        assertEq(escrow.getPastVotes(address(owner4), 4, vm.getBlockTimestamp()), 0);
         assertEq(escrow.balanceOfNFT(2), 997253131223564505); // voting power at proposal start
         vm.expectRevert("GovernorSimple: vote not currently active");
         epochGovernor.castVote(pid, 1, 1);

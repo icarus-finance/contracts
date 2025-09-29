@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import {IGaugeFactory} from "../interfaces/factories/IGaugeFactory.sol";
 import {Gauge} from "../gauges/Gauge.sol";

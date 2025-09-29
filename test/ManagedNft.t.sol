@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import "./BaseTest.sol";
 
@@ -8,10 +8,18 @@ contract ManagedNftTest is BaseTest {
     FreeManagedReward freeManagedReward;
 
     event DepositManaged(
-        address indexed _owner, uint256 indexed _tokenId, uint256 indexed _mTokenId, uint256 _weight, uint256 _ts
+        address indexed _owner,
+        uint256 indexed _tokenId,
+        uint256 indexed _mTokenId,
+        uint256 _weight,
+        uint256 _ts
     );
     event WithdrawManaged(
-        address indexed _owner, uint256 indexed _tokenId, uint256 indexed _mTokenId, uint256 _weight, uint256 _ts
+        address indexed _owner,
+        uint256 indexed _tokenId,
+        uint256 indexed _mTokenId,
+        uint256 _weight,
+        uint256 _ts
     );
     event MetadataUpdate(uint256 _tokenId);
 
@@ -676,7 +684,7 @@ contract ManagedNftTest is BaseTest {
 
         // The only locked veNFT withdraws - resetting the voting power and lastVoted
         assertEq(voter.totalWeight(), TOKEN_1);
-        assertEq(voter.lastVoted(mTokenId), block.timestamp);
+        assertEq(voter.lastVoted(mTokenId), vm.getBlockTimestamp());
         voter.withdrawManaged(tokenId);
         assertEq(voter.totalWeight(), 0);
         assertEq(voter.lastVoted(mTokenId), 0);
@@ -686,7 +694,7 @@ contract ManagedNftTest is BaseTest {
         vm.prank(address(owner2));
         voter.vote(mTokenId, pools, weights);
         assertEq(voter.totalWeight(), TOKEN_1);
-        assertEq(voter.lastVoted(mTokenId), block.timestamp);
+        assertEq(voter.lastVoted(mTokenId), vm.getBlockTimestamp());
         // veNFT cannot withdraw until next epoch
         vm.expectRevert(IVoter.AlreadyVotedOrDeposited.selector);
         voter.withdrawManaged(tokenId);
@@ -697,7 +705,7 @@ contract ManagedNftTest is BaseTest {
 
         // The only locked veNFT withdraws - resetting the voting power and lastVoted
         assertEq(voter.totalWeight(), TOKEN_1);
-        assertEq(voter.lastVoted(mTokenId), block.timestamp);
+        assertEq(voter.lastVoted(mTokenId), vm.getBlockTimestamp());
         voter.withdrawManaged(tokenId);
         assertEq(voter.totalWeight(), 0);
         assertEq(voter.lastVoted(mTokenId), 0);
@@ -707,7 +715,7 @@ contract ManagedNftTest is BaseTest {
         vm.prank(address(owner2));
         voter.vote(mTokenId, pools, weights);
         assertEq(voter.totalWeight(), TOKEN_1);
-        assertEq(voter.lastVoted(mTokenId), block.timestamp);
+        assertEq(voter.lastVoted(mTokenId), vm.getBlockTimestamp());
         // veNFT cannot withdraw until next epoch
         vm.expectRevert(IVoter.AlreadyVotedOrDeposited.selector);
         voter.withdrawManaged(tokenId2);

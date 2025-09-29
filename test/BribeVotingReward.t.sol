@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import "./BaseTest.sol";
 
@@ -1380,7 +1380,7 @@ contract BribeVotingRewardTest is BaseTest {
         weights[0] = 10000;
         voter.vote(1, pools, weights);
 
-        uint256 expectedTs = block.timestamp;
+        uint256 expectedTs = vm.getBlockTimestamp();
         uint256 expectedBal = escrow.balanceOfNFT(1);
 
         // check single user and supply checkpoint created
@@ -1403,7 +1403,7 @@ contract BribeVotingRewardTest is BaseTest {
         numSupply = bribeVotingReward.supplyNumCheckpoints();
         assertEq(numSupply, 2);
 
-        expectedTs = block.timestamp;
+        expectedTs = vm.getBlockTimestamp();
 
         // check new checkpoint created
         (ts, balance) = bribeVotingReward.checkpoints(1, 1);
@@ -1426,7 +1426,7 @@ contract BribeVotingRewardTest is BaseTest {
 
         voter.vote(1, pools, weights);
 
-        uint256 expectedTs = block.timestamp;
+        uint256 expectedTs = vm.getBlockTimestamp();
         uint256 expectedBal = escrow.balanceOfNFT(1);
 
         // check single user and supply checkpoint created
@@ -1445,7 +1445,7 @@ contract BribeVotingRewardTest is BaseTest {
         skip(1 days);
         voter.poke(1);
 
-        expectedTs = block.timestamp;
+        expectedTs = vm.getBlockTimestamp();
         expectedBal = escrow.balanceOfNFT(1);
 
         numSupply = bribeVotingReward.supplyNumCheckpoints();
@@ -1475,7 +1475,7 @@ contract BribeVotingRewardTest is BaseTest {
         assertEq(ts, expectedTs);
         assertEq(sBalance, expectedBal);
 
-        expectedTs = block.timestamp;
+        expectedTs = vm.getBlockTimestamp();
         expectedBal = escrow.balanceOfNFT(1);
 
         numSupply = bribeVotingReward.supplyNumCheckpoints();
@@ -1492,7 +1492,7 @@ contract BribeVotingRewardTest is BaseTest {
         skip(1 days);
         voter.reset(1);
 
-        expectedTs = block.timestamp;
+        expectedTs = vm.getBlockTimestamp();
 
         numSupply = bribeVotingReward.supplyNumCheckpoints();
         assertEq(numSupply, 2);
@@ -1525,11 +1525,11 @@ contract BribeVotingRewardTest is BaseTest {
         uint256 numSupply = bribeVotingReward.supplyNumCheckpoints();
         assertEq(numSupply, 1);
         (uint256 sTs, uint256 sBalance) = bribeVotingReward.supplyCheckpoints(0);
-        assertEq(sTs, block.timestamp);
+        assertEq(sTs, vm.getBlockTimestamp());
         assertEq(sBalance, ownerBal);
 
         (uint256 ts, uint256 balance) = bribeVotingReward.checkpoints(1, 0);
-        assertEq(ts, block.timestamp);
+        assertEq(ts, vm.getBlockTimestamp());
         assertEq(balance, ownerBal);
 
         vm.prank(address(owner2));
@@ -1538,11 +1538,11 @@ contract BribeVotingRewardTest is BaseTest {
         numSupply = bribeVotingReward.supplyNumCheckpoints();
         assertEq(numSupply, 1);
         (sTs, sBalance) = bribeVotingReward.supplyCheckpoints(0);
-        assertEq(sTs, block.timestamp);
+        assertEq(sTs, vm.getBlockTimestamp());
         assertEq(sBalance, totalSupply);
 
         (ts, balance) = bribeVotingReward.checkpoints(2, 0);
-        assertEq(ts, block.timestamp);
+        assertEq(ts, vm.getBlockTimestamp());
         assertEq(balance, owner2Bal);
     }
 

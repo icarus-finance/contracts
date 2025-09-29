@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import {ManagedRewardsFactory} from "contracts/factories/ManagedRewardsFactory.sol";
 import {VotingRewardsFactory} from "contracts/factories/VotingRewardsFactory.sol";
@@ -89,8 +89,13 @@ abstract contract Base is Script, Test {
         escrow.setAllowedManager(allowedManager);
 
         // Setup router
-        router =
-            new Router(address(forwarder), address(factoryRegistry), address(factory), address(voter), address(WETH));
+        router = new Router(
+            address(forwarder),
+            address(factoryRegistry),
+            address(factory),
+            address(voter),
+            address(WETH)
+        );
 
         // Setup minter
         minter = new Minter(address(voter), address(escrow), address(distributor));
@@ -111,7 +116,10 @@ abstract contract Base is Script, Test {
         gaugeFactory = new GaugeFactory();
         managedRewardsFactory = new ManagedRewardsFactory();
         factoryRegistry = new FactoryRegistry(
-            address(factory), address(votingRewardsFactory), address(gaugeFactory), address(managedRewardsFactory)
+            address(factory),
+            address(votingRewardsFactory),
+            address(gaugeFactory),
+            address(managedRewardsFactory)
         );
     }
 }

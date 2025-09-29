@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import "./BaseTest.sol";
 
@@ -28,7 +28,7 @@ contract WashTradeTest is BaseTest {
 
         AERO.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME);
-        vm.roll(block.number + 1); // fwd 1 block because escrow.balanceOfNFT() returns 0 in same block
+        vm.roll(vm.getBlockNumber() + 1); // fwd 1 block because escrow.balanceOfNFT() returns 0 in same block
         assertGt(escrow.balanceOfNFT(1), 995063075414519385);
         assertEq(AERO.balanceOf(address(escrow)), TOKEN_1);
     }
@@ -52,8 +52,13 @@ contract WashTradeTest is BaseTest {
         factory.setFee(true, 1);
         factory.setFee(false, 1);
         voter = new Voter(address(forwarder), address(escrow), address(factoryRegistry));
-        router =
-            new Router(address(forwarder), address(factoryRegistry), address(factory), address(voter), address(WETH));
+        router = new Router(
+            address(forwarder),
+            address(factoryRegistry),
+            address(factory),
+            address(voter),
+            address(WETH)
+        );
         deployPoolWithOwner(address(owner));
 
         (address token0, address token1) = router.sortTokens(address(USDC), address(FRAX));
@@ -84,7 +89,7 @@ contract WashTradeTest is BaseTest {
             TOKEN_100K,
             USDC_100K,
             address(owner),
-            block.timestamp
+            vm.getBlockTimestamp()
         );
         USDC.approve(address(router), USDC_100K);
         FRAX.approve(address(router), TOKEN_100K);
@@ -97,12 +102,20 @@ contract WashTradeTest is BaseTest {
             TOKEN_100K,
             USDC_100K,
             address(owner),
-            block.timestamp
+            vm.getBlockTimestamp()
         );
         DAI.approve(address(router), TOKEN_100M);
         FRAX.approve(address(router), TOKEN_100M);
         router.addLiquidity(
-            address(FRAX), address(DAI), true, TOKEN_100M, TOKEN_100M, 0, 0, address(owner), block.timestamp
+            address(FRAX),
+            address(DAI),
+            true,
+            TOKEN_100M,
+            TOKEN_100M,
+            0,
+            0,
+            address(owner),
+            vm.getBlockTimestamp()
         );
     }
 
@@ -155,13 +168,25 @@ contract WashTradeTest is BaseTest {
 
             uint256[] memory expectedOutput = router.getAmountsOut(TOKEN_1M, routes);
             FRAX.approve(address(router), TOKEN_1M);
-            router.swapExactTokensForTokens(TOKEN_1M, expectedOutput[1], routes, address(owner), block.timestamp);
+            router.swapExactTokensForTokens(
+                TOKEN_1M,
+                expectedOutput[1],
+                routes,
+                address(owner),
+                vm.getBlockTimestamp()
+            );
 
             assertEq(router.getAmountsOut(TOKEN_1M, routes2)[1], pool3.getAmountOut(TOKEN_1M, address(DAI)));
 
             uint256[] memory expectedOutput2 = router.getAmountsOut(TOKEN_1M, routes2);
             DAI.approve(address(router), TOKEN_1M);
-            router.swapExactTokensForTokens(TOKEN_1M, expectedOutput2[1], routes2, address(owner), block.timestamp);
+            router.swapExactTokensForTokens(
+                TOKEN_1M,
+                expectedOutput2[1],
+                routes2,
+                address(owner),
+                vm.getBlockTimestamp()
+            );
         }
     }
 
@@ -204,7 +229,7 @@ contract WashTradeTest is BaseTest {
         tokens[1] = address(DAI);
         feesVotingReward3.getReward(1, tokens);
         skip(8 days);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         feesVotingReward3.getReward(1, tokens);
     }
 
@@ -212,7 +237,7 @@ contract WashTradeTest is BaseTest {
         feesVotingRewardClaimRewards();
 
         skip(8 days);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         address[] memory tokens = new address[](2);
         tokens[0] = address(FRAX);
         tokens[1] = address(DAI);
@@ -233,7 +258,7 @@ contract WashTradeTest is BaseTest {
         tokens[1] = address(DAI);
         feesVotingReward3.getReward(1, tokens);
         skip(8 days);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         console2.log(feesVotingReward3.earned(address(FRAX), 1));
         console2.log(FRAX.balanceOf(address(owner)));
         console2.log(FRAX.balanceOf(address(feesVotingReward3)));

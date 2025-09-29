@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import "./BaseTest.sol";
 
@@ -18,7 +18,7 @@ contract GaugeTest is BaseTest {
         AERO.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME);
         vm.stopPrank();
-        vm.warp(block.timestamp + 1);
+        vm.warp(vm.getBlockTimestamp() + 1);
 
         skipToNextEpoch(0);
         team = escrow.team();
@@ -493,12 +493,12 @@ contract GaugeTest is BaseTest {
         Gauge(gauge).notifyRewardAmount(reward);
         vm.stopPrank();
 
-        uint256 epochStart = _getEpochStart(block.timestamp);
+        uint256 epochStart = _getEpochStart(vm.getBlockTimestamp());
         assertApproxEqRel(gauge.rewardRate(), reward / DURATION, 1e6);
         assertApproxEqRel(gauge.rewardRateByEpoch(epochStart), reward / DURATION, 1e6);
         assertEq(AERO.balanceOf(address(gauge)), TOKEN_1);
-        assertEq(gauge.lastUpdateTime(), block.timestamp);
-        assertEq(gauge.periodFinish(), _getEpochStart(block.timestamp) + DURATION);
+        assertEq(gauge.lastUpdateTime(), vm.getBlockTimestamp());
+        assertEq(gauge.periodFinish(), _getEpochStart(vm.getBlockTimestamp()) + DURATION);
     }
 
     function testNotifyRewardAmountWithNonZeroAmountOneDayAfterEpochFlip() public {
@@ -512,12 +512,12 @@ contract GaugeTest is BaseTest {
         Gauge(gauge).notifyRewardAmount(reward);
         vm.stopPrank();
 
-        uint256 epochStart = _getEpochStart(block.timestamp);
+        uint256 epochStart = _getEpochStart(vm.getBlockTimestamp());
         assertApproxEqRel(gauge.rewardRate(), (reward / (6 days)), 1e6);
         assertApproxEqRel(gauge.rewardRateByEpoch(epochStart), reward / (6 days), 1e6);
         assertEq(AERO.balanceOf(address(gauge)), TOKEN_1);
-        assertEq(gauge.lastUpdateTime(), block.timestamp);
-        assertEq(gauge.periodFinish(), _getEpochStart(block.timestamp) + DURATION);
+        assertEq(gauge.lastUpdateTime(), vm.getBlockTimestamp());
+        assertEq(gauge.periodFinish(), _getEpochStart(vm.getBlockTimestamp()) + DURATION);
     }
 
     function testCannotNotifyRewardAmountWithZeroAmount() public {
@@ -539,12 +539,12 @@ contract GaugeTest is BaseTest {
         Gauge(gauge).notifyRewardAmount(reward);
         vm.stopPrank();
 
-        uint256 epochStart = _getEpochStart(block.timestamp);
+        uint256 epochStart = _getEpochStart(vm.getBlockTimestamp());
         assertApproxEqRel(gauge.rewardRate(), reward / DURATION, 1e6);
         assertApproxEqRel(gauge.rewardRateByEpoch(epochStart), reward / DURATION, 1e6);
         assertEq(AERO.balanceOf(address(gauge)), TOKEN_1);
-        assertEq(gauge.lastUpdateTime(), block.timestamp);
-        assertEq(gauge.periodFinish(), _getEpochStart(block.timestamp) + DURATION);
+        assertEq(gauge.lastUpdateTime(), vm.getBlockTimestamp());
+        assertEq(gauge.periodFinish(), _getEpochStart(vm.getBlockTimestamp()) + DURATION);
 
         skipAndRoll(1 days);
 
@@ -557,12 +557,12 @@ contract GaugeTest is BaseTest {
         uint256 prevReward = (reward * 6) / 7; // Only 6/7 of previously added rewards are available after 1 day
         reward = TOKEN_1 + prevReward; // Rewards available = newly emitted rewards + previous rewards
 
-        epochStart = _getEpochStart(block.timestamp);
+        epochStart = _getEpochStart(vm.getBlockTimestamp());
         assertApproxEqRel(gauge.rewardRate(), (reward / (6 days)), 1e6);
         assertApproxEqRel(gauge.rewardRateByEpoch(epochStart), reward / (6 days), 1e6);
         assertEq(AERO.balanceOf(address(gauge)), 2 * TOKEN_1);
-        assertEq(gauge.lastUpdateTime(), block.timestamp);
-        assertEq(gauge.periodFinish(), _getEpochStart(block.timestamp) + DURATION);
+        assertEq(gauge.lastUpdateTime(), vm.getBlockTimestamp());
+        assertEq(gauge.periodFinish(), _getEpochStart(vm.getBlockTimestamp()) + DURATION);
     }
 
     function testNotifyRewardWithoutClaimNonZeroAmount() public {
@@ -573,12 +573,12 @@ contract GaugeTest is BaseTest {
         Gauge(gauge).notifyRewardWithoutClaim(reward);
         vm.stopPrank();
 
-        uint256 epochStart = _getEpochStart(block.timestamp);
+        uint256 epochStart = _getEpochStart(vm.getBlockTimestamp());
         assertApproxEqRel(gauge.rewardRate(), reward / DURATION, 1e6);
         assertApproxEqRel(gauge.rewardRateByEpoch(epochStart), reward / DURATION, 1e6);
         assertEq(AERO.balanceOf(address(gauge)), TOKEN_1);
-        assertEq(gauge.lastUpdateTime(), block.timestamp);
-        assertEq(gauge.periodFinish(), _getEpochStart(block.timestamp) + DURATION);
+        assertEq(gauge.lastUpdateTime(), vm.getBlockTimestamp());
+        assertEq(gauge.periodFinish(), _getEpochStart(vm.getBlockTimestamp()) + DURATION);
     }
 
     function testNotifyRewardWithoutClaimNonZeroAmountOneDayAfterEpochFlip() public {
@@ -591,12 +591,12 @@ contract GaugeTest is BaseTest {
         Gauge(gauge).notifyRewardWithoutClaim(reward);
         vm.stopPrank();
 
-        uint256 epochStart = _getEpochStart(block.timestamp);
+        uint256 epochStart = _getEpochStart(vm.getBlockTimestamp());
         assertApproxEqRel(gauge.rewardRate(), (reward / (6 days)), 1e6);
         assertApproxEqRel(gauge.rewardRateByEpoch(epochStart), reward / (6 days), 1e6);
         assertEq(AERO.balanceOf(address(gauge)), TOKEN_1);
-        assertEq(gauge.lastUpdateTime(), block.timestamp);
-        assertEq(gauge.periodFinish(), _getEpochStart(block.timestamp) + DURATION);
+        assertEq(gauge.lastUpdateTime(), vm.getBlockTimestamp());
+        assertEq(gauge.periodFinish(), _getEpochStart(vm.getBlockTimestamp()) + DURATION);
     }
 
     function testCannotNotifyRewardWithoutClaimIfNotTeam() public {

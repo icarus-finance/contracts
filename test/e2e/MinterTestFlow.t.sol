@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import "./ExtendedBaseTest.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
@@ -53,7 +53,7 @@ contract MinterTestFlow is ExtendedBaseTest {
         address[] memory gauges = new address[](1);
         gauges[0] = address(gauge);
 
-        uint256 epochStart = _getEpochStart(block.timestamp);
+        uint256 epochStart = _getEpochStart(vm.getBlockTimestamp());
         assertEq(AERO.allowance(address(voter), address(gauge)), 0);
         voter.distribute(gauges);
         assertEq(AERO.allowance(address(voter), address(gauge)), 0);
@@ -123,7 +123,7 @@ contract MinterTestFlow is ExtendedBaseTest {
         values[0] = 0;
         bytes[] memory calldatas = new bytes[](1);
         calldatas[0] = abi.encodeWithSelector(minter.nudge.selector);
-        string memory description = Strings.toString(block.timestamp);
+        string memory description = Strings.toString(vm.getBlockTimestamp());
 
         uint256 pid = epochGovernor.propose(1, targets, values, calldatas, description);
 
@@ -146,7 +146,7 @@ contract MinterTestFlow is ExtendedBaseTest {
         assertApproxEqAbs(AERO.balanceOf(address(voter)), 8_968_681 * TOKEN_1, TOKEN_1);
         voter.distribute(0, voter.length());
 
-        description = Strings.toString(block.timestamp);
+        description = Strings.toString(vm.getBlockTimestamp());
         pid = epochGovernor.propose(1, targets, values, calldatas, description);
         skipAndRoll(15 minutes + 1); // epoch + 30 minutes + 3
 
@@ -157,7 +157,7 @@ contract MinterTestFlow is ExtendedBaseTest {
 
         skipToNextEpoch(0);
         // create new proposal immediately on epoch flip (i.e. two concurrent proposals)
-        string memory description2 = Strings.toString(block.timestamp);
+        string memory description2 = Strings.toString(vm.getBlockTimestamp());
         uint256 pid2 = epochGovernor.propose(1, targets, values, calldatas, description2);
 
         skipAndRoll(30 minutes + 3); // epoch + 30 minutes + 3

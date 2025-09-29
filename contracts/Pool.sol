@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IPool} from "./interfaces/IPool.sol";
@@ -272,11 +272,12 @@ contract Pool is IPool, ERC20Permit, ReentrancyGuard {
     }
 
     /// @inheritdoc IPool
-    function sample(address tokenIn, uint256 amountIn, uint256 points, uint256 window)
-        public
-        view
-        returns (uint256[] memory)
-    {
+    function sample(
+        address tokenIn,
+        uint256 amountIn,
+        uint256 points,
+        uint256 window
+    ) public view returns (uint256[] memory) {
         uint256[] memory _prices = new uint256[](points);
 
         uint256 length = observations.length - 1;
@@ -287,10 +288,10 @@ contract Pool is IPool, ERC20Permit, ReentrancyGuard {
         for (; i < length; i += window) {
             nextIndex = i + window;
             uint256 timeElapsed = observations[nextIndex].timestamp - observations[i].timestamp;
-            uint256 _reserve0 =
-                (observations[nextIndex].reserve0Cumulative - observations[i].reserve0Cumulative) / timeElapsed;
-            uint256 _reserve1 =
-                (observations[nextIndex].reserve1Cumulative - observations[i].reserve1Cumulative) / timeElapsed;
+            uint256 _reserve0 = (observations[nextIndex].reserve0Cumulative - observations[i].reserve0Cumulative) /
+                timeElapsed;
+            uint256 _reserve1 = (observations[nextIndex].reserve1Cumulative - observations[i].reserve1Cumulative) /
+                timeElapsed;
             _prices[index] = _getAmountOut(amountIn, tokenIn, _reserve0, _reserve1);
             // index < length; length cannot overflow
             unchecked {
@@ -456,11 +457,12 @@ contract Pool is IPool, ERC20Permit, ReentrancyGuard {
         return _getAmountOut(amountIn, tokenIn, _reserve0, _reserve1);
     }
 
-    function _getAmountOut(uint256 amountIn, address tokenIn, uint256 _reserve0, uint256 _reserve1)
-        internal
-        view
-        returns (uint256)
-    {
+    function _getAmountOut(
+        uint256 amountIn,
+        address tokenIn,
+        uint256 _reserve0,
+        uint256 _reserve1
+    ) internal view returns (uint256) {
         if (stable) {
             uint256 xy = _k(_reserve0, _reserve1);
             _reserve0 = (_reserve0 * 1e18) / decimals0;

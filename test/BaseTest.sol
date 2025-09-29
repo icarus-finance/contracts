@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import "forge-std/Test.sol";
 import "forge-std/console2.sol";
@@ -280,15 +280,15 @@ abstract contract BaseTest is Base, TestOwner {
     ///      note epoch requires at least one second to have
     ///      passed into the new epoch
     function skipToNextEpoch(uint256 offset) public {
-        uint256 ts = block.timestamp;
+        uint256 ts = vm.getBlockTimestamp();
         uint256 nextEpoch = ts - (ts % (1 weeks)) + (1 weeks);
         vm.warp(nextEpoch + offset);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
     }
 
     function skipAndRoll(uint256 timeOffset) public {
         skip(timeOffset);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
     }
 
     /// @dev Helper utility to get start of epoch based on timestamp
@@ -322,7 +322,15 @@ abstract contract BaseTest is Base, TestOwner {
         IERC20(_token0).approve(address(_router), _amount0);
         IERC20(_token1).approve(address(_router), _amount1);
         Router(payable(_router)).addLiquidity(
-            _token0, _token1, _stable, _amount0, _amount1, 0, 0, address(_owner), block.timestamp
+            _token0,
+            _token1,
+            _stable,
+            _amount0,
+            _amount1,
+            0,
+            0,
+            address(_owner),
+            vm.getBlockTimestamp()
         );
         vm.stopPrank();
     }

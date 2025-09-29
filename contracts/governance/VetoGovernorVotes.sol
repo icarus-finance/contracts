@@ -45,13 +45,12 @@ abstract contract VetoGovernorVotes is VetoGovernor {
     /**
      * Read the voting weight from the token's built in snapshot mechanism (see {Governor-_getVotes}).
      */
-    function _getVotes(address account, uint256 tokenId, uint256 timepoint, bytes memory /*params*/ )
-        internal
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function _getVotes(
+        address account,
+        uint256 tokenId,
+        uint256 timepoint,
+        bytes memory /*params*/
+    ) internal view virtual override returns (uint256) {
         return token.getPastVotes(account, tokenId, timepoint);
     }
 }

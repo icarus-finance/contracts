@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import {BaseTestRiseTestnetFork} from "../test/BaseTestRiseTestnetFork.sol";
 import {LpCandy, ILpCandy} from "../contracts/candy/LpCandy.sol";
@@ -42,15 +42,21 @@ contract CandyTest is BaseTestRiseTestnetFork {
     function testCandUnstakedConcentrated() public {
         // assertEq(candy.convertor(), 0x1111111111111111111111111111111111111111);
         // address[] memory _addresses = new address[](0);
-        ILpCandy.Position[] memory tokens =
-            candy.positionsUnstakedConcentrated(10, 0, 0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813);
+        ILpCandy.Position[] memory tokens = candy.positionsUnstakedConcentrated(
+            10,
+            0,
+            0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813
+        );
     }
 
     function testCandPositionsByFactoryV2() public {
         // assertEq(candy.convertor(), 0x1111111111111111111111111111111111111111);
         // address[] memory _addresses = new address[](0);
         ILpCandy.Position[] memory tokens = candy.positionsByFactory(
-            10, 0, 0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813, 0x0fc0cAF0b23132ED8759d0C48aB0C5fC151b1Ddf
+            10,
+            0,
+            0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813,
+            0x0fc0cAF0b23132ED8759d0C48aB0C5fC151b1Ddf
         );
     }
 
@@ -58,7 +64,10 @@ contract CandyTest is BaseTestRiseTestnetFork {
         // assertEq(candy.convertor(), 0x1111111111111111111111111111111111111111);
         // address[] memory _addresses = new address[](0);
         ILpCandy.Position[] memory tokens = candy.positionsByFactory(
-            10, 0, 0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813, 0x5591e3f890725F0f3dbF47B63c81bbb91975483c
+            10,
+            0,
+            0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813,
+            0x5591e3f890725F0f3dbF47B63c81bbb91975483c
         );
     }
 
@@ -523,12 +532,12 @@ contract CandyTest is BaseTestRiseTestnetFork {
     //     Gauge(gauge).notifyRewardAmount(reward);
     //     vm.stopPrank();
 
-    //     uint256 epochStart = _getEpochStart(block.timestamp);
+    //     uint256 epochStart = _getEpochStart(vm.getBlockTimestamp());
     //     assertApproxEqRel(gauge.rewardRate(), reward / DURATION, 1e6);
     //     assertApproxEqRel(gauge.rewardRateByEpoch(epochStart), reward / DURATION, 1e6);
     //     assertEq(AERO.balanceOf(address(gauge)), TOKEN_1);
-    //     assertEq(gauge.lastUpdateTime(), block.timestamp);
-    //     assertEq(gauge.periodFinish(), _getEpochStart(block.timestamp) + DURATION);
+    //     assertEq(gauge.lastUpdateTime(), vm.getBlockTimestamp());
+    //     assertEq(gauge.periodFinish(), _getEpochStart(vm.getBlockTimestamp()) + DURATION);
     // }
 
     // function testNotifyRewardAmountWithNonZeroAmountOneDayAfterEpochFlip() public {
@@ -542,12 +551,12 @@ contract CandyTest is BaseTestRiseTestnetFork {
     //     Gauge(gauge).notifyRewardAmount(reward);
     //     vm.stopPrank();
 
-    //     uint256 epochStart = _getEpochStart(block.timestamp);
+    //     uint256 epochStart = _getEpochStart(vm.getBlockTimestamp());
     //     assertApproxEqRel(gauge.rewardRate(), (reward / (6 days)), 1e6);
     //     assertApproxEqRel(gauge.rewardRateByEpoch(epochStart), reward / (6 days), 1e6);
     //     assertEq(AERO.balanceOf(address(gauge)), TOKEN_1);
-    //     assertEq(gauge.lastUpdateTime(), block.timestamp);
-    //     assertEq(gauge.periodFinish(), _getEpochStart(block.timestamp) + DURATION);
+    //     assertEq(gauge.lastUpdateTime(), vm.getBlockTimestamp());
+    //     assertEq(gauge.periodFinish(), _getEpochStart(vm.getBlockTimestamp()) + DURATION);
     // }
 
     // function testCannotNotifyRewardAmountWithZeroAmount() public {
@@ -569,12 +578,12 @@ contract CandyTest is BaseTestRiseTestnetFork {
     //     Gauge(gauge).notifyRewardAmount(reward);
     //     vm.stopPrank();
 
-    //     uint256 epochStart = _getEpochStart(block.timestamp);
+    //     uint256 epochStart = _getEpochStart(vm.getBlockTimestamp());
     //     assertApproxEqRel(gauge.rewardRate(), reward / DURATION, 1e6);
     //     assertApproxEqRel(gauge.rewardRateByEpoch(epochStart), reward / DURATION, 1e6);
     //     assertEq(AERO.balanceOf(address(gauge)), TOKEN_1);
-    //     assertEq(gauge.lastUpdateTime(), block.timestamp);
-    //     assertEq(gauge.periodFinish(), _getEpochStart(block.timestamp) + DURATION);
+    //     assertEq(gauge.lastUpdateTime(), vm.getBlockTimestamp());
+    //     assertEq(gauge.periodFinish(), _getEpochStart(vm.getBlockTimestamp()) + DURATION);
 
     //     skipAndRoll(1 days);
 
@@ -587,12 +596,12 @@ contract CandyTest is BaseTestRiseTestnetFork {
     //     uint256 prevReward = (reward * 6) / 7; // Only 6/7 of previously added rewards are available after 1 day
     //     reward = TOKEN_1 + prevReward; // Rewards available = newly emitted rewards + previous rewards
 
-    //     epochStart = _getEpochStart(block.timestamp);
+    //     epochStart = _getEpochStart(vm.getBlockTimestamp());
     //     assertApproxEqRel(gauge.rewardRate(), (reward / (6 days)), 1e6);
     //     assertApproxEqRel(gauge.rewardRateByEpoch(epochStart), reward / (6 days), 1e6);
     //     assertEq(AERO.balanceOf(address(gauge)), 2 * TOKEN_1);
-    //     assertEq(gauge.lastUpdateTime(), block.timestamp);
-    //     assertEq(gauge.periodFinish(), _getEpochStart(block.timestamp) + DURATION);
+    //     assertEq(gauge.lastUpdateTime(), vm.getBlockTimestamp());
+    //     assertEq(gauge.periodFinish(), _getEpochStart(vm.getBlockTimestamp()) + DURATION);
     // }
 
     // function testNotifyRewardWithoutClaimNonZeroAmount() public {
@@ -603,12 +612,12 @@ contract CandyTest is BaseTestRiseTestnetFork {
     //     Gauge(gauge).notifyRewardWithoutClaim(reward);
     //     vm.stopPrank();
 
-    //     uint256 epochStart = _getEpochStart(block.timestamp);
+    //     uint256 epochStart = _getEpochStart(vm.getBlockTimestamp());
     //     assertApproxEqRel(gauge.rewardRate(), reward / DURATION, 1e6);
     //     assertApproxEqRel(gauge.rewardRateByEpoch(epochStart), reward / DURATION, 1e6);
     //     assertEq(AERO.balanceOf(address(gauge)), TOKEN_1);
-    //     assertEq(gauge.lastUpdateTime(), block.timestamp);
-    //     assertEq(gauge.periodFinish(), _getEpochStart(block.timestamp) + DURATION);
+    //     assertEq(gauge.lastUpdateTime(), vm.getBlockTimestamp());
+    //     assertEq(gauge.periodFinish(), _getEpochStart(vm.getBlockTimestamp()) + DURATION);
     // }
 
     // function testNotifyRewardWithoutClaimNonZeroAmountOneDayAfterEpochFlip() public {
@@ -621,12 +630,12 @@ contract CandyTest is BaseTestRiseTestnetFork {
     //     Gauge(gauge).notifyRewardWithoutClaim(reward);
     //     vm.stopPrank();
 
-    //     uint256 epochStart = _getEpochStart(block.timestamp);
+    //     uint256 epochStart = _getEpochStart(vm.getBlockTimestamp());
     //     assertApproxEqRel(gauge.rewardRate(), (reward / (6 days)), 1e6);
     //     assertApproxEqRel(gauge.rewardRateByEpoch(epochStart), reward / (6 days), 1e6);
     //     assertEq(AERO.balanceOf(address(gauge)), TOKEN_1);
-    //     assertEq(gauge.lastUpdateTime(), block.timestamp);
-    //     assertEq(gauge.periodFinish(), _getEpochStart(block.timestamp) + DURATION);
+    //     assertEq(gauge.lastUpdateTime(), vm.getBlockTimestamp());
+    //     assertEq(gauge.periodFinish(), _getEpochStart(vm.getBlockTimestamp()) + DURATION);
     // }
 
     // function testCannotNotifyRewardWithoutClaimIfNotTeam() public {

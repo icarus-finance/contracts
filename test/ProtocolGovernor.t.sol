@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import "./BaseTest.sol";
 import {IVetoGovernor} from "contracts/governance/IVetoGovernor.sol";
@@ -196,7 +196,7 @@ contract ProtocolGovernorTest is BaseTest {
 
         skipAndRoll(15 minutes);
         assertEq(escrow.balanceOfNFT(1), 96733552971170873788); // voting power at proposal start
-        assertEq(escrow.getPastVotes(address(owner), 1, block.timestamp), 96733552971170873788);
+        assertEq(escrow.getPastVotes(address(owner), 1, vm.getBlockTimestamp()), 96733552971170873788);
         vm.expectRevert("Governor: vote not currently active");
         governor.castVote(pid, 1, 1);
         assertEq(uint256(governor.state(pid)), uint256(IVetoGovernor.ProposalState.Pending));
@@ -259,9 +259,9 @@ contract ProtocolGovernorTest is BaseTest {
 
         skipAndRoll(15 minutes);
         assertEq(escrow.balanceOfNFT(3), 997253115368668515); // voting power at proposal start
-        assertEq(escrow.getPastVotes(address(owner), 3, block.timestamp), 997253115368668515 + TOKEN_1 * 100);
+        assertEq(escrow.getPastVotes(address(owner), 3, vm.getBlockTimestamp()), 997253115368668515 + TOKEN_1 * 100);
         assertEq(escrow.balanceOfNFT(4), TOKEN_1 * 100);
-        assertEq(escrow.getPastVotes(address(owner3), 4, block.timestamp), 0);
+        assertEq(escrow.getPastVotes(address(owner3), 4, vm.getBlockTimestamp()), 0);
         vm.expectRevert("Governor: vote not currently active");
         governor.castVote(pid, 3, 1);
         assertEq(uint256(governor.state(pid)), uint256(IVetoGovernor.ProposalState.Pending));

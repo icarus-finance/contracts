@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import "./BaseTest.sol";
 
@@ -19,11 +19,12 @@ contract VeArtProxyTest is BaseTest {
         tokenId = escrow.createLock(TOKEN_1, MAXTIME);
     }
 
-    function _setupFuzz(uint256 lineCount, uint256 seed1, uint256 seed2, uint256 seed3)
-        internal
-        view
-        returns (VeArtProxy.Config memory cfg)
-    {
+    function _setupFuzz(
+        uint256 lineCount,
+        uint256 seed1,
+        uint256 seed2,
+        uint256 seed3
+    ) internal view returns (VeArtProxy.Config memory cfg) {
         lineCount = bound(lineCount, 4, 32);
         vm.assume(lineCount % 4 == 0);
 

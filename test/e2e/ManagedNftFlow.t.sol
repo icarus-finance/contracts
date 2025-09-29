@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import "./ExtendedBaseTest.sol";
 
@@ -431,7 +431,7 @@ contract ManagedNftFlow is ExtendedBaseTest {
         vm.stopPrank();
 
         // required to overcome flash nft protection after transfer
-        vm.roll(block.timestamp + 1);
+        vm.roll(vm.getBlockTimestamp() + 1);
 
         skipToNextEpoch(1);
 

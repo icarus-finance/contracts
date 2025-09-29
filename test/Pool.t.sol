@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import "./BaseTest.sol";
 
@@ -30,8 +30,13 @@ contract PoolTest is BaseTest {
 
         distributor = new RewardsDistributor(address(escrow));
         voter = new Voter(address(forwarder), address(escrow), address(factoryRegistry));
-        router =
-            new Router(address(forwarder), address(factoryRegistry), address(factory), address(voter), address(WETH));
+        router = new Router(
+            address(forwarder),
+            address(factoryRegistry),
+            address(factory),
+            address(voter),
+            address(WETH)
+        );
 
         escrow.setVoterAndDistributor(address(voter), address(distributor));
         factory.setVoter(address(voter));
@@ -45,7 +50,7 @@ contract PoolTest is BaseTest {
 
         AERO.approve(address(escrow), 5e17);
         escrow.createLock(5e17, MAXTIME);
-        vm.roll(block.number + 1); // fwd 1 block because escrow.balanceOfNFT() returns 0 in same block
+        vm.roll(vm.getBlockNumber() + 1); // fwd 1 block because escrow.balanceOfNFT() returns 0 in same block
         assertGt(escrow.balanceOfNFT(1), 495063075414519385);
         assertEq(AERO.balanceOf(address(escrow)), 5e17);
     }
@@ -146,7 +151,15 @@ contract PoolTest is BaseTest {
         mintAndBurnTokensForPoolFraxUsdcOwner2();
 
         _addLiquidityToPool(address(owner), address(router), address(USDC), address(FRAX), true, USDC_100K, TOKEN_100K);
-        _addLiquidityToPool(address(owner), address(router), address(USDC), address(FRAX), false, USDC_100K, TOKEN_100K);
+        _addLiquidityToPool(
+            address(owner),
+            address(router),
+            address(USDC),
+            address(FRAX),
+            false,
+            USDC_100K,
+            TOKEN_100K
+        );
         _addLiquidityToPool(address(owner), address(router), address(DAI), address(FRAX), true, TOKEN_100M, TOKEN_100M);
     }
 
@@ -162,11 +175,33 @@ contract PoolTest is BaseTest {
     function routerAddLiquidityOwner2() public {
         routerRemoveLiquidity();
 
-        _addLiquidityToPool(address(owner2), address(router), address(USDC), address(FRAX), true, USDC_100K, TOKEN_100K);
         _addLiquidityToPool(
-            address(owner2), address(router), address(USDC), address(FRAX), false, USDC_100K, TOKEN_100K
+            address(owner2),
+            address(router),
+            address(USDC),
+            address(FRAX),
+            true,
+            USDC_100K,
+            TOKEN_100K
         );
-        _addLiquidityToPool(address(owner2), address(router), address(DAI), address(FRAX), true, TOKEN_100M, TOKEN_100M);
+        _addLiquidityToPool(
+            address(owner2),
+            address(router),
+            address(USDC),
+            address(FRAX),
+            false,
+            USDC_100K,
+            TOKEN_100K
+        );
+        _addLiquidityToPool(
+            address(owner2),
+            address(router),
+            address(DAI),
+            address(FRAX),
+            true,
+            TOKEN_100M,
+            TOKEN_100M
+        );
     }
 
     function routerPool1GetAmountsOutAndSwapExactTokensForTokens() public {
@@ -179,9 +214,9 @@ contract PoolTest is BaseTest {
 
         uint256[] memory assertedOutput = router.getAmountsOut(USDC_1, routes);
         USDC.approve(address(router), USDC_1);
-        router.swapExactTokensForTokens(USDC_1, assertedOutput[1], routes, address(owner), block.timestamp);
+        router.swapExactTokensForTokens(USDC_1, assertedOutput[1], routes, address(owner), vm.getBlockTimestamp());
         skip(1801);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         address poolFees = pool.poolFees();
         assertEq(USDC.balanceOf(poolFees), 100);
         uint256 b = USDC.balanceOf(address(owner));
@@ -200,7 +235,7 @@ contract PoolTest is BaseTest {
         uint256[] memory expectedOutput = router.getAmountsOut(USDC_1, routes);
         vm.startPrank(address(owner2));
         owner2.approve(address(USDC), address(router), USDC_1);
-        router.swapExactTokensForTokens(USDC_1, expectedOutput[1], routes, address(owner2), block.timestamp);
+        router.swapExactTokensForTokens(USDC_1, expectedOutput[1], routes, address(owner2), vm.getBlockTimestamp());
         vm.stopPrank();
         address poolFees = pool.poolFees();
         assertEq(USDC.balanceOf(poolFees), 101);
@@ -220,7 +255,7 @@ contract PoolTest is BaseTest {
 
         uint256[] memory expectedOutput = router.getAmountsOut(USDC_1, routes);
         USDC.approve(address(router), USDC_1);
-        router.swapExactTokensForTokens(USDC_1, expectedOutput[1], routes, address(owner), block.timestamp);
+        router.swapExactTokensForTokens(USDC_1, expectedOutput[1], routes, address(owner), vm.getBlockTimestamp());
     }
 
     function routerPool3GetAmountsOutAndSwapExactTokensForTokens() public {
@@ -233,7 +268,7 @@ contract PoolTest is BaseTest {
 
         uint256[] memory expectedOutput = router.getAmountsOut(TOKEN_1M, routes);
         FRAX.approve(address(router), TOKEN_1M);
-        router.swapExactTokensForTokens(TOKEN_1M, expectedOutput[1], routes, address(owner), block.timestamp);
+        router.swapExactTokensForTokens(TOKEN_1M, expectedOutput[1], routes, address(owner), vm.getBlockTimestamp());
     }
 
     function deployMinter() public {
@@ -464,7 +499,7 @@ contract PoolTest is BaseTest {
         rewards[0] = address(AERO);
         feesVotingReward.getReward(1, rewards);
         skip(8 days);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         feesVotingReward.getReward(1, rewards);
     }
 
@@ -476,7 +511,7 @@ contract PoolTest is BaseTest {
 
         uint256[] memory expectedOutput = router.getAmountsOut(USDC_1, routes);
         USDC.approve(address(router), USDC_1);
-        router.swapExactTokensForTokens(USDC_1, expectedOutput[1], routes, address(owner), block.timestamp);
+        router.swapExactTokensForTokens(USDC_1, expectedOutput[1], routes, address(owner), vm.getBlockTimestamp());
     }
 
     function routerPool2GetAmountsOutAndSwapExactTokensForTokens2() public {
@@ -487,7 +522,7 @@ contract PoolTest is BaseTest {
 
         uint256[] memory expectedOutput = router.getAmountsOut(USDC_1, routes);
         USDC.approve(address(router), USDC_1);
-        router.swapExactTokensForTokens(USDC_1, expectedOutput[1], routes, address(owner), block.timestamp);
+        router.swapExactTokensForTokens(USDC_1, expectedOutput[1], routes, address(owner), vm.getBlockTimestamp());
     }
 
     function routerPool1GetAmountsOutAndSwapExactTokensForTokens2Again() public {
@@ -498,7 +533,7 @@ contract PoolTest is BaseTest {
 
         uint256[] memory expectedOutput = router.getAmountsOut(TOKEN_1, routes);
         FRAX.approve(address(router), TOKEN_1);
-        router.swapExactTokensForTokens(TOKEN_1, expectedOutput[1], routes, address(owner), block.timestamp);
+        router.swapExactTokensForTokens(TOKEN_1, expectedOutput[1], routes, address(owner), vm.getBlockTimestamp());
     }
 
     function routerPool2GetAmountsOutAndSwapExactTokensForTokens2Again() public {
@@ -509,7 +544,7 @@ contract PoolTest is BaseTest {
 
         uint256[] memory expectedOutput = router.getAmountsOut(TOKEN_1, routes);
         FRAX.approve(address(router), TOKEN_1);
-        router.swapExactTokensForTokens(TOKEN_1, expectedOutput[1], routes, address(owner), block.timestamp);
+        router.swapExactTokensForTokens(TOKEN_1, expectedOutput[1], routes, address(owner), vm.getBlockTimestamp());
     }
 
     function routerPool1Pool2GetAmountsOutAndSwapExactTokensForTokens() public {
@@ -523,7 +558,7 @@ contract PoolTest is BaseTest {
 
         uint256[] memory expectedOutput = router.getAmountsOut(TOKEN_1, route);
         FRAX.approve(address(router), TOKEN_1);
-        router.swapExactTokensForTokens(TOKEN_1, expectedOutput[2], route, address(owner), block.timestamp);
+        router.swapExactTokensForTokens(TOKEN_1, expectedOutput[2], route, address(owner), vm.getBlockTimestamp());
         uint256 after_ = FRAX.balanceOf(address(owner));
         assertEq(after_ - before, expectedOutput[2]);
     }
@@ -532,7 +567,7 @@ contract PoolTest is BaseTest {
         routerPool1Pool2GetAmountsOutAndSwapExactTokensForTokens();
 
         skip(8 days);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         address[] memory rewards = new address[](2);
         rewards[0] = address(FRAX);
         rewards[1] = address(USDC);
@@ -549,7 +584,7 @@ contract PoolTest is BaseTest {
         voter.updateFor(address(gauge));
         voter.distribute(0, voter.length());
         skip(30 minutes);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
     }
 
     function gaugeClaimRewards() public {
@@ -597,7 +632,7 @@ contract PoolTest is BaseTest {
         gauge.deposit(POOL_1);
         gauge.getReward(address(owner));
         skip(1 weeks);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         gauge.getReward(address(owner));
         gauge.withdraw(gauge.balanceOf(address(owner)));
     }
@@ -633,7 +668,7 @@ contract PoolTest is BaseTest {
         gauge.deposit(POOL_1);
         gauge.getReward(address(owner));
         skip(1 weeks);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         gauge.getReward(address(owner));
         gauge.withdraw(gauge.balanceOf(address(owner)));
     }
@@ -652,7 +687,7 @@ contract PoolTest is BaseTest {
         uint256 supply = escrow.totalSupply();
         assertGt(supply, 0);
         skip(MAXTIME);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         assertEq(escrow.balanceOfNFT(1), 0);
         assertEq(escrow.totalSupply(), 0);
         skip(1 weeks);
@@ -707,7 +742,7 @@ contract PoolTest is BaseTest {
         gaugeClaimRewardsOwner3();
 
         skip(2 weeks);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         minter.updatePeriod();
         voter.updateFor(address(gauge));
         address[] memory gauges = new address[](1);
@@ -747,7 +782,7 @@ contract PoolTest is BaseTest {
         _addRewardToGauge(address(voter), address(gauge), TOKEN_1);
 
         skip(1 weeks);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         gauge.getReward(address(owner));
         gauge.withdraw(gauge.balanceOf(address(owner)));
     }
@@ -757,7 +792,7 @@ contract PoolTest is BaseTest {
         // base setup, and so they need to be deployed for these tests
         deployPoolCoins();
 
-        assertEq(pool.name(), "Stable AMM - USDC/FRAX");
+        assertEq(pool.name(), "Stable AMM - FRAX/USDC"); // Address order changed
         pool.setName("Some new name");
         assertEq(pool.name(), "Some new name");
     }
@@ -773,7 +808,7 @@ contract PoolTest is BaseTest {
     function testSetPoolSymbol() external {
         deployPoolCoins();
 
-        assertEq(pool.symbol(), "sAMM-USDC/FRAX");
+        assertEq(pool.symbol(), "sAMM-FRAX/USDC"); // Address order changed
         pool.setSymbol("Some new symbol");
         assertEq(pool.symbol(), "Some new symbol");
     }

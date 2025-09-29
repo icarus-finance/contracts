@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {IVeArtProxy} from "./interfaces/IVeArtProxy.sol";
@@ -206,8 +206,9 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
         // adjust managed nft
         LockedBalance memory newLockedManaged = _locked[_mTokenId];
         // do not expect _total > locked.amount / permanentLockBalance but just in case
-        newLockedManaged.amount -=
-            (_total.toInt128() < newLockedManaged.amount ? _total.toInt128() : newLockedManaged.amount);
+        newLockedManaged.amount -= (
+            _total.toInt128() < newLockedManaged.amount ? _total.toInt128() : newLockedManaged.amount
+        );
         permanentLockBalance -= (_total < permanentLockBalance ? _total : permanentLockBalance);
         _checkpointDelegatee(_delegates[_mTokenId], _total, false);
         _checkpoint(_mTokenId, _locked[_mTokenId], newLockedManaged);
@@ -621,8 +622,13 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
             }
         }
 
-        GlobalPoint memory lastPoint =
-            GlobalPoint({bias: 0, slope: 0, ts: block.timestamp, blk: block.number, permanentLockBalance: 0});
+        GlobalPoint memory lastPoint = GlobalPoint({
+            bias: 0,
+            slope: 0,
+            ts: block.timestamp,
+            blk: block.number,
+            permanentLockBalance: 0
+        });
         if (_epoch > 0) {
             lastPoint = _pointHistory[_epoch];
         }
@@ -764,8 +770,11 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
 
         // Set newLocked to _oldLocked without mangling memory
         LockedBalance memory newLocked;
-        (newLocked.amount, newLocked.end, newLocked.isPermanent) =
-            (_oldLocked.amount, _oldLocked.end, _oldLocked.isPermanent);
+        (newLocked.amount, newLocked.end, newLocked.isPermanent) = (
+            _oldLocked.amount,
+            _oldLocked.end,
+            _oldLocked.isPermanent
+        );
 
         // Adding to existing lock, or if a lock is expired - creating a new one
         newLocked.amount += _value.toInt128();
@@ -825,11 +834,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVotingEscrow
-    function createLockFor(uint256 _value, uint256 _lockDuration, address _to)
-        external
-        nonReentrant
-        returns (uint256)
-    {
+    function createLockFor(uint256 _value, uint256 _lockDuration, address _to) external nonReentrant returns (uint256) {
         return _createLock(_value, _lockDuration, _to);
     }
 
@@ -959,11 +964,10 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVotingEscrow
-    function split(uint256 _from, uint256 _amount)
-        external
-        nonReentrant
-        returns (uint256 _tokenId1, uint256 _tokenId2)
-    {
+    function split(
+        uint256 _from,
+        uint256 _amount
+    ) external nonReentrant returns (uint256 _tokenId1, uint256 _tokenId2) {
         address sender = _msgSender();
         address owner = _ownerOf(_from);
         if (owner == address(0)) revert SplitNoOwner();
@@ -1160,7 +1164,13 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
 
     function _checkpointDelegator(uint256 _delegator, uint256 _delegatee, address _owner) internal {
         DelegationLogicLibrary.checkpointDelegator(
-            _locked, numCheckpoints, _checkpoints, _delegates, _delegator, _delegatee, _owner
+            _locked,
+            numCheckpoints,
+            _checkpoints,
+            _delegates,
+            _delegator,
+            _delegatee,
+            _owner
         );
     }
 

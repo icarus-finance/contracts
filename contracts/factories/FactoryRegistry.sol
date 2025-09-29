@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IFactoryRegistry} from "../interfaces/factories/IFactoryRegistry.sol";
@@ -89,11 +89,9 @@ contract FactoryRegistry is IFactoryRegistry, Ownable {
     }
 
     /// @inheritdoc IFactoryRegistry
-    function factoriesToPoolFactory(address poolFactory)
-        public
-        view
-        returns (address votingRewardsFactory, address gaugeFactory)
-    {
+    function factoriesToPoolFactory(
+        address poolFactory
+    ) public view returns (address votingRewardsFactory, address gaugeFactory) {
         FactoriesToPoolFactory memory f = _factoriesToPoolsFactory[poolFactory];
         votingRewardsFactory = f.votingRewardsFactory;
         gaugeFactory = f.gaugeFactory;

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import "forge-std/StdJson.sol";
 import "../test/Base.sol";
@@ -95,11 +95,9 @@ contract DistributeAirdrops is Script {
         vm.stopBroadcast();
     }
 
-    function getArraysFromInfo(AirdropInfo[] memory infos)
-        public
-        pure
-        returns (address[] memory _wallets, uint256[] memory _amounts)
-    {
+    function getArraysFromInfo(
+        AirdropInfo[] memory infos
+    ) public pure returns (address[] memory _wallets, uint256[] memory _amounts) {
         uint256 len = infos.length;
         _wallets = new address[](len);
         _amounts = new uint256[](len);
@@ -111,11 +109,10 @@ contract DistributeAirdrops is Script {
         }
     }
 
-    function getArraySlice(address[] memory _wallets, uint256[] memory _amounts)
-        public
-        view
-        returns (address[] memory wallets, uint256[] memory amounts)
-    {
+    function getArraySlice(
+        address[] memory _wallets,
+        uint256[] memory _amounts
+    ) public view returns (address[] memory wallets, uint256[] memory amounts) {
         if (MAX_AIRDROPS > _wallets.length) {
             wallets = _wallets;
             amounts = _amounts;

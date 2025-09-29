@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IReward} from "../interfaces/IReward.sol";
@@ -124,9 +124,9 @@ abstract contract Reward is IReward, ERC2771Context, ReentrancyGuard {
         uint256 _timestamp = block.timestamp;
 
         if (
-            _nCheckPoints > 0
-                && ProtocolTimeLibrary.epochStart(checkpoints[tokenId][_nCheckPoints - 1].timestamp)
-                    == ProtocolTimeLibrary.epochStart(_timestamp)
+            _nCheckPoints > 0 &&
+            ProtocolTimeLibrary.epochStart(checkpoints[tokenId][_nCheckPoints - 1].timestamp) ==
+            ProtocolTimeLibrary.epochStart(_timestamp)
         ) {
             checkpoints[tokenId][_nCheckPoints - 1] = Checkpoint(_timestamp, balance);
         } else {
@@ -140,9 +140,9 @@ abstract contract Reward is IReward, ERC2771Context, ReentrancyGuard {
         uint256 _timestamp = block.timestamp;
 
         if (
-            _nCheckPoints > 0
-                && ProtocolTimeLibrary.epochStart(supplyCheckpoints[_nCheckPoints - 1].timestamp)
-                    == ProtocolTimeLibrary.epochStart(_timestamp)
+            _nCheckPoints > 0 &&
+            ProtocolTimeLibrary.epochStart(supplyCheckpoints[_nCheckPoints - 1].timestamp) ==
+            ProtocolTimeLibrary.epochStart(_timestamp)
         ) {
             supplyCheckpoints[_nCheckPoints - 1] = SupplyCheckpoint(_timestamp, totalSupply);
         } else {

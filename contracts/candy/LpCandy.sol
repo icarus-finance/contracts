@@ -156,11 +156,12 @@ contract LpCandy is ILpCandy {
      * @param _addresses Array of token addresses to include
      * @return Array of Token structs
      */
-    function tokens(uint256 _limit, uint256 _offset, address _account, address[] memory _addresses)
-        external
-        view
-        returns (Token[] memory)
-    {
+    function tokens(
+        uint256 _limit,
+        uint256 _offset,
+        address _account,
+        address[] memory _addresses
+    ) external view returns (Token[] memory) {
         PoolData[] memory pools = _pools(_limit, _offset, address(0));
         uint256 poolsCount = pools.length;
         uint256 addressesCount = _addresses.length;
@@ -332,11 +333,12 @@ contract LpCandy is ILpCandy {
      * @param _factory The INFPositionManager address used to fetch positions
      * @return Array of Position structs
      */
-    function positionsByFactory(uint256 _limit, uint256 _offset, address _account, address _factory)
-        external
-        view
-        returns (Position[] memory)
-    {
+    function positionsByFactory(
+        uint256 _limit,
+        uint256 _offset,
+        address _account,
+        address _factory
+    ) external view returns (Position[] memory) {
         address[] memory factories = new address[](1);
         factories[0] = _factory;
         return _positions(_limit, _offset, _account, factories);
@@ -349,11 +351,11 @@ contract LpCandy is ILpCandy {
      * @param _account The account to fetch positions for
      * @return Array of Position structs
      */
-    function positionsUnstakedConcentrated(uint256 _limit, uint256 _offset, address _account)
-        external
-        view
-        returns (Position[] memory)
-    {
+    function positionsUnstakedConcentrated(
+        uint256 _limit,
+        uint256 _offset,
+        address _account
+    ) external view returns (Position[] memory) {
         // Pre-allocate with maximum size, we'll resize later
         Position[] memory positions = new Position[](MAX_POSITIONS);
         uint256 positionsCount = 0;
@@ -443,13 +445,14 @@ contract LpCandy is ILpCandy {
             bal = _safeBalanceOf(_address, _account);
         }
 
-        return Token({
-            token_address: _address,
-            symbol: _safeSymbol(_address),
-            decimals: _safeDecimals(_address),
-            account_balance: bal,
-            listed: voter.isWhitelistedToken(_address)
-        });
+        return
+            Token({
+                token_address: _address,
+                symbol: _safeSymbol(_address),
+                decimals: _safeDecimals(_address),
+                account_balance: bal,
+                listed: voter.isWhitelistedToken(_address)
+            });
     }
 
     /**
@@ -460,11 +463,12 @@ contract LpCandy is ILpCandy {
      * @param _factories The factories to fetch from
      * @return Array of Position structs
      */
-    function _positions(uint256 _limit, uint256 _offset, address _account, address[] memory _factories)
-        internal
-        view
-        returns (Position[] memory)
-    {
+    function _positions(
+        uint256 _limit,
+        uint256 _offset,
+        address _account,
+        address[] memory _factories
+    ) internal view returns (Position[] memory) {
         // Pre-allocate with maximum size, we'll resize later
         Position[] memory positions = new Position[](MAX_POSITIONS);
         uint256 positionsCount = 0;
@@ -548,7 +552,12 @@ contract LpCandy is ILpCandy {
                     if (userPosIds.length > 0) {
                         for (uint256 upindex = 0; upindex < userPosIds.length; upindex++) {
                             Position memory pos = _clPosition(
-                                userPosIds[upindex], _account, poolAddr, gaugeAddr, address(factory), nfpmAddr
+                                userPosIds[upindex],
+                                _account,
+                                poolAddr,
+                                gaugeAddr,
+                                address(factory),
+                                nfpmAddr
                             );
 
                             if (positionsCount < MAX_POSITIONS) {
@@ -565,7 +574,12 @@ contract LpCandy is ILpCandy {
 
                         for (uint256 sindex = 0; sindex < stakedPositionIds.length; sindex++) {
                             Position memory pos = _clPosition(
-                                stakedPositionIds[sindex], _account, poolAddr, gaugeAddr, address(factory), nfpmAddr
+                                stakedPositionIds[sindex],
+                                _account,
+                                poolAddr,
+                                gaugeAddr,
+                                address(factory),
+                                nfpmAddr
                             );
 
                             if (positionsCount < MAX_POSITIONS) {
@@ -603,11 +617,14 @@ contract LpCandy is ILpCandy {
      * @param _nfpm The NFT position manager address
      * @return A Position struct
      */
-    function _clPosition(uint256 _id, address _account, address _pool, address _gauge, address _factory, address _nfpm)
-        internal
-        view
-        returns (Position memory)
-    {
+    function _clPosition(
+        uint256 _id,
+        address _account,
+        address _pool,
+        address _gauge,
+        address _factory,
+        address _nfpm
+    ) internal view returns (Position memory) {
         Position memory pos;
         pos.id = _id;
         pos.lp = _pool;
@@ -768,34 +785,35 @@ contract LpCandy is ILpCandy {
             }
         }
 
-        return Lp({
-            lp: _data.pool,
-            symbol: _safeSymbol(address(pool)),
-            decimals: decimals,
-            liquidity: poolLiquidity,
-            typeId: typeId,
-            tick: 0,
-            sqrt_ratio: 0,
-            token0: _token0,
-            reserve0: reserve0,
-            staked0: staked0,
-            token1: _token1,
-            reserve1: reserve1,
-            staked1: staked1,
-            gauge: address(gauge),
-            gauge_liquidity: gaugeLiquidity,
-            gauge_alive: gaugeAlive,
-            fee: voter.gaugeToFees(address(gauge)),
-            bribe: voter.gaugeToBribe(address(gauge)),
-            factory: _data.factory,
-            emissions: emissions,
-            emissions_token: emissionsToken,
-            pool_fee: poolFee,
-            unstaked_fee: 0,
-            token0_fees: token0Fees,
-            token1_fees: token1Fees,
-            nfpm: address(0)
-        });
+        return
+            Lp({
+                lp: _data.pool,
+                symbol: _safeSymbol(address(pool)),
+                decimals: decimals,
+                liquidity: poolLiquidity,
+                typeId: typeId,
+                tick: 0,
+                sqrt_ratio: 0,
+                token0: _token0,
+                reserve0: reserve0,
+                staked0: staked0,
+                token1: _token1,
+                reserve1: reserve1,
+                staked1: staked1,
+                gauge: address(gauge),
+                gauge_liquidity: gaugeLiquidity,
+                gauge_alive: gaugeAlive,
+                fee: voter.gaugeToFees(address(gauge)),
+                bribe: voter.gaugeToBribe(address(gauge)),
+                factory: _data.factory,
+                emissions: emissions,
+                emissions_token: emissionsToken,
+                pool_fee: poolFee,
+                unstaked_fee: 0,
+                token0_fees: token0Fees,
+                token1_fees: token1Fees,
+                nfpm: address(0)
+            });
     }
 
     /**
@@ -834,34 +852,35 @@ contract LpCandy is ILpCandy {
 
         GaugeFees memory gaugeFees = pool.gaugeFees();
 
-        return Lp({
-            lp: _data.pool,
-            symbol: _safeSymbol(address(pool)),
-            decimals: 18, // Most CL pools use 18 decimals
-            liquidity: totalLiquidity,
-            typeId: tickSpacing,
-            tick: slot.tick,
-            sqrt_ratio: slot.sqrtPriceX96,
-            token0: _token0,
-            reserve0: _safeBalanceOf(_token0, _data.pool),
-            staked0: uint256(gaugeFees.token0),
-            token1: _token1,
-            reserve1: _safeBalanceOf(_token1, _data.pool),
-            staked1: uint256(gaugeFees.token1),
-            gauge: address(gauge),
-            gauge_liquidity: uint256(stakedLiquidity),
-            gauge_alive: gaugeAlive,
-            fee: voter.gaugeToFees(address(gauge)),
-            bribe: voter.gaugeToBribe(address(gauge)),
-            factory: _data.factory,
-            emissions: emissions,
-            emissions_token: emissionsToken,
-            pool_fee: uint256(fee),
-            unstaked_fee: uint256(unstakedFee),
-            token0_fees: uint256(gaugeFees.token0),
-            token1_fees: uint256(gaugeFees.token1),
-            nfpm: _data.nfpm
-        });
+        return
+            Lp({
+                lp: _data.pool,
+                symbol: _safeSymbol(address(pool)),
+                decimals: 18, // Most CL pools use 18 decimals
+                liquidity: totalLiquidity,
+                typeId: tickSpacing,
+                tick: slot.tick,
+                sqrt_ratio: slot.sqrtPriceX96,
+                token0: _token0,
+                reserve0: _safeBalanceOf(_token0, _data.pool),
+                staked0: uint256(gaugeFees.token0),
+                token1: _token1,
+                reserve1: _safeBalanceOf(_token1, _data.pool),
+                staked1: uint256(gaugeFees.token1),
+                gauge: address(gauge),
+                gauge_liquidity: uint256(stakedLiquidity),
+                gauge_alive: gaugeAlive,
+                fee: voter.gaugeToFees(address(gauge)),
+                bribe: voter.gaugeToBribe(address(gauge)),
+                factory: _data.factory,
+                emissions: emissions,
+                emissions_token: emissionsToken,
+                pool_fee: uint256(fee),
+                unstaked_fee: uint256(unstakedFee),
+                token0_fees: uint256(gaugeFees.token0),
+                token1_fees: uint256(gaugeFees.token1),
+                nfpm: _data.nfpm
+            });
     }
 
     /**
@@ -988,12 +1007,7 @@ contract LpCandy is ILpCandy {
 
                 address gaugeAddr = voter.gauges(poolAddr);
 
-                pools[poolCount] = PoolData({
-                    factory: address(factory),
-                    pool: poolAddr,
-                    gauge: gaugeAddr,
-                    nfpm: nfpm
-                });
+                pools[poolCount] = PoolData({factory: address(factory), pool: poolAddr, gauge: gaugeAddr, nfpm: nfpm});
                 poolCount++;
 
                 if (_toFind != address(0) && _toFind == poolAddr) {

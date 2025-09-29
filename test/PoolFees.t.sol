@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import "./BaseTest.sol";
 
@@ -16,9 +16,9 @@ contract PoolFeesTest is BaseTest {
 
         uint256[] memory assertedOutput = router.getAmountsOut(USDC_1, routes);
         USDC.approve(address(router), USDC_1);
-        router.swapExactTokensForTokens(USDC_1, assertedOutput[1], routes, address(owner), block.timestamp);
+        router.swapExactTokensForTokens(USDC_1, assertedOutput[1], routes, address(owner), vm.getBlockTimestamp());
         skip(1801);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         address poolFees = pool.poolFees();
         assertEq(USDC.balanceOf(poolFees), 200); // 0.01% -> 0.02%
         uint256 b = USDC.balanceOf(address(owner));
@@ -37,10 +37,10 @@ contract PoolFeesTest is BaseTest {
         uint256[] memory assertedOutput = router.getAmountsOut(USDC_1, routes);
 
         USDC.approve(address(router), USDC_1);
-        router.swapExactTokensForTokens(USDC_1, assertedOutput[1], routes, address(owner), block.timestamp);
+        router.swapExactTokensForTokens(USDC_1, assertedOutput[1], routes, address(owner), vm.getBlockTimestamp());
 
         skip(1801);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         address poolFees = pool.poolFees();
         assertEq(USDC.balanceOf(poolFees), 300);
         uint256 b = USDC.balanceOf(address(owner));

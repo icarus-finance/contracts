@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import "./BaseTest.sol";
 
@@ -1495,7 +1495,7 @@ contract FeesVotingRewardTest is BaseTest {
         weights[0] = 10000;
         voter.vote(1, pools, weights);
 
-        uint256 expectedTs = block.timestamp;
+        uint256 expectedTs = vm.getBlockTimestamp();
         uint256 expectedBal = escrow.balanceOfNFT(1);
 
         // check single user and supply checkpoint created
@@ -1518,7 +1518,7 @@ contract FeesVotingRewardTest is BaseTest {
         numSupply = feesVotingReward.supplyNumCheckpoints();
         assertEq(numSupply, 2);
 
-        expectedTs = block.timestamp;
+        expectedTs = vm.getBlockTimestamp();
 
         // check new checkpoint created
         (ts, balance) = feesVotingReward.checkpoints(1, 1);
@@ -1541,7 +1541,7 @@ contract FeesVotingRewardTest is BaseTest {
 
         voter.vote(1, pools, weights);
 
-        uint256 expectedTs = block.timestamp;
+        uint256 expectedTs = vm.getBlockTimestamp();
         uint256 expectedBal = escrow.balanceOfNFT(1);
 
         // check single user and supply checkpoint created
@@ -1560,7 +1560,7 @@ contract FeesVotingRewardTest is BaseTest {
         skip(1 days);
         voter.poke(1);
 
-        expectedTs = block.timestamp;
+        expectedTs = vm.getBlockTimestamp();
         expectedBal = escrow.balanceOfNFT(1);
 
         numSupply = feesVotingReward.supplyNumCheckpoints();
@@ -1590,7 +1590,7 @@ contract FeesVotingRewardTest is BaseTest {
         assertEq(ts, expectedTs);
         assertEq(sBalance, expectedBal);
 
-        expectedTs = block.timestamp;
+        expectedTs = vm.getBlockTimestamp();
         expectedBal = escrow.balanceOfNFT(1);
 
         numSupply = feesVotingReward.supplyNumCheckpoints();
@@ -1607,7 +1607,7 @@ contract FeesVotingRewardTest is BaseTest {
         skip(1 days);
         voter.reset(1);
 
-        expectedTs = block.timestamp;
+        expectedTs = vm.getBlockTimestamp();
 
         numSupply = feesVotingReward.supplyNumCheckpoints();
         assertEq(numSupply, 2);
@@ -1640,11 +1640,11 @@ contract FeesVotingRewardTest is BaseTest {
         uint256 numSupply = feesVotingReward.supplyNumCheckpoints();
         assertEq(numSupply, 1);
         (uint256 sTs, uint256 sBalance) = feesVotingReward.supplyCheckpoints(0);
-        assertEq(sTs, block.timestamp);
+        assertEq(sTs, vm.getBlockTimestamp());
         assertEq(sBalance, ownerBal);
 
         (uint256 ts, uint256 balance) = feesVotingReward.checkpoints(1, 0);
-        assertEq(ts, block.timestamp);
+        assertEq(ts, vm.getBlockTimestamp());
         assertEq(balance, ownerBal);
 
         vm.prank(address(owner2));
@@ -1653,11 +1653,11 @@ contract FeesVotingRewardTest is BaseTest {
         numSupply = feesVotingReward.supplyNumCheckpoints();
         assertEq(numSupply, 1);
         (sTs, sBalance) = feesVotingReward.supplyCheckpoints(0);
-        assertEq(sTs, block.timestamp);
+        assertEq(sTs, vm.getBlockTimestamp());
         assertEq(sBalance, totalSupply);
 
         (ts, balance) = feesVotingReward.checkpoints(2, 0);
-        assertEq(ts, block.timestamp);
+        assertEq(ts, vm.getBlockTimestamp());
         assertEq(balance, owner2Bal);
     }
 

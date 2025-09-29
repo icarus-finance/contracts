@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import "./BaseTest.sol";
 
@@ -28,8 +28,13 @@ contract OracleTest is BaseTest {
         VeArtProxy artProxy = new VeArtProxy(address(escrow));
         escrow.setArtProxy(address(artProxy));
         voter = new Voter(address(forwarder), address(escrow), address(factoryRegistry));
-        router =
-            new Router(address(forwarder), address(factoryRegistry), address(factory), address(voter), address(WETH));
+        router = new Router(
+            address(forwarder),
+            address(factoryRegistry),
+            address(factory),
+            address(voter),
+            address(WETH)
+        );
         deployPoolWithOwner(address(owner));
 
         (address token0, address token1) = router.sortTokens(address(USDC), address(FRAX));
@@ -60,7 +65,7 @@ contract OracleTest is BaseTest {
             TOKEN_100K,
             USDC_100K,
             address(owner),
-            block.timestamp
+            vm.getBlockTimestamp()
         );
         USDC.approve(address(router), USDC_100K);
         FRAX.approve(address(router), TOKEN_100K);
@@ -73,12 +78,20 @@ contract OracleTest is BaseTest {
             TOKEN_100K,
             USDC_100K,
             address(owner),
-            block.timestamp
+            vm.getBlockTimestamp()
         );
         DAI.approve(address(router), TOKEN_100M);
         FRAX.approve(address(router), TOKEN_100M);
         router.addLiquidity(
-            address(FRAX), address(DAI), true, TOKEN_100M, TOKEN_100M, 0, 0, address(owner), block.timestamp
+            address(FRAX),
+            address(DAI),
+            true,
+            TOKEN_100M,
+            TOKEN_100M,
+            0,
+            0,
+            address(owner),
+            vm.getBlockTimestamp()
         );
     }
 
@@ -92,19 +105,19 @@ contract OracleTest is BaseTest {
 
         uint256[] memory asserted_output = router.getAmountsOut(USDC_1, routes);
         USDC.approve(address(router), USDC_1);
-        router.swapExactTokensForTokens(USDC_1, asserted_output[1], routes, address(owner), block.timestamp);
+        router.swapExactTokensForTokens(USDC_1, asserted_output[1], routes, address(owner), vm.getBlockTimestamp());
         skip(1801);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         USDC.approve(address(router), USDC_1);
-        router.swapExactTokensForTokens(USDC_1, 0, routes, address(owner), block.timestamp);
+        router.swapExactTokensForTokens(USDC_1, 0, routes, address(owner), vm.getBlockTimestamp());
         skip(1801);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         USDC.approve(address(router), USDC_1);
-        router.swapExactTokensForTokens(USDC_1, 0, routes, address(owner), block.timestamp);
+        router.swapExactTokensForTokens(USDC_1, 0, routes, address(owner), vm.getBlockTimestamp());
         skip(1801);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         USDC.approve(address(router), USDC_1);
-        router.swapExactTokensForTokens(USDC_1, 0, routes, address(owner), block.timestamp);
+        router.swapExactTokensForTokens(USDC_1, 0, routes, address(owner), vm.getBlockTimestamp());
         address poolFees = pool.poolFees();
         assertEq(USDC.balanceOf(poolFees), 400);
         uint256 b = USDC.balanceOf(address(owner));

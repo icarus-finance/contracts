@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IVotingRewardsFactory} from "./interfaces/factories/IVotingRewardsFactory.sol";
@@ -249,11 +249,11 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVoter
-    function vote(uint256 _tokenId, address[] calldata _poolVote, uint256[] calldata _weights)
-        external
-        onlyNewEpoch(_tokenId)
-        nonReentrant
-    {
+    function vote(
+        uint256 _tokenId,
+        address[] calldata _poolVote,
+        uint256[] calldata _weights
+    ) external onlyNewEpoch(_tokenId) nonReentrant {
         address _sender = _msgSender();
         if (!IVotingEscrow(ve).isApprovedOrOwner(_sender, _tokenId)) revert NotApprovedOrOwner();
         if (_poolVote.length != _weights.length) revert UnequalLengths();
@@ -324,8 +324,9 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
         if (!IFactoryRegistry(factoryRegistry).isPoolFactoryApproved(_poolFactory)) revert FactoryPathNotApproved();
         if (gauges[_pool] != address(0)) revert GaugeExists();
 
-        (address votingRewardsFactory, address gaugeFactory) =
-            IFactoryRegistry(factoryRegistry).factoriesToPoolFactory(_poolFactory);
+        (address votingRewardsFactory, address gaugeFactory) = IFactoryRegistry(factoryRegistry).factoriesToPoolFactory(
+            _poolFactory
+        );
         address[] memory rewards = new address[](2);
         bool isPool = IPoolFactory(_poolFactory).isPool(_pool);
         {
@@ -345,11 +346,16 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
             }
         }
 
-        (address _feeVotingReward, address _bribeVotingReward) =
-            IVotingRewardsFactory(votingRewardsFactory).createRewards(forwarder, rewards);
+        (address _feeVotingReward, address _bribeVotingReward) = IVotingRewardsFactory(votingRewardsFactory)
+            .createRewards(forwarder, rewards);
 
-        address _gauge =
-            IGaugeFactory(gaugeFactory).createGauge(forwarder, _pool, _feeVotingReward, rewardToken, isPool);
+        address _gauge = IGaugeFactory(gaugeFactory).createGauge(
+            forwarder,
+            _pool,
+            _feeVotingReward,
+            rewardToken,
+            isPool
+        );
 
         gaugeToFees[_gauge] = _feeVotingReward;
         gaugeToBribe[_gauge] = _bribeVotingReward;

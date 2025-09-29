@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IMinter} from "./interfaces/IMinter.sol";
@@ -80,8 +80,8 @@ contract Minter is IMinter {
         if (initialized) revert AlreadyInitialized();
         if (msg.sender != team) revert NotTeam();
         if (
-            (params.liquidWallets.length != params.liquidAmounts.length)
-                || (params.lockedWallets.length != params.lockedAmounts.length)
+            (params.liquidWallets.length != params.liquidAmounts.length) ||
+            (params.lockedWallets.length != params.lockedAmounts.length)
         ) revert InvalidParams();
         initialized = true;
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import {IAero} from "./IAero.sol";
 import {IVotingEscrow} from "./IVotingEscrow.sol";

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import "./BaseTest.sol";
 
@@ -288,7 +288,7 @@ contract MinterTest is BaseTest {
 
         pre = post;
         skipToNextEpoch(1);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         minter.updatePeriod();
         post = AERO.balanceOf(address(voter));
 
@@ -301,13 +301,13 @@ contract MinterTest is BaseTest {
         assertEq(minter.weekly(), (10 * TOKEN_1M * 103 * 103) / 100 / 100);
 
         skip(1 weeks);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         minter.updatePeriod();
 
         distributor.claim(1);
 
         skip(1 weeks);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         minter.updatePeriod();
 
         uint256[] memory tokenIds = new uint256[](1);
@@ -315,17 +315,17 @@ contract MinterTest is BaseTest {
         distributor.claimMany(tokenIds);
 
         skip(1 weeks);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         minter.updatePeriod();
         distributor.claim(1);
 
         skip(1 weeks);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         minter.updatePeriod();
         distributor.claimMany(tokenIds);
 
         skip(1 weeks);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         minter.updatePeriod();
         distributor.claim(1);
     }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import "./BaseTest.sol";
 
@@ -290,7 +290,7 @@ contract RewardsDistributorTest is BaseTest {
         assertGt(distributor.claimable(tokenId), 4996770462023280576149678); // accrued rebases
 
         IVotingEscrow.LockedBalance memory locked = escrow.locked(tokenId);
-        assertGt(block.timestamp, locked.end); // lock expired
+        assertGt(vm.getBlockTimestamp(), locked.end); // lock expired
 
         uint256 rebase = distributor.claimable(tokenId);
         uint256 pre = AERO.balanceOf(address(owner));
@@ -327,7 +327,7 @@ contract RewardsDistributorTest is BaseTest {
         assertGt(distributor.claimable(tokenId2), 0);
 
         IVotingEscrow.LockedBalance memory locked = escrow.locked(tokenId);
-        assertGt(block.timestamp, locked.end); // lock expired
+        assertGt(vm.getBlockTimestamp(), locked.end); // lock expired
 
         uint256[] memory tokenIds = new uint256[](2);
         tokenIds[0] = tokenId;
@@ -540,7 +540,7 @@ contract RewardsDistributorTest is BaseTest {
 
         IVotingEscrow.LockedBalance memory locked = escrow.locked(tokenId);
         vm.warp(locked.end - 1);
-        assertEq(block.timestamp, locked.end - 1);
+        assertEq(vm.getBlockTimestamp(), locked.end - 1);
         minter.updatePeriod();
 
         // Rebase should deposit into veNFT one second before expiry
@@ -561,7 +561,7 @@ contract RewardsDistributorTest is BaseTest {
 
         IVotingEscrow.LockedBalance memory locked = escrow.locked(tokenId);
         vm.warp(locked.end);
-        assertEq(block.timestamp, locked.end);
+        assertEq(vm.getBlockTimestamp(), locked.end);
         minter.updatePeriod();
 
         // Rebase should deposit into veNFT one second before expiry

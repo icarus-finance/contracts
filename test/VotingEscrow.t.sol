@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import "./BaseTest.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
@@ -144,7 +144,7 @@ contract VotingEscrowTest is BaseTest {
         escrow.increaseUnlockTime(tokenId, MAXTIME);
         IVotingEscrow.LockedBalance memory postLocked = escrow.locked(tokenId);
 
-        uint256 expectedLockTime = ((block.timestamp + MAXTIME) / WEEK) * WEEK;
+        uint256 expectedLockTime = ((vm.getBlockTimestamp() + MAXTIME) / WEEK) * WEEK;
         assertEq(uint256(uint128(postLocked.end)), expectedLockTime);
         assertEq(uint256(uint128(postLocked.amount)), uint256(uint128(preLocked.amount)));
     }
@@ -165,7 +165,7 @@ contract VotingEscrowTest is BaseTest {
         assertEq(checkpoint.owner, address(owner));
         assertEq(checkpoint.delegatedBalance, 0);
         assertEq(checkpoint.delegatee, 0);
-        assertEq(escrow.getPastVotes(address(owner), 1, block.timestamp), 47945126204972095225334);
+        assertEq(escrow.getPastVotes(address(owner), 1, vm.getBlockTimestamp()), 47945126204972095225334);
         assertEq(escrow.balanceOfNFT(1), 47945126204972095225334);
     }
 
@@ -478,7 +478,7 @@ contract VotingEscrowTest is BaseTest {
         assertEq(checkpoint.owner, address(0));
         assertEq(checkpoint.delegatedBalance, 0);
         assertEq(checkpoint.delegatee, 0);
-        assertEq(escrow.getPastVotes(address(owner), 1, block.timestamp), 0);
+        assertEq(escrow.getPastVotes(address(owner), 1, vm.getBlockTimestamp()), 0);
         assertEq(escrow.balanceOfNFT(1), 0);
     }
 
@@ -492,7 +492,7 @@ contract VotingEscrowTest is BaseTest {
 
         uint256 tokenId = 1;
         skip(lockDuration);
-        vm.roll(block.number + 1); // mine the next block
+        vm.roll(vm.getBlockNumber() + 1); // mine the next block
 
         // Just check that this doesn't revert
         escrow.tokenURI(tokenId);
@@ -612,7 +612,7 @@ contract VotingEscrowTest is BaseTest {
 
         IVotingEscrow.UserPoint memory pt2 = escrow.userPointHistory(tokenId2, 2);
         uint256 slope = (TOKEN_1 * 2) / MAXTIME;
-        uint256 bias = slope * (expectedLockTime - block.timestamp);
+        uint256 bias = slope * (expectedLockTime - vm.getBlockTimestamp());
         assertEq(uint256(int256(pt2.bias)), bias);
         assertEq(uint256(int256(pt2.slope)), slope);
         assertEq(pt2.ts, 604802);
@@ -660,7 +660,7 @@ contract VotingEscrowTest is BaseTest {
 
         IVotingEscrow.UserPoint memory pt = escrow.userPointHistory(tokenId, 2);
         uint256 slope = (TOKEN_1 * 2) / MAXTIME;
-        uint256 bias = slope * (expectedLockTime - block.timestamp);
+        uint256 bias = slope * (expectedLockTime - vm.getBlockTimestamp());
         assertEq(uint256(int256(pt.bias)), bias);
         assertEq(uint256(int256(pt.slope)), slope);
         assertEq(pt.ts, 604802);
@@ -839,7 +839,7 @@ contract VotingEscrowTest is BaseTest {
         skip(4 weeks);
 
         uint256 lock = escrow.locked(tokenId2).end;
-        assertLt(lock, block.timestamp); // check expired
+        assertLt(lock, vm.getBlockTimestamp()); // check expired
 
         vm.expectEmit(true, true, true, true, address(escrow));
         emit Merge(address(owner), tokenId2, tokenId, TOKEN_1, TOKEN_1, TOKEN_1 * 2, expectedLockTime, 3024001);
@@ -863,7 +863,7 @@ contract VotingEscrowTest is BaseTest {
 
         IVotingEscrow.UserPoint memory pt = escrow.userPointHistory(tokenId, 2);
         uint256 slope = (TOKEN_1 * 2) / MAXTIME;
-        uint256 bias = slope * (expectedLockTime - block.timestamp);
+        uint256 bias = slope * (expectedLockTime - vm.getBlockTimestamp());
         assertEq(uint256(int256(pt.bias)), bias);
         assertEq(uint256(int256(pt.slope)), slope);
         assertEq(pt.ts, 3024001);
@@ -2072,8 +2072,12 @@ contract VotingEscrowTest is BaseTest {
         vm.stopPrank();
         skipAndRoll(1);
 
-        SigUtils.Delegation memory delegation =
-            SigUtils.Delegation({delegator: 1, delegatee: 2, nonce: 0, deadline: 604801});
+        SigUtils.Delegation memory delegation = SigUtils.Delegation({
+            delegator: 1,
+            delegatee: 2,
+            nonce: 0,
+            deadline: 604801
+        });
         bytes32 digest = sigUtils.getTypedDataHash(delegation);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alicePrivateKey, digest);
 

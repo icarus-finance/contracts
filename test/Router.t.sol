@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import "./BaseTest.sol";
 import {MockERC20WithTransferFee} from "utils/MockERC20WithTransferFee.sol";
@@ -31,19 +31,37 @@ contract RouterTest is BaseTest {
     function _seedPoolsWithLiquidity() internal {
         USDC.approve(address(router), USDC_100K);
         router.addLiquidityETH{value: TOKEN_100K}(
-            address(USDC), false, USDC_100K, USDC_100K, TOKEN_100K, address(owner), block.timestamp
+            address(USDC),
+            false,
+            USDC_100K,
+            USDC_100K,
+            TOKEN_100K,
+            address(owner),
+            vm.getBlockTimestamp()
         );
         vm.startPrank(address(owner2));
         USDC.approve(address(router), USDC_100K);
         router.addLiquidityETH{value: TOKEN_100K}(
-            address(USDC), false, USDC_100K, USDC_100K, TOKEN_100K, address(owner), block.timestamp
+            address(USDC),
+            false,
+            USDC_100K,
+            USDC_100K,
+            TOKEN_100K,
+            address(owner),
+            vm.getBlockTimestamp()
         );
         vm.stopPrank();
 
         // create pool for transfer fee token
         erc20Fee.approve(address(router), TOKEN_100K);
         router.addLiquidityETH{value: TOKEN_100K}(
-            address(erc20Fee), false, TOKEN_100K, TOKEN_100K, TOKEN_100K, address(owner), block.timestamp
+            address(erc20Fee),
+            false,
+            TOKEN_100K,
+            TOKEN_100K,
+            TOKEN_100K,
+            address(owner),
+            vm.getBlockTimestamp()
         );
         poolFee = Pool(factory.getPool(address(erc20Fee), address(WETH), false));
     }
@@ -77,19 +95,36 @@ contract RouterTest is BaseTest {
         // add liquidity to pool
         USDC.approve(address(router), USDC_100K);
         WETH.approve(address(router), TOKEN_100K);
-        (,, uint256 liquidity) = router.addLiquidityETH{value: TOKEN_100K}(
-            address(USDC), false, USDC_100K, USDC_100K, TOKEN_100K, address(owner), block.timestamp
+        (, , uint256 liquidity) = router.addLiquidityETH{value: TOKEN_100K}(
+            address(USDC),
+            false,
+            USDC_100K,
+            USDC_100K,
+            TOKEN_100K,
+            address(owner),
+            vm.getBlockTimestamp()
         );
 
         assertEq(address(this).balance, initialEth - TOKEN_100K);
         assertEq(USDC.balanceOf(address(this)), initialUsdc - USDC_100K);
 
-        (uint256 amountUSDC, uint256 amountETH) =
-            router.quoteRemoveLiquidity(address(USDC), address(WETH), false, address(factory), liquidity);
+        (uint256 amountUSDC, uint256 amountETH) = router.quoteRemoveLiquidity(
+            address(USDC),
+            address(WETH),
+            false,
+            address(factory),
+            liquidity
+        );
 
         Pool(_pool).approve(address(router), liquidity);
         router.removeLiquidityETH(
-            address(USDC), false, liquidity, amountUSDC, amountETH, address(owner), block.timestamp
+            address(USDC),
+            false,
+            liquidity,
+            amountUSDC,
+            amountETH,
+            address(owner),
+            vm.getBlockTimestamp()
         );
 
         assertEq(address(this).balance, initialEth);
@@ -106,7 +141,7 @@ contract RouterTest is BaseTest {
 
         uint256[] memory expectedOutput = router.getAmountsOut(USDC_1, routes);
         USDC.approve(address(router), USDC_1);
-        router.swapExactTokensForETH(USDC_1, expectedOutput[1], routes, address(owner), block.timestamp);
+        router.swapExactTokensForETH(USDC_1, expectedOutput[1], routes, address(owner), vm.getBlockTimestamp());
     }
 
     function testRouterPoolGetAmountsOutAndSwapExactETHForTokens() public {
@@ -117,7 +152,7 @@ contract RouterTest is BaseTest {
 
         uint256[] memory expectedOutput = router.getAmountsOut(TOKEN_1, routes);
         USDC.approve(address(router), TOKEN_1);
-        router.swapExactETHForTokens{value: TOKEN_1}(expectedOutput[1], routes, address(owner), block.timestamp);
+        router.swapExactETHForTokens{value: TOKEN_1}(expectedOutput[1], routes, address(owner), vm.getBlockTimestamp());
     }
 
     // TESTS FOR FEE-ON-TRANSFER TOKENS
@@ -132,7 +167,13 @@ contract RouterTest is BaseTest {
 
         poolFee.approve(address(router), type(uint256).max);
         router.removeLiquidityETHSupportingFeeOnTransferTokens(
-            address(erc20Fee), false, liquidity, 0, 0, address(owner), block.timestamp
+            address(erc20Fee),
+            false,
+            liquidity,
+            0,
+            0,
+            address(owner),
+            vm.getBlockTimestamp()
         );
 
         assertEq(erc20Fee.balanceOf(address(owner)), expectedBalanceAfterRemove);
@@ -149,7 +190,10 @@ contract RouterTest is BaseTest {
         uint256 actualExpectedOutput = expectedOutput - erc20Fee.fee();
 
         router.swapExactETHForTokensSupportingFeeOnTransferTokens{value: TOKEN_1}(
-            0, routes, address(owner), block.timestamp
+            0,
+            routes,
+            address(owner),
+            vm.getBlockTimestamp()
         );
 
         assertEq(erc20Fee.balanceOf(address(owner)), actualExpectedOutput);
@@ -169,7 +213,13 @@ contract RouterTest is BaseTest {
         uint256 actualExpectedOutput = router.getAmountsOut(TOKEN_1 - erc20Fee.fee(), routes)[1];
 
         erc20Fee.approve(address(router), TOKEN_1);
-        router.swapExactTokensForETHSupportingFeeOnTransferTokens(TOKEN_1, 0, routes, address(owner), block.timestamp);
+        router.swapExactTokensForETHSupportingFeeOnTransferTokens(
+            TOKEN_1,
+            0,
+            routes,
+            address(owner),
+            vm.getBlockTimestamp()
+        );
 
         assertEq(address(owner).balance - ethBalanceBefore, actualExpectedOutput);
     }

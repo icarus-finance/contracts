@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import {IVotes} from "./governance/IVotes.sol";
 import {IVotingEscrow} from "contracts/interfaces/IVotingEscrow.sol";
@@ -34,7 +34,9 @@ contract ProtocolGovernor is
     error ProposalNumeratorTooHigh();
     error ZeroAddress();
 
-    constructor(IVotes _ve)
+    constructor(
+        IVotes _ve
+    )
         VetoGovernor("Protocol Governor")
         VetoGovernorVotes(_ve)
         VetoGovernorVotesQuorumFraction(4) // 4%

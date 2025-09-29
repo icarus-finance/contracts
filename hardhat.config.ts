@@ -29,9 +29,9 @@ export default {
         // }
     },
     solidity: {
-        version: "0.8.19",
+        version: "0.8.30",
         settings: {
-            evmVersion: 'paris',
+            evmVersion: 'shanghai',
             viaIR: true,
             optimizer: {
                 enabled: true,

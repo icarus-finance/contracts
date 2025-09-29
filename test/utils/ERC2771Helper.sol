@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import "forge-std/Test.sol";
 import "@opengsn/contracts/src/forwarder/Forwarder.sol";
@@ -13,10 +13,11 @@ contract ERC2771Helper is Test {
      * @notice register domain separator and return the domain separator
      *     @dev can only be used when testing with forge, as it uses cheatcodes. For some reason, the forwarder contracts do not return the domain separator, which is fixed here.
      */
-    function registerDomain(Forwarder forwarder, string calldata domainName, string calldata version)
-        public
-        returns (bytes32)
-    {
+    function registerDomain(
+        Forwarder forwarder,
+        string calldata domainName,
+        string calldata version
+    ) public returns (bytes32) {
         // https://eips.ethereum.org/EIPS/eip-712#definition-of-domainseparator
         // use chainId, address, name for proper implementation.
         // opengsn suggests different contents: https://docs.opengsn.org/soldoc/contracts/forwarder/iforwarder.html#registerdomainseparator-string-name-string-version
@@ -34,10 +35,11 @@ contract ERC2771Helper is Test {
      * @notice register request type, e.g. which function to call and which parameters to expect
      *     @dev return the request type
      */
-    function registerRequestType(Forwarder forwarder, string calldata functionName, string calldata functionParameters)
-        public
-        returns (bytes32)
-    {
+    function registerRequestType(
+        Forwarder forwarder,
+        string calldata functionName,
+        string calldata functionParameters
+    ) public returns (bytes32) {
         vm.recordLogs();
         forwarder.registerRequestType(functionName, functionParameters);
         Vm.Log[] memory logs = vm.getRecordedLogs();

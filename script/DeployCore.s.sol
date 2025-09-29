@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.30;
 
 import "forge-std/StdJson.sol";
 import "../test/Base.sol";
@@ -109,8 +109,11 @@ contract DeployCore is Base {
     function _initializeMinter() public {
         // Fetching Liquid Token Airdrop info, including the address of the recently deployed AirdropDistributor
         AirdropInfo[] memory infos = abi.decode(jsonConstants.parseRaw(".minter.liquid"), (AirdropInfo[]));
-        (address[] memory liquidWallets, uint256[] memory liquidAmounts) =
-            _getLiquidAirdropInfo(address(airdrop), AIRDROPPER_BALANCE, infos);
+        (address[] memory liquidWallets, uint256[] memory liquidAmounts) = _getLiquidAirdropInfo(
+            address(airdrop),
+            AIRDROPPER_BALANCE,
+            infos
+        );
 
         // Fetching Locked NFTs Airdrop info
         infos = abi.decode(jsonConstants.parseRaw(".minter.locked"), (AirdropInfo[]));
@@ -126,11 +129,11 @@ contract DeployCore is Base {
         );
     }
 
-    function _getLiquidAirdropInfo(address airdropDistributor, uint256 distributorAmount, AirdropInfo[] memory infos)
-        public
-        pure
-        returns (address[] memory wallets, uint256[] memory amounts)
-    {
+    function _getLiquidAirdropInfo(
+        address airdropDistributor,
+        uint256 distributorAmount,
+        AirdropInfo[] memory infos
+    ) public pure returns (address[] memory wallets, uint256[] memory amounts) {
         uint256 len = infos.length + 1;
         wallets = new address[](len);
         amounts = new uint256[](len);
@@ -144,11 +147,9 @@ contract DeployCore is Base {
         }
     }
 
-    function _getLockedAirdropInfo(AirdropInfo[] memory infos)
-        public
-        pure
-        returns (address[] memory wallets, uint256[] memory amounts)
-    {
+    function _getLockedAirdropInfo(
+        AirdropInfo[] memory infos
+    ) public pure returns (address[] memory wallets, uint256[] memory amounts) {
         uint256 len = infos.length;
         wallets = new address[](len);
         amounts = new uint256[](len);
