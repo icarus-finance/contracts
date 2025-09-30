@@ -389,7 +389,8 @@ interface IVotingEscrow is IVotes, IERC4906, IERC6372, IERC721Metadata {
     /// @dev Only callable by `team` address.
     /// @dev Team locked means the veNFT cannot be transfered, merged into other lock, withdrawn or split
     ///      until team lock expires. Owner of team locked veNFT can still deposit more tokens and extend
-    ///      the unlock time or make it permanent.
+    ///      the unlock time or make it permanent. The `team` address can vote on behalf of this NFT or 
+    ///      clawback remaining (unvested) balance before the team lock expires.
     /// @param _value Amount to deposit
     /// @param _lockDuration Number of seconds to lock tokens for (rounded down to nearest week)
     /// @param _to Address to deposit
@@ -407,9 +408,9 @@ interface IVotingEscrow is IVotes, IERC4906, IERC6372, IERC721Metadata {
     function unlockTeamLock(uint256 _tokenId) external;
 
     /// @notice Clawback remaining amount of team lock veNFT by splitting it to the `team` address.
-    /// @dev Let's say team lock was set for 2 years, after 6 months, this function would
-    ///      split the veNFT in two, one worth 1/4 of tokens (6 months / 24 months) to the owner and
-    ///      the other with remaining 3/4 of tokens to the `team` address.
+    /// @dev Let's say team lock was set for 2 years, after 6 months (1/4 of lock time), this function 
+    ///      would split the veNFT in two, one worth 1/4 of tokens (6 months / 24 months) to the owner 
+    ///      and the other with remaining 3/4 of tokens to the `team` address.
     /// @dev Only callable by `team` address.
     /// @param _tokenId tokenId to unlock.
     function clawbackTeamLock(uint256 _tokenId) external returns (uint256 _newTokenId, uint256 _clawbackTokenId);

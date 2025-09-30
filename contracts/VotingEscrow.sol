@@ -337,7 +337,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
 
     /// @inheritdoc IVotingEscrow
     function isApprovedOrOwner(address _spender, uint256 _tokenId) external view returns (bool) {
-        // This allows Voter functions to be performed by the team on behalf of team locks
+        // This allows Voter functions to be performed by the `team` on behalf of team locks
         if (_spender == team && _teamLocks[_tokenId].endTs != 0) {
             return true;
         }
@@ -556,8 +556,9 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
 
     /// @dev Must be called prior to updating `LockedBalance`
     function _burn(uint256 _tokenId) internal {
-        address sender = _msgSender();
-        if (!_isApprovedOrOwner(sender, _tokenId)) revert NotApprovedOrOwner();
+        // Check removed as merge/split/withdraw/clawbackTeamLock already check for ownership/approval
+        // address sender = _msgSender();
+        // if (!_isApprovedOrOwner(sender, _tokenId)) revert NotApprovedOrOwner();
         address owner = _ownerOf(_tokenId);
 
         // Clear approval
@@ -910,7 +911,8 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
         if (escrowType[_tokenId] != EscrowType.NORMAL) revert NotNormalNFT();
         if (voted[_tokenId]) revert AlreadyVoted();
 
-        (_newTokenId, _clawbackTokenId) = _split(_tokenId, clawbackAmount, owner, owner, team);
+        // We know `_tokenId` is teamLocked and sender is `team`, so no need to check for approval 
+        (_newTokenId, _clawbackTokenId) = _split(_tokenId, clawbackAmount, owner, team, team);
 
         // Copy team lock params to the new token id, mark as clawbacked and delete old token id
         _teamLocks[_newTokenId] = TeamLock({startTs: teamLock.startTs, endTs: teamLock.endTs, clawbacked: true});
@@ -1046,7 +1048,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     function split(
         uint256 _from,
         uint256 _amount
-    ) external nonReentrant returns (uint256 _tokenId1, uint256 _tokenId2) {
+    ) external nonReentrant noTeamLocked(_from) returns (uint256 _tokenId1, uint256 _tokenId2) {
         address sender = _msgSender();
         address owner = _ownerOf(_from);
         if (owner == address(0)) revert SplitNoOwner();
