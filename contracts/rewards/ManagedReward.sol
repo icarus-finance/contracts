@@ -20,5 +20,8 @@ abstract contract ManagedReward is Reward {
     function getReward(uint256 tokenId, address[] memory tokens) external virtual override {}
 
     /// @inheritdoc Reward
+    function getRewardUntilTs(uint256 tokenId, address[] memory tokens, uint256 timestamp) external virtual override {}
+
+    /// @inheritdoc Reward
     function notifyRewardAmount(address token, uint256 amount) external virtual override {}
 }

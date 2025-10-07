@@ -10,13 +10,21 @@ import {IVoter} from "../interfaces/IVoter.sol";
 contract FreeManagedReward is ManagedReward {
     constructor(address _forwarder, address _voter) ManagedReward(_forwarder, _voter) {}
 
-    /// @inheritdoc ManagedReward
-    function getReward(uint256 tokenId, address[] memory tokens) external override nonReentrant {
+    modifier authorizedForOrVoter(uint256 tokenId) {
         if (!IVotingEscrow(ve).isApprovedOrOwner(_msgSender(), tokenId)) revert NotAuthorized();
+        _;
+    }
 
+    /// @inheritdoc ManagedReward
+    function getReward(uint256 tokenId, address[] memory tokens) external override nonReentrant authorizedForOrVoter(tokenId) {
         address owner = IVotingEscrow(ve).ownerOf(tokenId);
+        _getReward(owner, tokenId, tokens, block.timestamp);
+    }
 
-        _getReward(owner, tokenId, tokens);
+    /// @inheritdoc ManagedReward
+    function getRewardUntilTs(uint256 tokenId, address[] memory tokens, uint256 timestamp) external override nonReentrant authorizedForOrVoter(tokenId) {
+        address owner = IVotingEscrow(ve).ownerOf(tokenId);
+        _getReward(owner, tokenId, tokens, timestamp);
     }
 
     /// @inheritdoc ManagedReward

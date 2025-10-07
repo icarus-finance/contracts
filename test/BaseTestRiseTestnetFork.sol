@@ -4,7 +4,7 @@ pragma solidity 0.8.30;
 import "forge-std/Test.sol";
 
 abstract contract BaseTestRiseTestnetFork is Test {
-    string internal RISE_TESTNET_RPC_URL = "https://rise-testnet.g.alchemy.com/v2/nVgJ07m4qes-NhJrwjAWGnPwFaixV5E9";
+    string internal RISE_TESTNET_RPC_URL = "https://testnet.riselabs.xyz";
 
     function setUp() public virtual {
         // fork current block monad testnet

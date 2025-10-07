@@ -11,7 +11,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 import {ProtocolTimeLibrary} from "../libraries/ProtocolTimeLibrary.sol";
 
 /// @title Reward
-/// @author velodrome.finance, @figs999, @pegahcarter
+/// @author icarus.finance, velodrome.finance, @figs999, @pegahcarter
 /// @notice Base reward contract for distribution of rewards
 abstract contract Reward is IReward, ERC2771Context, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -34,6 +34,8 @@ abstract contract Reward is IReward, ERC2771Context, ReentrancyGuard {
     mapping(address => mapping(uint256 => uint256)) public tokenRewardsPerEpoch;
     /// @inheritdoc IReward
     mapping(address => mapping(uint256 => uint256)) public lastEarn;
+    /// @inheritdoc IReward
+    mapping(address => mapping(uint256 => uint256)) public tokenRewardsRemainingAccScaled;
 
     address[] public rewards;
     /// @inheritdoc IReward
@@ -47,6 +49,9 @@ abstract contract Reward is IReward, ERC2771Context, ReentrancyGuard {
     mapping(uint256 => SupplyCheckpoint) public supplyCheckpoints;
     /// @inheritdoc IReward
     uint256 public supplyNumCheckpoints;
+
+    /// @notice Scale factor for rewards remaining
+    uint256 private constant REWARDS_REMAINING_SCALE = 1e18;
 
     constructor(address _forwarder, address _voter) ERC2771Context(_forwarder) {
         voter = _voter;
@@ -156,23 +161,40 @@ abstract contract Reward is IReward, ERC2771Context, ReentrancyGuard {
         return rewards.length;
     }
 
-    /// @inheritdoc IReward
-    function earned(address token, uint256 tokenId) public view returns (uint256) {
+    function earned(address token, uint256 tokenId) external view returns (uint256) {
+        return _earned(token, tokenId, block.timestamp).unclaimedRewards;
+    }
+
+    function earnedUntilTs(address token, uint256 tokenId, uint256 timestamp) external view returns (uint256) {
+        return _earned(token, tokenId, timestamp).unclaimedRewards;
+    }
+
+    function _earned(address token, uint256 tokenId, uint256 endTs) internal view returns (EarnedResult memory reward) {
+        // Set default value to false
+        reward = EarnedResult(0, 0, false);
+
+        // If tokenId doesn't have any checkpoints, return false
         if (numCheckpoints[tokenId] == 0) {
-            return 0;
+            return EarnedResult(0, 0, false);
         }
 
-        uint256 reward = 0;
         uint256 _supply = 1;
+        uint256 _endTsEpoch = ProtocolTimeLibrary.epochStart(endTs);    // take epoch of provided endTs
         uint256 _currTs = ProtocolTimeLibrary.epochStart(lastEarn[token][tokenId]); // take epoch last claimed in as starting point
-        uint256 _index = getPriorBalanceIndex(tokenId, _currTs);
-        Checkpoint memory cp0 = checkpoints[tokenId][_index];
+        uint256 _index = getPriorBalanceIndex(tokenId, _currTs);    // find index of checkpoint in epoch of last claim
+        Checkpoint memory cp0 = checkpoints[tokenId][_index];   // get checkpoint at found index
 
         // accounts for case where lastEarn is before first checkpoint
         _currTs = Math.max(_currTs, ProtocolTimeLibrary.epochStart(cp0.timestamp));
 
+        // if endTs is before lastEarn, return false
+        if (_currTs > _endTsEpoch) return reward;
+
         // get epochs between current epoch and first checkpoint in same epoch as last claim
-        uint256 numEpochs = (ProtocolTimeLibrary.epochStart(block.timestamp) - _currTs) / DURATION;
+        uint256 numEpochs = (_endTsEpoch - _currTs) / DURATION;
+
+        uint256 accumulatedReward = 0;
+        uint256 accumulatedRemainder = tokenRewardsRemainingAccScaled[token][tokenId];
 
         if (numEpochs > 0) {
             for (uint256 i = 0; i < numEpochs; i++) {
@@ -182,12 +204,33 @@ abstract contract Reward is IReward, ERC2771Context, ReentrancyGuard {
                 cp0 = checkpoints[tokenId][_index];
                 // get supply of last checkpoint in this epoch
                 _supply = Math.max(supplyCheckpoints[getPriorSupplyIndex(_currTs + DURATION - 1)].supply, 1);
-                reward += (cp0.balanceOf * tokenRewardsPerEpoch[token][_currTs]) / _supply;
+
+                (uint256 rewardAmount, uint256 scaledRemainder) = _calculateEpochReward(tokenRewardsPerEpoch[token][_currTs], cp0.balanceOf, _supply);
+                accumulatedReward += rewardAmount;
+                accumulatedRemainder += scaledRemainder;
                 _currTs += DURATION;
             }
-        }
 
-        return reward;
+            uint256 rewardFromRemaining = accumulatedRemainder / REWARDS_REMAINING_SCALE;
+            uint256 newRemainder = accumulatedRemainder - rewardFromRemaining * REWARDS_REMAINING_SCALE;
+            reward = EarnedResult(accumulatedReward + rewardFromRemaining, newRemainder, true);
+        }
+    }
+
+    /**
+     * @notice Calculates reward for a single epoch with overflow protection
+     */
+    function _calculateEpochReward(uint256 _rewards, uint256 _balanceOf, uint256 _totalSupply)
+        internal
+        pure
+        returns (uint256 rewardAmount, uint256 scaledRemainder)
+    {
+        // whole units: floor(rewardsThisEpoch * userBalanceThisEpoch / totalSupply)
+        rewardAmount = Math.mulDiv(_rewards, _balanceOf, _totalSupply);
+
+        // fractional remainder scaled
+        uint256 remainder = mulmod(_rewards, _balanceOf, _totalSupply);
+        scaledRemainder = Math.mulDiv(remainder, REWARDS_REMAINING_SCALE, _totalSupply);
     }
 
     /// @inheritdoc IReward
@@ -221,15 +264,24 @@ abstract contract Reward is IReward, ERC2771Context, ReentrancyGuard {
     /// @inheritdoc IReward
     function getReward(uint256 tokenId, address[] memory tokens) external virtual nonReentrant {}
 
+    /// @inheritdoc IReward
+    function getRewardUntilTs(uint256 tokenId, address[] memory tokens, uint256 timestamp) external virtual nonReentrant {}
+
     /// @dev used with all getReward implementations
-    function _getReward(address recipient, uint256 tokenId, address[] memory tokens) internal {
+    function _getReward(address recipient, uint256 tokenId, address[] memory tokens, uint256 rewardPeriodEndTs) internal {
         uint256 _length = tokens.length;
         for (uint256 i = 0; i < _length; i++) {
-            uint256 _reward = earned(tokens[i], tokenId);
-            lastEarn[tokens[i]][tokenId] = block.timestamp;
-            if (_reward > 0) IERC20(tokens[i]).safeTransfer(recipient, _reward);
+            address token = tokens[i];
+            EarnedResult memory _earnedResult = _earned(tokens[i], tokenId, rewardPeriodEndTs);
 
-            emit ClaimRewards(recipient, tokens[i], _reward);
+            if (_earnedResult.success) {
+                lastEarn[token][tokenId] = rewardPeriodEndTs;
+                tokenRewardsRemainingAccScaled[token][tokenId] = _earnedResult.rewardRemainders;
+                if (_earnedResult.unclaimedRewards > 0) {
+                    IERC20(token).safeTransfer(recipient, _earnedResult.unclaimedRewards);
+                    emit ClaimRewards(recipient, token, _earnedResult.unclaimedRewards);
+                }
+            }
         }
     }
 
