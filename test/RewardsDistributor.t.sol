@@ -23,7 +23,7 @@ contract RewardsDistributorTest is BaseTest {
         voter.vote(tokenId, pools, weights);
     }
 
-    function testInitialize() public {
+    function testInitialize() public view {
         assertEq(distributor.startTime(), 604800);
         assertEq(distributor.lastTokenTime(), 604800);
         assertEq(distributor.token(), address(AERO));
