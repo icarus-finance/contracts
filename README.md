@@ -1,8 +1,10 @@
-# Protocol
+# Icarus Finance
 
-All contracts for the Protocol, an AMM on EVMs inspired by Solidly.
+All contracts for the Protocol, an AMM on EVMs inspired by Solidly, forked and modified from the Aerodrome Finance.
 
 See `SPECIFICATION.md` for more detail.
+
+See `CHANGELOG.md` for specific changes to Aerodrome.
 
 ## Protocol Overview
 
@@ -52,20 +54,16 @@ See `SPECIFICATION.md` for more detail.
 
 ## Testing
 
-This repository uses Foundry for testing and deployment. 
+This repository uses Foundry for testing and foundry or hardhat for deployment. 
 
-Foundry Setup
+Setup
 
 ```
+yarn 
 forge install
 forge build
 forge test
 ```
-
-## Base Mainnet Fork Tests
-
-In order to run mainnet fork tests against base, inherit `BaseTest` in `BaseTest.sol` in your new class and set the `deploymentType` variable to `Deployment.FORK`. The `BASE_RPC_URL` field must be set in `.env`. Optionally, `BLOCK_NUMBER` can be set in the `.env` file or in the test file if you wish to test against a consistent fork state (this will make tests faster).
-
 
 ## Lint
 
@@ -80,7 +78,7 @@ See `script/README.md` for more detail.
 ### Access Control
 See `PERMISSIONS.md` for more detail.
 
-## Deployment
+<!-- ## Deployment
 
 | Name               | Address                                                                                                                               |
 | :----------------- | :------------------------------------------------------------------------------------------------------------------------------------ |
@@ -98,4 +96,4 @@ See `PERMISSIONS.md` for more detail.
 | VotingEscrow               | [0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4](https://basescan.org/address/0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4#code) |
 | VotingRewardsFactory               | [0x45cA74858C579E717ee29A86042E0d53B252B504](https://basescan.org/address/0x45cA74858C579E717ee29A86042E0d53B252B504#code) |
 | Pool               | [0xA4e46b4f701c62e14DF11B48dCe76A7d793CD6d7](https://basescan.org/address/0xA4e46b4f701c62e14DF11B48dCe76A7d793CD6d7#code) |
-
+ -->
