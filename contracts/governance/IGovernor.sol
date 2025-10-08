@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 pragma solidity ^0.8.0;
 
-import {IERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import {IERC6372} from "@openzeppelin/contracts/interfaces/IERC6372.sol";
+import {IERC165} from "@openzeppelin-4/contracts/utils/introspection/ERC165.sol";
+import {IERC6372} from "@openzeppelin-4/contracts/interfaces/IERC6372.sol";
 
 /**
  * @dev Taken from OpenZeppelin's IGovernor. Excludes `cancel`.

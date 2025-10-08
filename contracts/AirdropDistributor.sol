@@ -15,7 +15,7 @@ contract AirdropDistributor is IAirdropDistributor, Ownable {
     /// @inheritdoc IAirdropDistributor
     IVotingEscrow public immutable ve;
 
-    constructor(address _ve) {
+    constructor(address _ve) Ownable(msg.sender) {
         ve = IVotingEscrow(_ve);
         aero = IAero(IVotingEscrow(_ve).token());
     }
@@ -30,7 +30,7 @@ contract AirdropDistributor is IAirdropDistributor, Ownable {
         }
 
         if (_sum > aero.balanceOf(address(this))) revert InsufficientBalance();
-        aero.safeApprove(address(ve), _sum);
+        aero.safeIncreaseAllowance(address(ve), _sum);
         address _wallet;
         uint256 _amount;
         uint256 _tokenId;
@@ -42,6 +42,6 @@ contract AirdropDistributor is IAirdropDistributor, Ownable {
             ve.safeTransferFrom(address(this), _wallet, _tokenId);
             emit Airdrop(_wallet, _amount, _tokenId);
         }
-        aero.safeApprove(address(ve), 0);
+        aero.forceApprove(address(ve), 0);
     }
 }

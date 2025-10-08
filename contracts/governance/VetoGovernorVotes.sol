@@ -4,9 +4,9 @@
 pragma solidity ^0.8.0;
 
 import {VetoGovernor} from "./VetoGovernor.sol";
-import {IERC6372} from "@openzeppelin/contracts/interfaces/IERC6372.sol";
+import {IERC6372} from "@openzeppelin-4/contracts/interfaces/IERC6372.sol";
 import {IVotes} from "./IVotes.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {SafeCast} from "@openzeppelin-4/contracts/utils/math/SafeCast.sol";
 
 /**
  * @dev OpenZeppelin's GovernorVotes using VetoGovernor

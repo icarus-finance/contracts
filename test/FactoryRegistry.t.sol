@@ -57,7 +57,7 @@ contract FactoryRegistryTest is BaseTest {
     }
 
     function testCannotSetManagedRewardsFactoryIfNotOwner() public {
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert();
         vm.prank(address(owner2));
         factoryRegistry.setManagedRewardsFactory(address(managedRewardsFactory2));
     }

@@ -12,7 +12,7 @@ import {IReward} from "./interfaces/IReward.sol";
 import {IFactoryRegistry} from "./interfaces/factories/IFactoryRegistry.sol";
 import {IManagedRewardsFactory} from "./interfaces/factories/IManagedRewardsFactory.sol";
 import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {DelegationLogicLibrary} from "./libraries/DelegationLogicLibrary.sol";
 import {BalanceLogicLibrary} from "./libraries/BalanceLogicLibrary.sol";
 import {SafeCastLibrary} from "./libraries/SafeCastLibrary.sol";
@@ -950,9 +950,9 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
             // increaseAmount called on managed tokens are treated as locked rewards
             address _lockedManagedReward = managedToLocked[_tokenId];
             address _token = token;
-            IERC20(_token).safeApprove(_lockedManagedReward, _value);
+            IERC20(_token).safeIncreaseAllowance(_lockedManagedReward, _value);
             IReward(_lockedManagedReward).notifyRewardAmount(_token, _value);
-            IERC20(_token).safeApprove(_lockedManagedReward, 0);
+            IERC20(_token).forceApprove(_lockedManagedReward, 0);
         }
 
         emit MetadataUpdate(_tokenId);

@@ -100,14 +100,14 @@ contract Minter is IMinter {
         }
         uint256 _tokenId;
         aero.mint(address(this), _sum);
-        aero.safeApprove(address(ve), _sum);
+        aero.safeIncreaseAllowance(address(ve), _sum);
         for (uint256 i = 0; i < _len; i++) {
             _tokenId = ve.createLock(params.lockedAmounts[i], WEEK);
             ve.lockPermanent(_tokenId);
             ve.safeTransferFrom(address(this), params.lockedWallets[i], _tokenId);
             emit DistributeLocked(params.lockedWallets[i], params.lockedAmounts[i], _tokenId);
         }
-        aero.safeApprove(address(ve), 0);
+        aero.forceApprove(address(ve), 0);
     }
 
     /// @inheritdoc IMinter
@@ -202,7 +202,7 @@ contract Minter is IMinter {
             aero.safeTransfer(address(rewardsDistributor), _growth);
             rewardsDistributor.checkpointToken(); // checkpoint token balance that was just minted in rewards distributor
 
-            aero.safeApprove(address(voter), _emission);
+            aero.safeIncreaseAllowance(address(voter), _emission);
             voter.notifyRewardAmount(_emission);
 
             emit Mint(msg.sender, _emission, aero.totalSupply(), _tail);
