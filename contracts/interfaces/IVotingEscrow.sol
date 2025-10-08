@@ -89,6 +89,7 @@ interface IVotingEscrow is IVotes, IERC4906, IERC6372, IERC721Metadata {
     error NotTeam();
     error NotTeamLock();
     error NotVoter();
+    error NotPendingTeam();
     error OwnershipChange();
     error PermanentLock();
     error SameAddress();
@@ -103,6 +104,7 @@ interface IVotingEscrow is IVotes, IERC4906, IERC6372, IERC721Metadata {
     error ZeroAmount();
     error ZeroBalance();
 
+    event AcceptTeam(address indexed team);
     event Deposit(
         address indexed provider,
         uint256 indexed tokenId,
@@ -176,6 +178,9 @@ interface IVotingEscrow is IVotes, IERC4906, IERC6372, IERC721Metadata {
 
     /// @notice Address of Protocol Team multisig
     function team() external view returns (address);
+
+    /// @notice Address of pending Team multisig
+    function pendingTeam() external view returns (address);
 
     /// @notice Address of art proxy used for on-chain art generation
     function artProxy() external view returns (address);
@@ -263,6 +268,8 @@ interface IVotingEscrow is IVotes, IERC4906, IERC6372, IERC721Metadata {
     function decimals() external view returns (uint8);
 
     function setTeam(address _team) external;
+
+    function acceptTeam() external;
 
     function setArtProxy(address _proxy) external;
 

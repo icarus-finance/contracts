@@ -19,7 +19,8 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 import {ProtocolTimeLibrary} from "./libraries/ProtocolTimeLibrary.sol";
 
 /// @title Protocol Voter
-/// @author velodrome.finance, @figs999, @pegahcarter
+/// @author Modified from Aerodrome (https://github.com/aerodrome-finance/contracts/blob/master/contracts/Voter.sol)
+/// @author icarus.finance, velodrome.finance, @figs999, @pegahcarter
 /// @notice Manage votes, emission distribution, and gauge creation within the Protocol's ecosystem.
 ///         Also provides support for depositing and withdrawing from managed veNFTs.
 contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
@@ -105,6 +106,16 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
         _;
     }
 
+    modifier onlyEmergencyCouncil() {
+        if (_msgSender() != emergencyCouncil) revert NotEmergencyCouncil();
+        _;
+    }
+
+    modifier onlyGovernor() {
+        if (_msgSender() != governor) revert NotGovernor();
+        _;
+    }
+
     function epochStart(uint256 _timestamp) external pure returns (uint256) {
         return ProtocolTimeLibrary.epochStart(_timestamp);
     }
@@ -132,29 +143,25 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVoter
-    function setGovernor(address _governor) public {
-        if (_msgSender() != governor) revert NotGovernor();
+    function setGovernor(address _governor) external onlyGovernor {
         if (_governor == address(0)) revert ZeroAddress();
         governor = _governor;
     }
 
     /// @inheritdoc IVoter
-    function setEpochGovernor(address _epochGovernor) public {
-        if (_msgSender() != governor) revert NotGovernor();
+    function setEpochGovernor(address _epochGovernor) external onlyGovernor {
         if (_epochGovernor == address(0)) revert ZeroAddress();
         epochGovernor = _epochGovernor;
     }
 
     /// @inheritdoc IVoter
-    function setEmergencyCouncil(address _council) public {
-        if (_msgSender() != emergencyCouncil) revert NotEmergencyCouncil();
+    function setEmergencyCouncil(address _council) external onlyEmergencyCouncil {
         if (_council == address(0)) revert ZeroAddress();
         emergencyCouncil = _council;
     }
 
     /// @inheritdoc IVoter
-    function setMaxVotingNum(uint256 _maxVotingNum) external {
-        if (_msgSender() != governor) revert NotGovernor();
+    function setMaxVotingNum(uint256 _maxVotingNum) external onlyGovernor {
         if (_maxVotingNum < MIN_MAXVOTINGNUM) revert MaximumVotingNumberTooLow();
         if (_maxVotingNum == maxVotingNum) revert SameValue();
         maxVotingNum = _maxVotingNum;
@@ -162,7 +169,7 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
 
     /// @inheritdoc IVoter
     function reset(uint256 _tokenId) external onlyNewEpoch(_tokenId) nonReentrant {
-        if (!IVotingEscrow(ve).isApprovedOrOwner(msg.sender, _tokenId)) revert NotApprovedOrOwner();
+        if (!IVotingEscrow(ve).isApprovedOrOwner(_msgSender(), _tokenId)) revert NotApprovedOrOwner();
         _reset(_tokenId);
     }
 
@@ -300,8 +307,7 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVoter
-    function whitelistToken(address _token, bool _bool) external {
-        if (_msgSender() != governor) revert NotGovernor();
+    function whitelistToken(address _token, bool _bool) external onlyGovernor {
         _whitelistToken(_token, _bool);
     }
 
@@ -311,11 +317,9 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVoter
-    function whitelistNFT(uint256 _tokenId, bool _bool) external {
-        address _sender = _msgSender();
-        if (_sender != governor) revert NotGovernor();
+    function whitelistNFT(uint256 _tokenId, bool _bool) external onlyGovernor {
         isWhitelistedNFT[_tokenId] = _bool;
-        emit WhitelistNFT(_sender, _tokenId, _bool);
+        emit WhitelistNFT(_msgSender(), _tokenId, _bool);
     }
 
     /// @inheritdoc IVoter
@@ -380,8 +384,7 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVoter
-    function killGauge(address _gauge) external {
-        if (_msgSender() != emergencyCouncil) revert NotEmergencyCouncil();
+    function killGauge(address _gauge) external onlyEmergencyCouncil {
         if (!isAlive[_gauge]) revert GaugeAlreadyKilled();
         // Return claimable back to minter
         uint256 _claimable = claimable[_gauge];
@@ -394,8 +397,7 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVoter
-    function reviveGauge(address _gauge) external {
-        if (_msgSender() != emergencyCouncil) revert NotEmergencyCouncil();
+    function reviveGauge(address _gauge) external onlyEmergencyCouncil {
         if (isAlive[_gauge]) revert GaugeAlreadyRevived();
         isAlive[_gauge] = true;
         emit GaugeRevived(_gauge);
@@ -470,18 +472,28 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
     /// @inheritdoc IVoter
     function claimBribes(address[] memory _bribes, address[][] memory _tokens, uint256 _tokenId) external {
         if (!IVotingEscrow(ve).isApprovedOrOwner(_msgSender(), _tokenId)) revert NotApprovedOrOwner();
-        uint256 _length = _bribes.length;
-        for (uint256 i = 0; i < _length; i++) {
-            IReward(_bribes[i]).getReward(_tokenId, _tokens[i]);
-        }
+        _claimRewards(_bribes, _tokens, _tokenId);
     }
 
     /// @inheritdoc IVoter
     function claimFees(address[] memory _fees, address[][] memory _tokens, uint256 _tokenId) external {
         if (!IVotingEscrow(ve).isApprovedOrOwner(_msgSender(), _tokenId)) revert NotApprovedOrOwner();
-        uint256 _length = _fees.length;
+        _claimRewards(_fees, _tokens, _tokenId);
+    }
+
+    /// @inheritdoc IVoter
+    function claimAll(address[][] memory _rewards, address[][][] memory _tokens, uint256[] memory _tokenId) external {
+        uint256 tokenIds = _tokenId.length;
+        for (uint256 i = 0; i < tokenIds; i++) {
+            if (!IVotingEscrow(ve).isApprovedOrOwner(_msgSender(), _tokenId[i])) revert NotApprovedOrOwner();
+            _claimRewards(_rewards[i], _tokens[i], _tokenId[i]);
+        }
+    }
+
+    function _claimRewards(address[] memory _rewards, address[][] memory _tokens, uint256 _tokenId) internal {
+        uint256 _length = _rewards.length;
         for (uint256 i = 0; i < _length; i++) {
-            IReward(_fees[i]).getReward(_tokenId, _tokens[i]);
+            IReward(_rewards[i]).getReward(_tokenId, _tokens[i]);
         }
     }
 

@@ -46,6 +46,8 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     /// @inheritdoc IVotingEscrow
     address public team;
     /// @inheritdoc IVotingEscrow
+    address public pendingTeam;
+    /// @inheritdoc IVotingEscrow
     address public artProxy;
     /// @inheritdoc IVotingEscrow
     address public allowedManager;
@@ -273,11 +275,21 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     string public constant version = "2.0.0";
     uint8 public constant decimals = 18;
 
+    /// @inheritdoc IVotingEscrow
     function setTeam(address _team) external onlyTeam {
         if (_team == address(0)) revert ZeroAddress();
-        team = _team;
+        pendingTeam = _team;
     }
 
+    /// @inheritdoc IVotingEscrow
+    function acceptTeam() external {
+        if (_msgSender() != pendingTeam) revert NotPendingTeam();
+        team = pendingTeam;
+        delete pendingTeam;
+        emit AcceptTeam(team);
+    }
+
+    /// @inheritdoc IVotingEscrow
     function setArtProxy(address _proxy) external onlyTeam {
         if (_proxy == address(0)) revert ZeroAddress();
         artProxy = _proxy;

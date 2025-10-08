@@ -24,7 +24,7 @@ contract VeArtProxyTest is BaseTest {
         uint256 seed1,
         uint256 seed2,
         uint256 seed3
-    ) internal view returns (VeArtProxy.Config memory cfg) {
+    ) internal pure returns (VeArtProxy.Config memory cfg) {
         lineCount = bound(lineCount, 4, 32);
         vm.assume(lineCount % 4 == 0);
 
@@ -38,7 +38,7 @@ contract VeArtProxyTest is BaseTest {
         cfg.seed3 = int256(seed3);
     }
 
-    function testFuzz_drawTwoStripes(uint256 lineCount, uint256 seed1, uint256 seed2, uint256 seed3) external {
+    function testFuzz_drawTwoStripes(uint256 lineCount, uint256 seed1, uint256 seed2, uint256 seed3) external view {
         bool lineAppears;
         VeArtProxy.Config memory cfg = _setupFuzz(lineCount, seed1, seed2, seed3);
 
@@ -57,7 +57,7 @@ contract VeArtProxyTest is BaseTest {
         assertTrue(lineAppears);
     }
 
-    function testFuzz_drawCircles(uint256 lineCount, uint256 seed1, uint256 seed2, uint256 seed3) external {
+    function testFuzz_drawCircles(uint256 lineCount, uint256 seed1, uint256 seed2, uint256 seed3) external view {
         bool lineAppears;
         VeArtProxy.Config memory cfg = _setupFuzz(lineCount, seed1, seed2, seed3);
 
@@ -76,7 +76,7 @@ contract VeArtProxyTest is BaseTest {
         assertTrue(lineAppears);
     }
 
-    function testFuzz_drawInterlockingCircles(uint256 lineCount, uint256 seed1, uint256 seed2) external {
+    function testFuzz_drawInterlockingCircles(uint256 lineCount, uint256 seed1, uint256 seed2) external view {
         bool lineAppears;
         VeArtProxy.Config memory cfg = _setupFuzz(lineCount, seed1, seed2, 1);
 
@@ -95,7 +95,7 @@ contract VeArtProxyTest is BaseTest {
         assertTrue(lineAppears);
     }
 
-    function testFuzz_drawCorners(uint256 lineCount, uint256 seed1) external {
+    function testFuzz_drawCorners(uint256 lineCount, uint256 seed1) external view {
         bool lineAppears;
         VeArtProxy.Config memory cfg = _setupFuzz(lineCount, seed1, 1, 1);
 
@@ -114,7 +114,7 @@ contract VeArtProxyTest is BaseTest {
         assertTrue(lineAppears);
     }
 
-    function testFuzz_drawCurves(uint256 lineCount, uint256 seed1) external {
+    function testFuzz_drawCurves(uint256 lineCount, uint256 seed1) external view {
         bool lineAppears;
         VeArtProxy.Config memory cfg = _setupFuzz(lineCount, seed1, 1, 1);
 
@@ -133,7 +133,7 @@ contract VeArtProxyTest is BaseTest {
         assertTrue(lineAppears);
     }
 
-    function testFuzz_drawSpiral(uint256 lineCount, uint256 seed1, uint256 seed2) external {
+    function testFuzz_drawSpiral(uint256 lineCount, uint256 seed1, uint256 seed2) external view {
         bool lineAppears;
         VeArtProxy.Config memory cfg = _setupFuzz(lineCount, seed1, seed2, 1);
 
@@ -152,7 +152,7 @@ contract VeArtProxyTest is BaseTest {
         assertTrue(lineAppears);
     }
 
-    function testFuzz_drawExplosion(uint256 lineCount, uint256 seed1, uint256 seed2, uint256 seed3) external {
+    function testFuzz_drawExplosion(uint256 lineCount, uint256 seed1, uint256 seed2, uint256 seed3) external view {
         bool lineAppears;
         VeArtProxy.Config memory cfg = _setupFuzz(lineCount, seed1, seed2, seed3);
 
@@ -171,7 +171,7 @@ contract VeArtProxyTest is BaseTest {
         assertTrue(lineAppears);
     }
 
-    function testFuzz_drawWormhole(uint256 lineCount, uint256 seed1, uint256 seed2) external {
+    function testFuzz_drawWormhole(uint256 lineCount, uint256 seed1, uint256 seed2) external view {
         bool lineAppears;
         VeArtProxy.Config memory cfg = _setupFuzz(lineCount, seed1, seed2, 1);
 

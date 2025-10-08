@@ -7,6 +7,7 @@ import {IERC721, IERC721Metadata} from "@openzeppelin/contracts/token/ERC721/ext
 import {IERC6372} from "@openzeppelin/contracts/interfaces/IERC6372.sol";
 
 contract VotingEscrowTest is BaseTest {
+    event AcceptTeam(address indexed team);
     event DelegateChanged(address indexed delegator, uint256 indexed fromDelegate, uint256 indexed toDelegate);
     event LockPermanent(address indexed _owner, uint256 indexed _tokenId, uint256 amount, uint256 _ts);
     event UnlockPermanent(address indexed _owner, uint256 indexed _tokenId, uint256 amount, uint256 _ts);
@@ -2219,6 +2220,111 @@ contract VotingEscrowTest is BaseTest {
             escrow.balanceOfNFTAt(tokenId, timestamp) + escrow.balanceOfNFTAt(tokenId2, timestamp),
             escrow.getPastTotalSupply(timestamp)
         );
+    }
+
+    function testSetTeamSetsPendingTeam() public {
+        assertEq(escrow.team(), address(owner));
+        assertEq(escrow.pendingTeam(), address(0));
+
+        escrow.setTeam(address(owner2));
+
+        // Team should not change yet
+        assertEq(escrow.team(), address(owner));
+        // Pending team should be set
+        assertEq(escrow.pendingTeam(), address(owner2));
+    }
+
+    function testCannotSetTeamIfNotTeam() public {
+        vm.expectRevert(IVotingEscrow.NotTeam.selector);
+        vm.prank(address(owner2));
+        escrow.setTeam(address(owner3));
+    }
+
+    function testCannotSetTeamToZeroAddress() public {
+        vm.expectRevert(IVotingEscrow.ZeroAddress.selector);
+        escrow.setTeam(address(0));
+    }
+
+    function testAcceptTeamTransfersOwnership() public {
+        // Set pending team
+        escrow.setTeam(address(owner2));
+        assertEq(escrow.team(), address(owner));
+        assertEq(escrow.pendingTeam(), address(owner2));
+
+        // Accept team transfer
+        vm.expectEmit(true, false, false, false, address(escrow));
+        emit AcceptTeam(address(owner2));
+        vm.prank(address(owner2));
+        escrow.acceptTeam();
+
+        // Team should be transferred
+        assertEq(escrow.team(), address(owner2));
+        // Pending team should be cleared
+        assertEq(escrow.pendingTeam(), address(0));
+    }
+
+    function testCannotAcceptTeamIfNotPendingTeam() public {
+        escrow.setTeam(address(owner2));
+
+        vm.expectRevert(IVotingEscrow.NotPendingTeam.selector);
+        vm.prank(address(owner3));
+        escrow.acceptTeam();
+
+        vm.expectRevert(IVotingEscrow.NotPendingTeam.selector);
+        vm.prank(address(owner));
+        escrow.acceptTeam();
+    }
+
+    function testCannotAcceptTeamIfNoPendingTeam() public {
+        assertEq(escrow.pendingTeam(), address(0));
+
+        vm.expectRevert(IVotingEscrow.NotPendingTeam.selector);
+        vm.prank(address(owner2));
+        escrow.acceptTeam();
+    }
+
+    function testSetTeamCanBeCalledMultipleTimes() public {
+        // Set pending team to owner2
+        escrow.setTeam(address(owner2));
+        assertEq(escrow.pendingTeam(), address(owner2));
+
+        // Change mind, set to owner3
+        escrow.setTeam(address(owner3));
+        assertEq(escrow.pendingTeam(), address(owner3));
+        assertEq(escrow.team(), address(owner));
+
+        // Owner2 cannot accept anymore
+        vm.expectRevert(IVotingEscrow.NotPendingTeam.selector);
+        vm.prank(address(owner2));
+        escrow.acceptTeam();
+
+        // Owner3 can accept
+        vm.prank(address(owner3));
+        escrow.acceptTeam();
+        assertEq(escrow.team(), address(owner3));
+    }
+
+    function testNewTeamCanSetPendingTeamAfterAcceptance() public {
+        // Transfer to owner2
+        escrow.setTeam(address(owner2));
+        vm.prank(address(owner2));
+        escrow.acceptTeam();
+
+        assertEq(escrow.team(), address(owner2));
+
+        // Owner can no longer set team
+        vm.expectRevert(IVotingEscrow.NotTeam.selector);
+        escrow.setTeam(address(owner3));
+
+        // Owner2 (new team) can set pending team
+        vm.prank(address(owner2));
+        escrow.setTeam(address(owner3));
+        assertEq(escrow.pendingTeam(), address(owner3));
+
+        // Owner3 accepts
+        vm.prank(address(owner3));
+        escrow.acceptTeam();
+        assertEq(escrow.team(), address(owner3));
     }
 
     function testCannotSetArtProxyIfNotTeam() public {

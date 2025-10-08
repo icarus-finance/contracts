@@ -1109,4 +1109,367 @@ contract VoterTest is BaseTest {
         weights[1] = 1;
         voter.vote(tokenId, pools, weights);
     }
+
+    function testClaimAllWithSingleTokenIdBothBribesAndFees() public {
+        // Create lock and vote
+        skipToNextEpoch(1 hours + 1);
+        AERO.approve(address(escrow), TOKEN_1);
+        uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
+
+        // Add bribes to both pools BEFORE voting
+        LR.approve(address(bribeVotingReward), TOKEN_1);
+        bribeVotingReward.notifyRewardAmount(address(LR), TOKEN_1);
+        
+        LR.approve(address(bribeVotingReward2), TOKEN_1);
+        bribeVotingReward2.notifyRewardAmount(address(LR), TOKEN_1);
+
+        // Add fees to both pools (must be called from gauge) BEFORE voting
+        // Transfer FRAX to gauges first, then have them notify
+        FRAX.transfer(address(gauge), TOKEN_1);
+        vm.startPrank(address(gauge));
+        FRAX.approve(address(feesVotingReward), TOKEN_1);
+        feesVotingReward.notifyRewardAmount(address(FRAX), TOKEN_1);
+        vm.stopPrank();
+        
+        FRAX.transfer(address(gauge2), TOKEN_1);
+        vm.startPrank(address(gauge2));
+        FRAX.approve(address(feesVotingReward2), TOKEN_1);
+        feesVotingReward2.notifyRewardAmount(address(FRAX), TOKEN_1);
+        vm.stopPrank();
+
+        // Now vote AFTER rewards are added
+        address[] memory pools = new address[](2);
+        pools[0] = address(pool);
+        pools[1] = address(pool2);
+        uint256[] memory weights = new uint256[](2);
+        weights[0] = 1;
+        weights[1] = 1;
+        voter.vote(tokenId, pools, weights);
+
+        skipToNextEpoch(1);
+
+        // Prepare claimAll parameters
+        // rewards[0] = all reward contracts for tokenId (bribes + fees combined)
+        address[][] memory rewards = new address[][](1);
+        rewards[0] = new address[](4); // 2 bribes + 2 fees
+        rewards[0][0] = address(bribeVotingReward);
+        rewards[0][1] = address(bribeVotingReward2);
+        rewards[0][2] = address(feesVotingReward);
+        rewards[0][3] = address(feesVotingReward2);
+
+        // tokens[0] = all token arrays for tokenId (matching rewards order)
+        address[][][] memory tokens = new address[][][](1);
+        tokens[0] = new address[][](4); // 4 reward contracts
+        tokens[0][0] = new address[](1);
+        tokens[0][0][0] = address(LR);
+        tokens[0][1] = new address[](1);
+        tokens[0][1][0] = address(LR);
+        tokens[0][2] = new address[](1);
+        tokens[0][2][0] = address(FRAX);
+        tokens[0][3] = new address[](1);
+        tokens[0][3][0] = address(FRAX);
+
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = tokenId;
+
+        uint256 lrBalanceBefore = LR.balanceOf(address(owner));
+        uint256 fraxBalanceBefore = FRAX.balanceOf(address(owner));
+
+        // Claim all rewards in one transaction
+        voter.claimAll(rewards, tokens, tokenIds);
+
+        uint256 lrBalanceAfter = LR.balanceOf(address(owner));
+
+        uint256 fraxBalanceAfter = FRAX.balanceOf(address(owner));
+
+        // Verify both bribes and fees were claimed
+        // Since tokenId has 100% of voting power and rewards are split equally between 2 pools,
+        // it should receive TOKEN_1 from each bribe (2 * TOKEN_1 total LR)
+        // and TOKEN_1 from each fee (2 * TOKEN_1 total FRAX)
+        assertEq(lrBalanceAfter - lrBalanceBefore, TOKEN_1 * 2, "LR bribes not claimed correctly");
+        assertEq(fraxBalanceAfter - fraxBalanceBefore, TOKEN_1 * 2, "FRAX fees not claimed correctly");
+    }
+
+    function testClaimAllWithMultipleTokenIds() public {
+        // Create two locks and vote
+        skipToNextEpoch(1 hours + 1);
+        AERO.approve(address(escrow), TOKEN_1 * 2);
+        uint256 tokenId1 = escrow.createLock(TOKEN_1, MAXTIME);
+        uint256 tokenId2 = escrow.createLock(TOKEN_1, MAXTIME);
+
+        address[] memory pools = new address[](1);
+        pools[0] = address(pool);
+        uint256[] memory weights = new uint256[](1);
+        weights[0] = 1;
+        
+        voter.vote(tokenId1, pools, weights);
+        voter.vote(tokenId2, pools, weights);
+
+        // Add bribes
+        LR.approve(address(bribeVotingReward), TOKEN_1);
+        bribeVotingReward.notifyRewardAmount(address(LR), TOKEN_1);
+
+        skipToNextEpoch(1);
+
+        // Prepare claimAll parameters for 2 tokenIds
+        address[][] memory rewards = new address[][](2);
+        rewards[0] = new address[](1); // bribes for tokenId1
+        rewards[0][0] = address(bribeVotingReward);
+        rewards[1] = new address[](1); // bribes for tokenId2
+        rewards[1][0] = address(bribeVotingReward);
+
+        address[][][] memory tokens = new address[][][](2);
+        tokens[0] = new address[][](1);
+        tokens[0][0] = new address[](1);
+        tokens[0][0][0] = address(LR);
+        tokens[1] = new address[][](1);
+        tokens[1][0] = new address[](1);
+        tokens[1][0][0] = address(LR);
+
+        uint256[] memory tokenIds = new uint256[](2);
+        tokenIds[0] = tokenId1;
+        tokenIds[1] = tokenId2;
+
+        uint256 lrBalanceBefore = LR.balanceOf(address(owner));
+
+        // Claim all rewards for both tokenIds in one transaction
+        voter.claimAll(rewards, tokens, tokenIds);
+
+        uint256 lrBalanceAfter = LR.balanceOf(address(owner));
+
+        // Verify rewards were claimed for both tokenIds
+        // Both tokenIds have equal voting power, so they split TOKEN_1 equally (TOKEN_1/2 each)
+        // Total claimed should be TOKEN_1
+        assertEq(lrBalanceAfter - lrBalanceBefore, TOKEN_1, "Rewards not claimed correctly for both tokenIds");
+    }
+
+    function testClaimAllWithNoRewards() public {
+        // Create lock and vote but don't add any rewards
+        skipToNextEpoch(1 hours + 1);
+        AERO.approve(address(escrow), TOKEN_1);
+        uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
+
+        address[] memory pools = new address[](1);
+        pools[0] = address(pool);
+        uint256[] memory weights = new uint256[](1);
+        weights[0] = 1;
+        voter.vote(tokenId, pools, weights);
+
+        skipToNextEpoch(1);
+
+        // Prepare claimAll parameters
+        address[][] memory rewards = new address[][](1);
+        rewards[0] = new address[](1);
+        rewards[0][0] = address(bribeVotingReward);
+
+        address[][][] memory tokens = new address[][][](1);
+        tokens[0] = new address[][](1);
+        tokens[0][0] = new address[](1);
+        tokens[0][0][0] = address(LR);
+
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = tokenId;
+
+        uint256 lrBalanceBefore = LR.balanceOf(address(owner));
+
+        // Should not revert even with no rewards
+        voter.claimAll(rewards, tokens, tokenIds);
+
+        uint256 lrBalanceAfter = LR.balanceOf(address(owner));
+
+        // Balance should remain the same
+        assertEq(lrBalanceAfter, lrBalanceBefore, "Balance should not change with no rewards");
+    }
+
+    function testCannotClaimAllIfNotApprovedOrOwner() public {
+        // Create lock and vote
+        skipToNextEpoch(1 hours + 1);
+        AERO.approve(address(escrow), TOKEN_1);
+        uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
+
+        address[] memory pools = new address[](1);
+        pools[0] = address(pool);
+        uint256[] memory weights = new uint256[](1);
+        weights[0] = 1;
+        voter.vote(tokenId, pools, weights);
+
+        // Add bribes
+        LR.approve(address(bribeVotingReward), TOKEN_1);
+        bribeVotingReward.notifyRewardAmount(address(LR), TOKEN_1);
+
+        skipToNextEpoch(1);
+
+        // Prepare claimAll parameters
+        address[][] memory rewards = new address[][](1);
+        rewards[0] = new address[](1);
+        rewards[0][0] = address(bribeVotingReward);
+
+        address[][][] memory tokens = new address[][][](1);
+        tokens[0] = new address[][](1);
+        tokens[0][0] = new address[](1);
+        tokens[0][0][0] = address(LR);
+
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = tokenId;
+
+        // Try to claim from another address
+        vm.prank(address(owner2));
+        vm.expectRevert(IVoter.NotApprovedOrOwner.selector);
+        voter.claimAll(rewards, tokens, tokenIds);
+    }
+
+    function testClaimAllWithMultipleRewardTokens() public {
+        // Create lock and vote
+        skipToNextEpoch(1 hours + 1);
+        AERO.approve(address(escrow), TOKEN_1);
+        uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
+
+        address[] memory pools = new address[](1);
+        pools[0] = address(pool);
+        uint256[] memory weights = new uint256[](1);
+        weights[0] = 1;
+        voter.vote(tokenId, pools, weights);
+
+        // Add multiple reward tokens to bribes
+        LR.approve(address(bribeVotingReward), TOKEN_1);
+        bribeVotingReward.notifyRewardAmount(address(LR), TOKEN_1);
+        
+        DAI.approve(address(bribeVotingReward), TOKEN_1);
+        bribeVotingReward.notifyRewardAmount(address(DAI), TOKEN_1);
+
+        skipToNextEpoch(1);
+
+        // Prepare claimAll parameters with multiple tokens
+        address[][] memory rewards = new address[][](1);
+        rewards[0] = new address[](1);
+        rewards[0][0] = address(bribeVotingReward);
+
+        address[][][] memory tokens = new address[][][](1);
+        tokens[0] = new address[][](1);
+        tokens[0][0] = new address[](2);
+        tokens[0][0][0] = address(LR);
+        tokens[0][0][1] = address(DAI);
+
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = tokenId;
+
+        uint256 lrBalanceBefore = LR.balanceOf(address(owner));
+        uint256 daiBalanceBefore = DAI.balanceOf(address(owner));
+
+        // Claim all rewards
+        voter.claimAll(rewards, tokens, tokenIds);
+
+        uint256 lrBalanceAfter = LR.balanceOf(address(owner));
+        uint256 daiBalanceAfter = DAI.balanceOf(address(owner));
+
+        // Verify both reward tokens were claimed
+        // tokenId has 100% of voting power, so it receives all rewards
+        assertEq(lrBalanceAfter - lrBalanceBefore, TOKEN_1, "LR rewards not claimed correctly");
+        assertEq(daiBalanceAfter - daiBalanceBefore, TOKEN_1, "DAI rewards not claimed correctly");
+    }
+
+    function testClaimAllEmptyArrays() public {
+        // Test with empty arrays - should not revert
+        address[][] memory rewards = new address[][](0);
+        address[][][] memory tokens = new address[][][](0);
+        uint256[] memory tokenIds = new uint256[](0);
+
+        // Should not revert
+        voter.claimAll(rewards, tokens, tokenIds);
+    }
+
+    function testClaimAllCombinedBribesAndFeesMultiplePools() public {
+        // Create lock and vote for multiple pools
+        skipToNextEpoch(1 hours + 1);
+        AERO.approve(address(escrow), TOKEN_1);
+        uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
+
+        // Add bribes to all pools BEFORE voting
+        LR.approve(address(bribeVotingReward), TOKEN_1);
+        bribeVotingReward.notifyRewardAmount(address(LR), TOKEN_1);
+        
+        LR.approve(address(bribeVotingReward2), TOKEN_1);
+        bribeVotingReward2.notifyRewardAmount(address(LR), TOKEN_1);
+        
+        LR.approve(address(bribeVotingReward3), TOKEN_1);
+        bribeVotingReward3.notifyRewardAmount(address(LR), TOKEN_1);
+
+        // Add fees to all pools (must be called from gauge) BEFORE voting
+        // Transfer FRAX to gauges first, then have them notify
+        FRAX.transfer(address(gauge), TOKEN_1);
+        vm.startPrank(address(gauge));
+        FRAX.approve(address(feesVotingReward), TOKEN_1);
+        feesVotingReward.notifyRewardAmount(address(FRAX), TOKEN_1);
+        vm.stopPrank();
+        
+        FRAX.transfer(address(gauge2), TOKEN_1);
+        vm.startPrank(address(gauge2));
+        FRAX.approve(address(feesVotingReward2), TOKEN_1);
+        feesVotingReward2.notifyRewardAmount(address(FRAX), TOKEN_1);
+        vm.stopPrank();
+        
+        FRAX.transfer(address(gauge3), TOKEN_1);
+        vm.startPrank(address(gauge3));
+        FRAX.approve(address(feesVotingReward3), TOKEN_1);
+        feesVotingReward3.notifyRewardAmount(address(FRAX), TOKEN_1);
+        vm.stopPrank();
+
+        // Now vote AFTER rewards are added
+        address[] memory pools = new address[](3);
+        pools[0] = address(pool);
+        pools[1] = address(pool2);
+        pools[2] = address(pool3);
+        uint256[] memory weights = new uint256[](3);
+        weights[0] = 1;
+        weights[1] = 1;
+        weights[2] = 1;
+        voter.vote(tokenId, pools, weights);
+
+        skipToNextEpoch(1);
+
+        // Prepare claimAll parameters for all bribes and fees
+        // rewards[0] = all reward contracts for tokenId (bribes + fees combined)
+        address[][] memory rewards = new address[][](1);
+        rewards[0] = new address[](6); // 3 bribes + 3 fees
+        rewards[0][0] = address(bribeVotingReward);
+        rewards[0][1] = address(bribeVotingReward2);
+        rewards[0][2] = address(bribeVotingReward3);
+        rewards[0][3] = address(feesVotingReward);
+        rewards[0][4] = address(feesVotingReward2);
+        rewards[0][5] = address(feesVotingReward3);
+
+        // tokens[0] = all token arrays for tokenId (matching rewards order)
+        address[][][] memory tokens = new address[][][](1);
+        tokens[0] = new address[][](6); // 6 reward contracts
+        tokens[0][0] = new address[](1);
+        tokens[0][0][0] = address(LR);
+        tokens[0][1] = new address[](1);
+        tokens[0][1][0] = address(LR);
+        tokens[0][2] = new address[](1);
+        tokens[0][2][0] = address(LR);
+        tokens[0][3] = new address[](1);
+        tokens[0][3][0] = address(FRAX);
+        tokens[0][4] = new address[](1);
+        tokens[0][4][0] = address(FRAX);
+        tokens[0][5] = new address[](1);
+        tokens[0][5][0] = address(FRAX);
+
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = tokenId;
+
+        uint256 lrBalanceBefore = LR.balanceOf(address(owner));
+        uint256 fraxBalanceBefore = FRAX.balanceOf(address(owner));
+
+        // Claim all rewards from all pools in one transaction
+        voter.claimAll(rewards, tokens, tokenIds);
+
+        uint256 lrBalanceAfter = LR.balanceOf(address(owner));
+        uint256 fraxBalanceAfter = FRAX.balanceOf(address(owner));
+
+        // Verify all bribes and fees were claimed
+        // tokenId has 100% of voting power across all 3 pools, receiving TOKEN_1 from each
+        // Total: 3 * TOKEN_1 for LR bribes and 3 * TOKEN_1 for FRAX fees
+        assertEq(lrBalanceAfter - lrBalanceBefore, TOKEN_1 * 3, "LR bribes not claimed correctly from all pools");
+        assertEq(fraxBalanceAfter - fraxBalanceBefore, TOKEN_1 * 3, "FRAX fees not claimed correctly from all pools");
+    }
 }

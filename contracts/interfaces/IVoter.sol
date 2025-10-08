@@ -199,6 +199,13 @@ interface IVoter {
     /// @param _tokenId Id of veNFT that you wish to claim fees for.
     function claimFees(address[] memory _fees, address[][] memory _tokens, uint256 _tokenId) external;
 
+    /// @notice Claim fees for a given NFT.
+    /// @dev Utility to help batch fee claims.
+    /// @param _rewards    Array of Ireward contracts per tokenId to collect from.
+    /// @param _tokens  Array of tokens per rewards, per tokenId, that are used as fees.
+    /// @param _tokenId Array of veNFTs that you wish to claim fees for.
+    function claimAll(address[][] memory _rewards, address[][][] memory _tokens, uint256[] memory _tokenId) external;
+
     /// @notice Set new governor.
     /// @dev Throws if not called by governor.
     /// @param _governor .
