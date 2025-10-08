@@ -924,7 +924,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
         if (escrowType[_tokenId] != EscrowType.NORMAL) revert NotNormalNFT();
         if (voted[_tokenId]) revert AlreadyVoted();
 
-        // We know `_tokenId` is teamLocked and sender is `team`, so no need to check for approval 
+        // We know `_tokenId` is teamLocked and sender is `team`, so no need to check for approval
         (_newTokenId, _clawbackTokenId) = _split(_tokenId, clawbackAmount, owner, team, team);
 
         // Copy team lock params to the new token id, mark as clawbacked and delete old token id

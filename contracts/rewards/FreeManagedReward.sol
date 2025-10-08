@@ -16,13 +16,20 @@ contract FreeManagedReward is ManagedReward {
     }
 
     /// @inheritdoc ManagedReward
-    function getReward(uint256 tokenId, address[] memory tokens) external override nonReentrant authorizedForOrVoter(tokenId) {
+    function getReward(
+        uint256 tokenId,
+        address[] memory tokens
+    ) external override nonReentrant authorizedForOrVoter(tokenId) {
         address owner = IVotingEscrow(ve).ownerOf(tokenId);
         _getReward(owner, tokenId, tokens, block.timestamp);
     }
 
     /// @inheritdoc ManagedReward
-    function getRewardUntilTs(uint256 tokenId, address[] memory tokens, uint256 timestamp) external override nonReentrant authorizedForOrVoter(tokenId) {
+    function getRewardUntilTs(
+        uint256 tokenId,
+        address[] memory tokens,
+        uint256 timestamp
+    ) external override nonReentrant authorizedForOrVoter(tokenId) {
         address owner = IVotingEscrow(ve).ownerOf(tokenId);
         _getReward(owner, tokenId, tokens, timestamp);
     }

@@ -179,10 +179,10 @@ abstract contract Reward is IReward, ERC2771Context, ReentrancyGuard {
         }
 
         uint256 _supply = 1;
-        uint256 _endTsEpoch = ProtocolTimeLibrary.epochStart(endTs);    // take epoch of provided endTs
+        uint256 _endTsEpoch = ProtocolTimeLibrary.epochStart(endTs); // take epoch of provided endTs
         uint256 _currTs = ProtocolTimeLibrary.epochStart(lastEarn[token][tokenId]); // take epoch last claimed in as starting point
-        uint256 _index = getPriorBalanceIndex(tokenId, _currTs);    // find index of checkpoint in epoch of last claim
-        Checkpoint memory cp0 = checkpoints[tokenId][_index];   // get checkpoint at found index
+        uint256 _index = getPriorBalanceIndex(tokenId, _currTs); // find index of checkpoint in epoch of last claim
+        Checkpoint memory cp0 = checkpoints[tokenId][_index]; // get checkpoint at found index
 
         // accounts for case where lastEarn is before first checkpoint
         _currTs = Math.max(_currTs, ProtocolTimeLibrary.epochStart(cp0.timestamp));
@@ -205,7 +205,11 @@ abstract contract Reward is IReward, ERC2771Context, ReentrancyGuard {
                 // get supply of last checkpoint in this epoch
                 _supply = Math.max(supplyCheckpoints[getPriorSupplyIndex(_currTs + DURATION - 1)].supply, 1);
 
-                (uint256 rewardAmount, uint256 scaledRemainder) = _calculateEpochReward(tokenRewardsPerEpoch[token][_currTs], cp0.balanceOf, _supply);
+                (uint256 rewardAmount, uint256 scaledRemainder) = _calculateEpochReward(
+                    tokenRewardsPerEpoch[token][_currTs],
+                    cp0.balanceOf,
+                    _supply
+                );
                 accumulatedReward += rewardAmount;
                 accumulatedRemainder += scaledRemainder;
                 _currTs += DURATION;
@@ -220,11 +224,11 @@ abstract contract Reward is IReward, ERC2771Context, ReentrancyGuard {
     /**
      * @notice Calculates reward for a single epoch with overflow protection
      */
-    function _calculateEpochReward(uint256 _rewards, uint256 _balanceOf, uint256 _totalSupply)
-        internal
-        pure
-        returns (uint256 rewardAmount, uint256 scaledRemainder)
-    {
+    function _calculateEpochReward(
+        uint256 _rewards,
+        uint256 _balanceOf,
+        uint256 _totalSupply
+    ) internal pure returns (uint256 rewardAmount, uint256 scaledRemainder) {
         // whole units: floor(rewardsThisEpoch * userBalanceThisEpoch / totalSupply)
         rewardAmount = Math.mulDiv(_rewards, _balanceOf, _totalSupply);
 
@@ -265,10 +269,19 @@ abstract contract Reward is IReward, ERC2771Context, ReentrancyGuard {
     function getReward(uint256 tokenId, address[] memory tokens) external virtual nonReentrant {}
 
     /// @inheritdoc IReward
-    function getRewardUntilTs(uint256 tokenId, address[] memory tokens, uint256 timestamp) external virtual nonReentrant {}
+    function getRewardUntilTs(
+        uint256 tokenId,
+        address[] memory tokens,
+        uint256 timestamp
+    ) external virtual nonReentrant {}
 
     /// @dev used with all getReward implementations
-    function _getReward(address recipient, uint256 tokenId, address[] memory tokens, uint256 rewardPeriodEndTs) internal {
+    function _getReward(
+        address recipient,
+        uint256 tokenId,
+        address[] memory tokens,
+        uint256 rewardPeriodEndTs
+    ) internal {
         uint256 _length = tokens.length;
         for (uint256 i = 0; i < _length; i++) {
             address token = tokens[i];

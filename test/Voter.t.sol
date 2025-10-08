@@ -1119,7 +1119,7 @@ contract VoterTest is BaseTest {
         // Add bribes to both pools BEFORE voting
         LR.approve(address(bribeVotingReward), TOKEN_1);
         bribeVotingReward.notifyRewardAmount(address(LR), TOKEN_1);
-        
+
         LR.approve(address(bribeVotingReward2), TOKEN_1);
         bribeVotingReward2.notifyRewardAmount(address(LR), TOKEN_1);
 
@@ -1130,7 +1130,7 @@ contract VoterTest is BaseTest {
         FRAX.approve(address(feesVotingReward), TOKEN_1);
         feesVotingReward.notifyRewardAmount(address(FRAX), TOKEN_1);
         vm.stopPrank();
-        
+
         FRAX.transfer(address(gauge2), TOKEN_1);
         vm.startPrank(address(gauge2));
         FRAX.approve(address(feesVotingReward2), TOKEN_1);
@@ -1201,7 +1201,7 @@ contract VoterTest is BaseTest {
         pools[0] = address(pool);
         uint256[] memory weights = new uint256[](1);
         weights[0] = 1;
-        
+
         voter.vote(tokenId1, pools, weights);
         voter.vote(tokenId2, pools, weights);
 
@@ -1333,7 +1333,7 @@ contract VoterTest is BaseTest {
         // Add multiple reward tokens to bribes
         LR.approve(address(bribeVotingReward), TOKEN_1);
         bribeVotingReward.notifyRewardAmount(address(LR), TOKEN_1);
-        
+
         DAI.approve(address(bribeVotingReward), TOKEN_1);
         bribeVotingReward.notifyRewardAmount(address(DAI), TOKEN_1);
 
@@ -1387,10 +1387,10 @@ contract VoterTest is BaseTest {
         // Add bribes to all pools BEFORE voting
         LR.approve(address(bribeVotingReward), TOKEN_1);
         bribeVotingReward.notifyRewardAmount(address(LR), TOKEN_1);
-        
+
         LR.approve(address(bribeVotingReward2), TOKEN_1);
         bribeVotingReward2.notifyRewardAmount(address(LR), TOKEN_1);
-        
+
         LR.approve(address(bribeVotingReward3), TOKEN_1);
         bribeVotingReward3.notifyRewardAmount(address(LR), TOKEN_1);
 
@@ -1401,13 +1401,13 @@ contract VoterTest is BaseTest {
         FRAX.approve(address(feesVotingReward), TOKEN_1);
         feesVotingReward.notifyRewardAmount(address(FRAX), TOKEN_1);
         vm.stopPrank();
-        
+
         FRAX.transfer(address(gauge2), TOKEN_1);
         vm.startPrank(address(gauge2));
         FRAX.approve(address(feesVotingReward2), TOKEN_1);
         feesVotingReward2.notifyRewardAmount(address(FRAX), TOKEN_1);
         vm.stopPrank();
-        
+
         FRAX.transfer(address(gauge3), TOKEN_1);
         vm.startPrank(address(gauge3));
         FRAX.approve(address(feesVotingReward3), TOKEN_1);

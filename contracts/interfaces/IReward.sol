@@ -28,10 +28,10 @@ interface IReward {
         uint256 supply;
     }
 
-     /// @notice Result structure for reward calculations
-     /// @param unclaimedRewards Total amount of rewards ready to be claimed by the user
-     /// @param rewardRemainders Scaled fractional remainders carried forward for future accumulation
-     /// @param success Flag indicating whether the reward calculation was successful
+    /// @notice Result structure for reward calculations
+    /// @param unclaimedRewards Total amount of rewards ready to be claimed by the user
+    /// @param rewardRemainders Scaled fractional remainders carried forward for future accumulation
+    /// @param success Flag indicating whether the reward calculation was successful
     struct EarnedResult {
         uint256 unclaimedRewards;
         uint256 rewardRemainders;
@@ -68,15 +68,15 @@ interface IReward {
     /// @return Timestamp
     function lastEarn(address token, uint256 tokenId) external view returns (uint256);
 
-     /// @notice Returns the accumulated fractional remainder of rewards for a veNFT and token, scaled by 1e18.
-     /// @dev During per-epoch reward calculations, integer division can leave a remainder that cannot be paid out.
-     ///      This function exposes the running sum of those remainders for the given (token, tokenId) pair,
-     ///      scaled by a factor of 1e18 to preserve precision (i.e., value is remainder * 1e18 / totalSupplyAt(epoch)).
-     ///      This value is informational and not directly claimable; it helps off-chain analytics understand
-     ///      the uncredited fractional rewards that have accumulated over time due to rounding.
-     /// @param token The address of the reward token being tracked.
-     /// @param tokenId The ID of the veNFT whose fractional remainder is queried.
-     /// @return scaledRemainder The accumulated fractional rewards remainder, scaled by 1e18.
+    /// @notice Returns the accumulated fractional remainder of rewards for a veNFT and token, scaled by 1e18.
+    /// @dev During per-epoch reward calculations, integer division can leave a remainder that cannot be paid out.
+    ///      This function exposes the running sum of those remainders for the given (token, tokenId) pair,
+    ///      scaled by a factor of 1e18 to preserve precision (i.e., value is remainder * 1e18 / totalSupplyAt(epoch)).
+    ///      This value is informational and not directly claimable; it helps off-chain analytics understand
+    ///      the uncredited fractional rewards that have accumulated over time due to rounding.
+    /// @param token The address of the reward token being tracked.
+    /// @param tokenId The ID of the veNFT whose fractional remainder is queried.
+    /// @return scaledRemainder The accumulated fractional rewards remainder, scaled by 1e18.
     function tokenRewardsRemainingAccScaled(address token, uint256 tokenId) external view returns (uint256);
 
     /// @notice True if a token is or has been an active reward token, else false
