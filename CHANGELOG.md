@@ -1,6 +1,8 @@
 # Changelog
 
-All notable changes to the initial Aerodtome codebase will be documented in this file.
+All notable changes to the initial Aerodrome codebase will be documented in this file.
+
+Initial code was forked from [aerodrome-finance/contracts@a5fae2e](https://github.com/aerodrome-finance/contracts/tree/a5fae2e87e490d6b10f133e28cc11bcc58c5346a).
 
 ## Updated
 
