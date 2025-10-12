@@ -16,6 +16,7 @@ import {INFPositionManager} from "./interfaces/INFPositionManager.sol";
 import {ISlipstreamHelper} from "./interfaces/ISlipstreamHelper.sol";
 import {ISymbol} from "./interfaces/ISymbol.sol";
 import {ISymbolBytes32} from "./interfaces/ISymbolBytes32.sol";
+import {LpShared} from "./libraries/LpShared.sol";
 
 interface IPoolFactoryFix is IPoolFactory {
     /// @notice Support for v3-style pools which wraps around getPool(tokenA,tokenB,stable)
@@ -162,7 +163,7 @@ contract LpCandy is ILpCandy {
         address _account,
         address[] memory _addresses
     ) external view returns (Token[] memory) {
-        PoolData[] memory pools = _pools(_limit, _offset, address(0));
+        PoolData[] memory pools = LpShared.pools(_limit, _offset, address(0));
         uint256 poolsCount = pools.length;
         uint256 addressesCount = _addresses.length;
 
@@ -237,7 +238,7 @@ contract LpCandy is ILpCandy {
         // Pre-allocate with maximum size, we'll resize later
         Lp[] memory col = new Lp[](_limit);
         uint256 colCount = 0;
-        PoolData[] memory pools = _pools(_limit, _offset, address(0));
+        PoolData[] memory pools = LpShared.pools(_limit, _offset, address(0));
         uint256 poolsCount = pools.length;
 
         for (uint256 index = 0; index < poolsCount && colCount < _limit; index++) {
@@ -275,7 +276,7 @@ contract LpCandy is ILpCandy {
      */
     function byAddress(address _address) external view returns (Lp memory) {
         // Limit is max, internal call will return when _address is hit
-        PoolData[] memory poolData = _pools(16000, 0, _address);
+        PoolData[] memory poolData = LpShared.pools(16000, 0, _address);
         require(poolData.length > 0, "Pool not found");
 
         ICandyPool pool = ICandyPool(poolData[0].pool);
@@ -298,7 +299,7 @@ contract LpCandy is ILpCandy {
     function byIndex(uint256 _index) external view returns (Lp memory) {
         // Basically index is the offset and the limit is always one...
         // This will fire if _index is out of bounds
-        PoolData[] memory poolData = _pools(1, _index, address(0));
+        PoolData[] memory poolData = LpShared.pools(1, _index, address(0));
         require(poolData.length > 0, "Pool index out of bounds");
 
         ICandyPool pool = ICandyPool(poolData[0].pool);
@@ -539,7 +540,7 @@ contract LpCandy is ILpCandy {
                     address poolAddr = factory.allPools(pindex);
                     address gaugeAddr = voter.gauges(poolAddr);
                     ICLGauge gauge = ICLGauge(gaugeAddr);
-                    bool staked = false;
+                    // bool staked = false;
 
                     // Fetch unstaked CL positions if supported
                     uint256[] memory userPosIds;
@@ -953,80 +954,5 @@ contract LpCandy is ILpCandy {
             bytesArray[i] = _bytes32[i];
         }
         return string(bytesArray);
-    }
-
-    /**
-     * @param _limit The max amount of pools to return
-     * @param _offset The amount of pools to skip (for optimization)
-     * @param _toFind The pool address to find
-     * @notice Returns a compiled list of pool and its factory and gauge
-     * @return Array of four addresses (factory, pool, gauge, nfpm)
-     */
-    function _pools(uint256 _limit, uint256 _offset, address _toFind) internal view returns (PoolData[] memory) {
-        address[] memory factories = registry.poolFactories();
-        uint256 factoriesCount = factories.length;
-
-        uint256 toSkip = _offset;
-        uint256 visited = 0;
-
-        // Pre-allocate with maximum size, we'll resize later
-        PoolData[] memory pools = new PoolData[](MAX_POOLS);
-        uint256 poolCount = 0;
-
-        for (uint256 index = 0; index < MAX_FACTORIES && index < factoriesCount; index++) {
-            IPoolFactory factory = IPoolFactory(factories[index]);
-
-            uint256 poolsCount = factory.allPoolsLength();
-            address nfpm = factories[index] == 0x5591e3f890725F0f3dbF47B63c81bbb91975483c
-                ? 0x425fe0aEAE03E532eDD2524A217016E9D38413C2
-                : address(0);
-
-            for (uint256 pindex = 0; pindex < MAX_ITERATIONS && pindex < poolsCount; pindex++) {
-                if (visited >= _limit + _offset || poolCount >= MAX_POOLS) {
-                    break;
-                }
-
-                // Since the convertor pool, first pool on one of the factories...
-                if (pindex == 0 && factory.allPools(0) == convertor) {
-                    continue;
-                }
-
-                visited++;
-
-                // Basically skip calls for offset records...
-                if (toSkip > 0) {
-                    toSkip--;
-                    continue;
-                }
-
-                address poolAddr = factory.allPools(pindex);
-
-                if (_toFind != address(0) && _toFind != poolAddr) {
-                    continue;
-                }
-
-                address gaugeAddr = voter.gauges(poolAddr);
-
-                pools[poolCount] = PoolData({factory: address(factory), pool: poolAddr, gauge: gaugeAddr, nfpm: nfpm});
-                poolCount++;
-
-                if (_toFind != address(0) && _toFind == poolAddr) {
-                    break;
-                }
-            }
-        }
-
-        // If limit is reached just return the array
-        if (poolCount == _limit) {
-            return pools;
-        }
-
-        // Resize the array to the actual number of pools found
-        PoolData[] memory result = new PoolData[](poolCount);
-        for (uint256 i = 0; i < poolCount; i++) {
-            result[i] = pools[i];
-        }
-
-        return result;
     }
 }
