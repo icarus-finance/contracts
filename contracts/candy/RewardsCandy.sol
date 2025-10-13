@@ -7,6 +7,12 @@ import {IVoter} from "../interfaces/IVoter.sol";
 import {IGauge} from "../interfaces/IGauge.sol";
 import {IPoolFactory} from "../interfaces/factories/IPoolFactory.sol";
 import {IFactoryRegistry} from "../interfaces/factories/IFactoryRegistry.sol";
+import {LpShared} from "./libraries/LpShared.sol";
+import {IReward} from "../interfaces/IReward.sol";
+import {IRewardsCandy} from "./interfaces/IRewardsCandy.sol";
+import {ICandyPool} from "./interfaces/ICandyPool.sol";
+import {IBribe} from "./interfaces/IBribe.sol";
+import {IRewards} from "./interfaces/IRewards.sol";
 
 /**
  * @title Icarus Finance LP Candy
@@ -14,25 +20,18 @@ import {IFactoryRegistry} from "../interfaces/factories/IFactoryRegistry.sol";
  */
 contract RewardsCandy is IRewardsCandy {
     uint256 public constant MAX_EPOCHS = 200;
+    uint256 public constant MAX_POOLS = 2000;
     uint256 public constant MAX_REWARDS = 50;
     uint256 public constant WEEK = 7 * 24 * 60 * 60;
 
     IVoter public immutable voter;
-    IFactoryRegistry public immutable registry;
-    address public immutable convertor;
 
     /**
      * @dev Sets up our external contract addresses
      * @param _voter Address of the voter contract
-     * @param _registry Address of the registry contract
-     * @param _convertor Address of the convertor contract
-     * @param _slipstream_helper Address of the Slipstream helper contract
      */
-    constructor(address _voter, address _registry, address _convertor, address _slipstream_helper) {
+    constructor(address _voter) {
         voter = IVoter(_voter);
-        convertor = _convertor;
-        registry = IFactoryRegistry(_registry);
-        cl_helper = ISlipstreamHelper(_slipstream_helper);
     }
 
     /**
@@ -46,7 +45,7 @@ contract RewardsCandy is IRewardsCandy {
         view 
         returns (LpEpoch[] memory) 
     {
-        ILpCandy.PoolData[] memory pools = _pools(_limit, _offset, address(0));
+        ILpCandy.PoolData[] memory pools = LpShared.pools(_limit, _offset, address(0));
         uint256 poolsCount = pools.length;
         uint256 counted = 0;
         
@@ -110,14 +109,14 @@ contract RewardsCandy is IRewardsCandy {
         uint256 epoch_start_ts = block.timestamp / WEEK * WEEK;
         uint256 epoch_end_ts = epoch_start_ts + WEEK - 1;
         
-        (uint256 ts, uint256 votes) = bribe.supplyCheckpoints(
+        IReward.SupplyCheckpoint memory sc = IBribe(address(bribe)).supplyCheckpoints(
             bribe.getPriorSupplyIndex(epoch_end_ts)
         );
         
         return LpEpoch({
             ts: epoch_start_ts,
             lp: _address,
-            votes: votes,
+            votes: sc.supply,
             emissions: gauge.rewardRateByEpoch(epoch_start_ts),
             bribes: _epochRewards(epoch_start_ts, address(bribe)),
             fees: _epochRewards(
@@ -160,12 +159,12 @@ contract RewardsCandy is IRewardsCandy {
             uint256 epoch_end_ts = epoch_start_ts + WEEK - 1;
             
             uint256 bribe_supply_index = bribe.getPriorSupplyIndex(epoch_end_ts);
-            (uint256 ts, uint256 votes) = bribe.supplyCheckpoints(bribe_supply_index);
+            IReward.SupplyCheckpoint memory sc = IBribe(address(bribe)).supplyCheckpoints(bribe_supply_index);
             
             epochs[epochCount] = LpEpoch({
                 ts: epoch_start_ts,
                 lp: _address,
-                votes: votes,
+                votes: sc.supply,
                 emissions: gauge.rewardRateByEpoch(epoch_start_ts),
                 bribes: _epochRewards(epoch_start_ts, address(bribe)),
                 fees: _epochRewards(
@@ -213,7 +212,7 @@ contract RewardsCandy is IRewardsCandy {
         uint256 rewardCount = 0;
         
         for (uint256 rindex = 0; rindex < rewards_len && rindex < MAX_REWARDS; rindex++) {
-            address reward_token = reward.rewards(rindex);
+            address reward_token = IRewards(address(reward)).rewards(rindex);
             uint256 reward_amount = reward.tokenRewardsPerEpoch(reward_token, _ts);
             
             if (reward_amount == 0) {
@@ -228,12 +227,12 @@ contract RewardsCandy is IRewardsCandy {
         }
         
         // Resize array to actual size
-        LpEpochReward[] memory rewards = new LpEpochReward[](rewardCount);
+        LpEpochReward[] memory epochRewards = new LpEpochReward[](rewardCount);
         for (uint256 i = 0; i < rewardCount; i++) {
-            rewards[i] = tempRewards[i];
+            epochRewards[i] = tempRewards[i];
         }
         
-        return rewards;
+        return epochRewards;
     }
 
     /**
@@ -248,7 +247,7 @@ contract RewardsCandy is IRewardsCandy {
         view 
         returns (Reward[] memory) 
     {
-        ILpCandy.PoolData[] memory pools = _pools(_limit, _offset, address(0));
+        ILpCandy.PoolData[] memory pools = LpShared.pools(_limit, _offset, address(0));
         uint256 pools_count = pools.length;
         uint256 counted = 0;
         
@@ -308,7 +307,7 @@ contract RewardsCandy is IRewardsCandy {
             return new Reward[](0);
         }
         
-        IPool pool = IPool(_pool);
+        ICandyPool pool = ICandyPool(_pool);
         IReward fee = IReward(voter.gaugeToFees(_gauge));
         IReward bribe = IReward(voter.gaugeToBribe(_gauge));
         
@@ -349,7 +348,7 @@ contract RewardsCandy is IRewardsCandy {
             uint256 bribes_len = bribe.rewardsListLength();
             
             for (uint256 bindex = 0; bindex < bribes_len && bindex < MAX_REWARDS; bindex++) {
-                address bribe_token = bribe.rewards(bindex);
+                address bribe_token = IRewards(address(bribe)).rewards(bindex);
                 uint256 bribe_amount = bribe.earned(bribe_token, _venft_id);
                 
                 if (bribe_amount == 0) {
