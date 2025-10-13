@@ -19,7 +19,6 @@ contract DeployGovernors is Script {
     VotingEscrow public escrow;
     Forwarder public forwarder;
     Minter public minter;
-    ProtocolGovernor public governor;
     EpochGovernor public epochGovernor;
 
     constructor() {}
@@ -41,17 +40,13 @@ contract DeployGovernors is Script {
 
         vm.startBroadcast(deployAddress);
 
-        governor = new ProtocolGovernor(escrow);
         epochGovernor = new EpochGovernor(address(forwarder), escrow, address(minter));
-
-        governor.setVetoer(escrow.team());
 
         vm.stopBroadcast();
 
         // write to file
         path = string.concat(basePath, "output/DeployGovernors-");
         path = string.concat(path, outputFilename);
-        vm.writeJson(vm.serializeAddress("v2", "Governor", address(governor)), path);
         vm.writeJson(vm.serializeAddress("v2", "EpochGovernor", address(epochGovernor)), path);
     }
 }

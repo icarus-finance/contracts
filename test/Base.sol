@@ -22,7 +22,6 @@ import {IAero, Aero} from "contracts/Aero.sol";
 import {IVoter, Voter} from "contracts/Voter.sol";
 import {VeArtProxy} from "contracts/VeArtProxy.sol";
 import {IVotingEscrow, VotingEscrow} from "contracts/VotingEscrow.sol";
-import {ProtocolGovernor} from "contracts/ProtocolGovernor.sol";
 import {EpochGovernor} from "contracts/EpochGovernor.sol";
 import {SafeCastLibrary} from "contracts/libraries/SafeCastLibrary.sol";
 import {IWETH} from "contracts/interfaces/IWETH.sol";
@@ -66,7 +65,7 @@ abstract contract Base is Script, Test {
     Minter public minter;
     AirdropDistributor public airdrop;
     Gauge public gauge;
-    ProtocolGovernor public governor;
+    address public governor;
     EpochGovernor public epochGovernor;
 
     /// @dev Global address to set
