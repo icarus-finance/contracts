@@ -16,8 +16,8 @@ library LpShared {
     uint256 internal constant MAX_ITERATIONS = 16000;
 
     IFactoryRegistry internal constant registry =
-        IFactoryRegistry(0x91bf71bbFe01Bc40579f7060c414a12395d22E8A);
-    IVoter internal constant voter = IVoter(0x2323420F16058D7191deb6758e09Ae3aa9F780E2);
+        IFactoryRegistry(0x5394D7ABbE45852a74B77198a8a805101fe81974);
+    IVoter internal constant voter = IVoter(0x4ef9959218f463b51cB7Cb98F72Af6aC64676A1b);
     address internal constant convertor = 0x1111111111111111111111111111111111111111;
 
     /**
