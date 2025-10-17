@@ -34,15 +34,15 @@ library LpShared {
         uint256 toSkip = _offset;
 
         // Pre-allocate with maximum size, we'll resize later
-        ILpCandy.PoolData[] memory poolsData = new ILpCandy.PoolData[](MAX_POOLS);
+        ILpCandy.PoolData[] memory poolsData = new ILpCandy.PoolData[](_limit);
         uint256 poolCount = 0;
 
         for (uint256 index = 0; index < MAX_FACTORIES && index < factoriesCount; index++) {
             IPoolFactory factory = IPoolFactory(factories[index]);
 
             uint256 poolsCount = factory.allPoolsLength();
-            address nfpm = factories[index] == 0x5591e3f890725F0f3dbF47B63c81bbb91975483c
-                ? 0x425fe0aEAE03E532eDD2524A217016E9D38413C2
+            address nfpm = factories[index] == 0x5bB5A4b3ec1a5fa737eb86C210D5765C5f695D60
+                ? 0xF89D022FA91E03Edf8a07093031BA68128EB7D67
                 : address(0);
 
             for (uint256 pindex = 0; pindex < MAX_ITERATIONS && pindex < poolsCount; pindex++) {

@@ -78,8 +78,8 @@ contract LpCandy is ILpCandy {
         for (uint256 index = 0; index < factoriesCount && index < MAX_FACTORIES; index++) {
             IPoolFactory factory = IPoolFactory(factories[index]);
 
-            address nfpm = factories[index] == 0x5591e3f890725F0f3dbF47B63c81bbb91975483c
-                ? 0x425fe0aEAE03E532eDD2524A217016E9D38413C2
+            address nfpm = factories[index] == 0x5bB5A4b3ec1a5fa737eb86C210D5765C5f695D60
+                ? 0xF89D022FA91E03Edf8a07093031BA68128EB7D67
                 : address(0);
             uint256 poolsCount = factory.allPoolsLength();
 
@@ -387,7 +387,7 @@ contract LpCandy is ILpCandy {
         address[] memory _factories
     ) internal view returns (Position[] memory) {
         // Pre-allocate with maximum size, we'll resize later
-        Position[] memory positions = new Position[](MAX_POSITIONS);
+        Position[] memory positionsData = new Position[](_limit);
         uint256 positionsCount = 0;
 
         if (_account == address(0)) {
@@ -402,8 +402,8 @@ contract LpCandy is ILpCandy {
             IPoolFactory factory = IPoolFactory(_factories[index]);
 
             uint256 poolsCount = factory.allPoolsLength();
-            address nfpmAddr = _factories[index] == 0x5591e3f890725F0f3dbF47B63c81bbb91975483c
-                ? 0x425fe0aEAE03E532eDD2524A217016E9D38413C2
+            address nfpmAddr = _factories[index] == 0x5bB5A4b3ec1a5fa737eb86C210D5765C5f695D60
+                ? 0xF89D022FA91E03Edf8a07093031BA68128EB7D67
                 : address(0);
 
             // V2/Basic pool
@@ -429,9 +429,9 @@ contract LpCandy is ILpCandy {
 
                     Position memory pos = _v2Position(_account, poolAddr);
 
-                    if (pos.lp != address(0)) {
+                    if (pos.lp != address(0) && (pos.liquidity > 0 || pos.staked > 0 || pos.emissions_earned > 0 || pos.unstaked_earned0 > 0 || pos.unstaked_earned1 > 0)) {
                         if (positionsCount < MAX_POSITIONS) {
-                            positions[positionsCount++] = pos;
+                            positionsData[positionsCount++] = pos;
                         } else {
                             break;
                         }
@@ -478,7 +478,7 @@ contract LpCandy is ILpCandy {
                             );
 
                             if (positionsCount < MAX_POSITIONS) {
-                                positions[positionsCount++] = pos;
+                                positionsData[positionsCount++] = pos;
                             } else {
                                 break;
                             }
@@ -500,7 +500,7 @@ contract LpCandy is ILpCandy {
                             );
 
                             if (positionsCount < MAX_POSITIONS) {
-                                positions[positionsCount++] = pos;
+                                positionsData[positionsCount++] = pos;
                             } else {
                                 break;
                             }
@@ -512,13 +512,13 @@ contract LpCandy is ILpCandy {
 
         // If limit is reached just return the array
         if (positionsCount == _limit) {
-            return positions;
+            return positionsData;
         }
 
         // Resize the array to the actual number of positions found
         Position[] memory result = new Position[](positionsCount);
         for (uint256 i = 0; i < positionsCount; i++) {
-            result[i] = positions[i];
+            result[i] = positionsData[i];
         }
 
         return result;
