@@ -10,6 +10,7 @@ interface IReward {
     error NotVotingEscrow();
     error NotWhitelisted();
     error ZeroAmount();
+    error FutureTimestamp();
 
     event Deposit(address indexed from, uint256 indexed tokenId, uint256 amount);
     event Withdraw(address indexed from, uint256 indexed tokenId, uint256 amount);

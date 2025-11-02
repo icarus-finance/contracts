@@ -282,6 +282,7 @@ abstract contract Reward is IReward, ERC2771Context, ReentrancyGuard {
         address[] memory tokens,
         uint256 rewardPeriodEndTs
     ) internal {
+        if (rewardPeriodEndTs > block.timestamp) revert FutureTimestamp();
         uint256 _length = tokens.length;
         for (uint256 i = 0; i < _length; i++) {
             address token = tokens[i];
