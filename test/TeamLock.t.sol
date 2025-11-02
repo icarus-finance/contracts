@@ -319,22 +319,47 @@ contract TeamLockTest is BaseTest {
         assertTrue(escrow.voted(tokenId));
     }
 
-    // Test operations that should still work on team locks
-    function testCanIncreaseAmountOnTeamLock() public {
+    // Test operations that are restricted on team locks
+    function testCannotIncreaseAmountOnTeamLock() public {
         uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
         uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
 
-        IVotingEscrow.LockedBalance memory lockBefore = escrow.locked(tokenId);
-
-        // Give owner2 some AERO tokens to increase amount
+        // Give owner2 some AERO tokens to try to increase amount
         deal(address(AERO), address(owner2), TOKEN_1);
         vm.startPrank(address(owner2));
         AERO.approve(address(escrow), TOKEN_1);
+        
+        // increaseAmount now has noTeamLocked modifier and should revert
+        vm.expectRevert(IVotingEscrow.TeamLocked.selector);
         escrow.increaseAmount(tokenId, TOKEN_1);
         vm.stopPrank();
+    }
 
-        IVotingEscrow.LockedBalance memory lockAfter = escrow.locked(tokenId);
-        assertEq(uint256(uint128(lockAfter.amount)), uint256(uint128(lockBefore.amount)) + TOKEN_1);
+    function testCannotDepositForOnTeamLock() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+
+        // Give owner2 some AERO tokens to try to deposit
+        deal(address(AERO), address(owner2), TOKEN_1);
+        vm.startPrank(address(owner2));
+        AERO.approve(address(escrow), TOKEN_1);
+        
+        // depositFor should revert when called by non-distributor on team lock
+        vm.expectRevert(IVotingEscrow.TeamLocked.selector);
+        escrow.depositFor(tokenId, TOKEN_1);
+        vm.stopPrank();
+
+        // Verify only distributor can call depositFor on team locks
+        deal(address(AERO), address(distributor), TOKEN_1);
+        vm.startPrank(address(distributor));
+        AERO.approve(address(escrow), TOKEN_1);
+        // This should succeed as distributor is allowed
+        escrow.depositFor(tokenId, TOKEN_1);
+        vm.stopPrank();
+
+        // Verify the deposit was successful
+        IVotingEscrow.LockedBalance memory locked = escrow.locked(tokenId);
+        assertEq(uint256(uint128(locked.amount)), TOKEN_1 * 2, "Distributor should be able to deposit");
     }
 
     function testCanIncreaseUnlockTimeOnTeamLock() public {
@@ -446,5 +471,53 @@ contract TeamLockTest is BaseTest {
         escrow.transferFrom(address(owner2), address(owner3), tokenId);
 
         assertEq(escrow.ownerOf(tokenId), address(owner3));
+    }
+
+    // Test claiming AERO from RewardsDistributor on team locks
+    function testCanClaimAeroFromRewardsDistributorOnTeamLock() public {
+        // Start from epoch 1
+        skipToNextEpoch(1 days);
+
+        // Create a team lock
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1M, MAXTIME, address(owner2), teamUnlockTs);
+
+        IVotingEscrow.LockedBalance memory initialLocked = escrow.locked(tokenId);
+        assertEq(uint256(uint128(initialLocked.amount)), TOKEN_1M);
+        assertGt(initialLocked.end, block.timestamp);
+        assertFalse(initialLocked.isPermanent);
+
+        // Verify team lock is set
+        IVotingEscrow.TeamLock memory teamLock = escrow.teamLocks(tokenId);
+        assertGt(teamLock.endTs, block.timestamp);
+        assertFalse(teamLock.clawbacked);
+
+        // Progress to epoch 2 so rebases can be distributed
+        skipToNextEpoch(0);
+        minter.updatePeriod();
+
+        // Check claimable amount
+        uint256 claimableAmount = distributor.claimable(tokenId);
+        assertGt(claimableAmount, 0, "Should have claimable rewards");
+
+        // Claim rewards - this should call depositFor which is allowed for distributor on team locks
+        uint256 balanceBeforeClaim = AERO.balanceOf(address(owner2));
+        distributor.claim(tokenId);
+
+        // Since the lock is not expired, rewards should be deposited back into the lock
+        IVotingEscrow.LockedBalance memory lockedAfterClaim = escrow.locked(tokenId);
+        assertEq(
+            uint256(uint128(lockedAfterClaim.amount)),
+            uint256(uint128(initialLocked.amount)) + claimableAmount,
+            "Claimed rewards should be added to lock amount"
+        );
+
+        // Owner should not receive tokens directly since lock is still active
+        uint256 balanceAfterClaim = AERO.balanceOf(address(owner2));
+        assertEq(balanceAfterClaim, balanceBeforeClaim, "Owner should not receive tokens directly for active lock");
+
+        // Verify team lock is still intact
+        IVotingEscrow.TeamLock memory teamLockAfter = escrow.teamLocks(tokenId);
+        assertEq(teamLockAfter.endTs, teamLock.endTs, "Team lock should remain unchanged");
     }
 }
