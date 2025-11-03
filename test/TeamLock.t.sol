@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import "./BaseTest.sol";
 import {IVotingEscrow} from "contracts/interfaces/IVotingEscrow.sol";
+import {IVoter} from "contracts/interfaces/IVoter.sol";
 
 /**
  * @title TeamLock Test Suite
@@ -319,22 +320,92 @@ contract TeamLockTest is BaseTest {
         assertTrue(escrow.voted(tokenId));
     }
 
-    // Test operations that should still work on team locks
-    function testCanIncreaseAmountOnTeamLock() public {
+    // Test isApprovedOrOwner behavior for team locks
+    function testTeamIsApprovedForActiveTeamLock() public {
         uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
         uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
 
-        IVotingEscrow.LockedBalance memory lockBefore = escrow.locked(tokenId);
+        // Team should be approved for active team lock
+        assertTrue(escrow.isApprovedOrOwner(address(owner), tokenId), "Team should be approved before expiry");
+    }
 
-        // Give owner2 some AERO tokens to increase amount
+    function testTeamIsNotApprovedForExpiredTeamLock() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+
+        // Fast forward past team lock expiry
+        vm.warp(teamUnlockTs + 1);
+
+        // Team should NOT be approved after team lock expires
+        assertFalse(escrow.isApprovedOrOwner(address(owner), tokenId), "Team should not be approved after expiry");
+
+        // Only the actual owner should be approved
+        assertTrue(escrow.isApprovedOrOwner(address(owner2), tokenId), "Owner should still be approved");
+    }
+
+    function testOwnerCanStillVoteOnExpiredTeamLock() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+
+        // Fast forward past team lock expiry
+        vm.warp(teamUnlockTs + 1);
+
+        // Move to valid voting window
+        uint256 epochStart = (block.timestamp / WEEK) * WEEK;
+        vm.warp(epochStart + 2 hours);
+
+        address[] memory pools = new address[](1);
+        pools[0] = address(pool);
+        uint256[] memory weights = new uint256[](1);
+        weights[0] = 5000;
+
+        // Owner should still be able to vote after team lock expires
+        vm.prank(address(owner2));
+        voter.vote(tokenId, pools, weights);
+        assertTrue(escrow.voted(tokenId), "Owner should be able to vote after expiry");
+    }
+
+    // Test operations that are restricted on team locks
+    function testCannotIncreaseAmountOnTeamLock() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+
+        // Give owner2 some AERO tokens to try to increase amount
         deal(address(AERO), address(owner2), TOKEN_1);
         vm.startPrank(address(owner2));
         AERO.approve(address(escrow), TOKEN_1);
+        
+        // increaseAmount now has noTeamLocked modifier and should revert
+        vm.expectRevert(IVotingEscrow.TeamLocked.selector);
         escrow.increaseAmount(tokenId, TOKEN_1);
         vm.stopPrank();
+    }
 
-        IVotingEscrow.LockedBalance memory lockAfter = escrow.locked(tokenId);
-        assertEq(uint256(uint128(lockAfter.amount)), uint256(uint128(lockBefore.amount)) + TOKEN_1);
+    function testCannotDepositForOnTeamLock() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+
+        // Give owner2 some AERO tokens to try to deposit
+        deal(address(AERO), address(owner2), TOKEN_1);
+        vm.startPrank(address(owner2));
+        AERO.approve(address(escrow), TOKEN_1);
+        
+        // depositFor should revert when called by non-distributor on team lock
+        vm.expectRevert(IVotingEscrow.TeamLocked.selector);
+        escrow.depositFor(tokenId, TOKEN_1);
+        vm.stopPrank();
+
+        // Verify only distributor can call depositFor on team locks
+        deal(address(AERO), address(distributor), TOKEN_1);
+        vm.startPrank(address(distributor));
+        AERO.approve(address(escrow), TOKEN_1);
+        // This should succeed as distributor is allowed
+        escrow.depositFor(tokenId, TOKEN_1);
+        vm.stopPrank();
+
+        // Verify the deposit was successful
+        IVotingEscrow.LockedBalance memory locked = escrow.locked(tokenId);
+        assertEq(uint256(uint128(locked.amount)), TOKEN_1 * 2, "Distributor should be able to deposit");
     }
 
     function testCanIncreaseUnlockTimeOnTeamLock() public {
@@ -446,5 +517,226 @@ contract TeamLockTest is BaseTest {
         escrow.transferFrom(address(owner2), address(owner3), tokenId);
 
         assertEq(escrow.ownerOf(tokenId), address(owner3));
+    }
+
+    // Test claiming AERO from RewardsDistributor on team locks
+    function testCanClaimAeroFromRewardsDistributorOnTeamLock() public {
+        // Start from epoch 1
+        skipToNextEpoch(1 days);
+
+        // Create a team lock
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1M, MAXTIME, address(owner2), teamUnlockTs);
+
+        IVotingEscrow.LockedBalance memory initialLocked = escrow.locked(tokenId);
+        assertEq(uint256(uint128(initialLocked.amount)), TOKEN_1M);
+        assertGt(initialLocked.end, block.timestamp);
+        assertFalse(initialLocked.isPermanent);
+
+        // Verify team lock is set
+        IVotingEscrow.TeamLock memory teamLock = escrow.teamLocks(tokenId);
+        assertGt(teamLock.endTs, block.timestamp);
+        assertFalse(teamLock.clawbacked);
+
+        // Progress to epoch 2 so rebases can be distributed
+        skipToNextEpoch(0);
+        minter.updatePeriod();
+
+        // Check claimable amount
+        uint256 claimableAmount = distributor.claimable(tokenId);
+        assertGt(claimableAmount, 0, "Should have claimable rewards");
+
+        // Claim rewards - this should call depositFor which is allowed for distributor on team locks
+        uint256 balanceBeforeClaim = AERO.balanceOf(address(owner2));
+        distributor.claim(tokenId);
+
+        // Since the lock is not expired, rewards should be deposited back into the lock
+        IVotingEscrow.LockedBalance memory lockedAfterClaim = escrow.locked(tokenId);
+        assertEq(
+            uint256(uint128(lockedAfterClaim.amount)),
+            uint256(uint128(initialLocked.amount)) + claimableAmount,
+            "Claimed rewards should be added to lock amount"
+        );
+
+        // Owner should not receive tokens directly since lock is still active
+        uint256 balanceAfterClaim = AERO.balanceOf(address(owner2));
+        assertEq(balanceAfterClaim, balanceBeforeClaim, "Owner should not receive tokens directly for active lock");
+
+        // Verify team lock is still intact
+        IVotingEscrow.TeamLock memory teamLockAfter = escrow.teamLocks(tokenId);
+        assertEq(teamLockAfter.endTs, teamLock.endTs, "Team lock should remain unchanged");
+    }
+
+    function testCannotVoteWhenTeamLockBlacklisted() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+
+        // Move to valid voting window
+        uint256 epochStart = (block.timestamp / WEEK) * WEEK;
+        vm.warp(epochStart + 2 hours);
+
+        // Blacklist the team lock before voting
+        voter.blacklistVotingTeamLock(tokenId);
+
+        // Setup vote parameters
+        address[] memory pools = new address[](1);
+        pools[0] = address(pool);
+        uint256[] memory weights = new uint256[](1);
+        weights[0] = 5000;
+
+        // Try to vote - should fail because blacklisted
+        vm.prank(address(owner2));
+        vm.expectRevert(IVoter.TeamLockBlacklisted.selector);
+        voter.vote(tokenId, pools, weights);
+    }
+
+    function testCannotPokeWhenTeamLockBlacklisted() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+
+        // Move to valid voting window
+        uint256 epochStart = (block.timestamp / WEEK) * WEEK;
+        vm.warp(epochStart + 2 hours);
+
+        // First vote to set up state
+        address[] memory pools = new address[](1);
+        pools[0] = address(pool);
+        uint256[] memory weights = new uint256[](1);
+        weights[0] = 5000;
+
+        vm.prank(address(owner2));
+        voter.vote(tokenId, pools, weights);
+
+        // Move to next epoch
+        skipToNextEpoch(1);
+        vm.warp((block.timestamp / WEEK) * WEEK + 2 hours);
+
+        // Blacklist the team lock
+        voter.blacklistVotingTeamLock(tokenId);
+
+        // Try to poke - should fail
+        vm.expectRevert(IVoter.TeamLockBlacklisted.selector);
+        voter.poke(tokenId);
+    }
+
+    function testCanVoteAfterBlacklistExpires() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+
+        // Move to valid voting window
+        uint256 epochStart = (block.timestamp / WEEK) * WEEK;
+        vm.warp(epochStart + 2 hours);
+
+        // Blacklist the team lock
+        voter.blacklistVotingTeamLock(tokenId);
+
+        // Verify blacklist is active
+        address[] memory pools = new address[](1);
+        pools[0] = address(pool);
+        uint256[] memory weights = new uint256[](1);
+        weights[0] = 5000;
+
+        vm.prank(address(owner2));
+        vm.expectRevert(IVoter.TeamLockBlacklisted.selector);
+        voter.vote(tokenId, pools, weights);
+
+        // Fast forward past blacklist period (1 day + buffer)
+        skip(1 days + 1);
+
+        // Now should be able to vote
+        vm.prank(address(owner2));
+        voter.vote(tokenId, pools, weights);
+        assertTrue(escrow.voted(tokenId), "Should be able to vote after blacklist expires");
+    }
+
+    function testCannotBlacklistTeamLockIfNotTeam() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+
+        // Try to blacklist as non-team
+        vm.prank(address(owner2));
+        vm.expectRevert(IVotingEscrow.NotTeam.selector);
+        voter.blacklistVotingTeamLock(tokenId);
+    }
+
+    function testCannotBlacklistNonTeamLock() public {
+        uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
+
+        // Try to blacklist a normal lock
+        vm.expectRevert(IVotingEscrow.NotTeamLock.selector);
+        voter.blacklistVotingTeamLock(tokenId);
+    }
+
+    function testCannotBlacklistClawbackedTeamLock() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+
+        // Fast forward and clawback
+        vm.warp(block.timestamp + TEAM_LOCK_DURATION / 2);
+        (uint256 newTokenId, ) = escrow.clawbackTeamLock(tokenId);
+
+        // Try to blacklist the clawbacked token
+        vm.expectRevert(IVotingEscrow.AlreadyClawbacked.selector);
+        voter.blacklistVotingTeamLock(newTokenId);
+    }
+
+    function testCannotBlacklistAlreadyBlacklistedTeamLock() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+
+        // Blacklist once
+        voter.blacklistVotingTeamLock(tokenId);
+
+        // Try to blacklist again immediately
+        vm.expectRevert(IVoter.TeamLockBlacklisted.selector);
+        voter.blacklistVotingTeamLock(tokenId);
+    }
+
+    // Test depositManaged restrictions on team locks
+    function testCannotDepositManagedWithTeamLock() public {
+        // Create a managed NFT as owner3
+        escrow.setAllowedManager(address(owner3));
+        vm.prank(address(owner3));
+        uint256 mTokenId = escrow.createManagedLockFor(address(owner3));
+
+        // Create a team locked NFT (owner as team, owner2 as token owner)
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner3), teamUnlockTs);
+
+        // Skip to avoid distribute window restrictions
+        skip(1 hours);
+
+        // Try to deposit the team locked NFT into managed NFT - should fail
+        vm.prank(address(owner3));
+        vm.expectRevert(IVotingEscrow.TeamLocked.selector);
+        voter.depositManaged(tokenId, mTokenId);
+    }
+
+    function testCanDepositManagedAfterTeamUnlock() public {
+        // Create a managed NFT as owner3
+        escrow.setAllowedManager(address(owner3));
+        vm.prank(address(owner3));
+        uint256 mTokenId = escrow.createManagedLockFor(address(owner3));
+
+        // Create a team locked NFT (owner as team, owner3 as token owner)
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner3), teamUnlockTs);
+
+        // Fast forward past team unlock time
+        vm.warp(teamUnlockTs + 1);
+
+        // Unlock the team lock
+        escrow.unlockTeamLock(tokenId);
+
+        // Skip to avoid distribute window restrictions
+        skip(1 hours);
+
+        // Now deposit should succeed since it's no longer a team lock
+        vm.prank(address(owner3));
+        voter.depositManaged(tokenId, mTokenId);
+
+        // Verify the NFT is now locked to the managed NFT
+        assertEq(uint256(escrow.escrowType(tokenId)), uint256(IVotingEscrow.EscrowType.LOCKED));
+        assertEq(escrow.idToManaged(tokenId), mTokenId);
     }
 }

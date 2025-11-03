@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import "./BaseTest.sol";
+import {IReward} from "contracts/interfaces/IReward.sol";
 
 /// @title Partial Reward Claim Test
 /// @notice Tests for claiming rewards in chunks using getRewardUntilTs to avoid gas limits
@@ -288,8 +289,8 @@ contract PartialRewardClaimTest is BaseTest {
         assertEq(balanceAfter - balanceBefore, 0, "Should claim 0 for timestamp before lastEarn");
     }
 
-    /// @notice Test claiming with future timestamp should claim all available rewards
-    function testClaimWithFutureTimestamp() public {
+    /// @notice Test claiming with current timestamp should claim all available rewards
+    function testClaimWithCurrentTimestamp() public {
         // Vote and add rewards
         skip(3 days);
         voter.vote(tokenId, pools, weights);
@@ -303,21 +304,41 @@ contract PartialRewardClaimTest is BaseTest {
 
         uint256 totalEarned = feesVotingReward.earned(address(FRAX), tokenId);
 
-        // Claim with future timestamp
-        uint256 futureTimestamp = block.timestamp + 365 days;
-        uint256 earnedAtFuture = feesVotingReward.earnedUntilTs(address(FRAX), tokenId, futureTimestamp);
+        // Claim with current timestamp
+        uint256 currentTimestamp = block.timestamp;
+        uint256 earnedAtCurrent = feesVotingReward.earnedUntilTs(address(FRAX), tokenId, currentTimestamp);
 
         emit log_named_decimal_uint("Earned at current time", totalEarned, 18);
-        emit log_named_decimal_uint("Earned at future timestamp", earnedAtFuture, 18);
+        emit log_named_decimal_uint("Earned at current timestamp", earnedAtCurrent, 18);
 
-        assertEq(earnedAtFuture, totalEarned, "Future timestamp should return same as current");
+        assertEq(earnedAtCurrent, totalEarned, "Current timestamp should return all earned");
 
-        // Claim with future timestamp
+        // Claim with current timestamp
         uint256 balanceBefore = FRAX.balanceOf(address(owner));
-        feesVotingReward.getRewardUntilTs(tokenId, rewardTokens, futureTimestamp);
+        feesVotingReward.getRewardUntilTs(tokenId, rewardTokens, currentTimestamp);
         uint256 balanceAfter = FRAX.balanceOf(address(owner));
 
         assertEq(balanceAfter - balanceBefore, totalEarned, "Should claim all available rewards");
+    }
+
+    /// @notice Test that claiming with future timestamp reverts
+    function testCannotClaimWithFutureTimestamp() public {
+        // Vote and add rewards
+        skip(3 days);
+        voter.vote(tokenId, pools, weights);
+
+        vm.startPrank(address(gauge));
+        FRAX.approve(address(feesVotingReward), TOKEN_1 * 100);
+        feesVotingReward.notifyRewardAmount(address(FRAX), TOKEN_1 * 100);
+        vm.stopPrank();
+
+        skipToNextEpoch(1);
+
+        // Try to claim with future timestamp - should revert with FutureTimestamp error
+        uint256 futureTimestamp = block.timestamp + 365 days;
+        
+        vm.expectRevert(IReward.FutureTimestamp.selector);
+        feesVotingReward.getRewardUntilTs(tokenId, rewardTokens, futureTimestamp);
     }
 
     /// @notice Test multiple partial claims with overlapping timestamps

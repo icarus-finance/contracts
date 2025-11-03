@@ -165,7 +165,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVotingEscrow
-    function depositManaged(uint256 _tokenId, uint256 _mTokenId) external nonReentrant onlyVoter {
+    function depositManaged(uint256 _tokenId, uint256 _mTokenId) external nonReentrant onlyVoter noTeamLocked(_tokenId) {
         if (escrowType[_mTokenId] != EscrowType.MANAGED) revert NotManagedNFT();
         if (escrowType[_tokenId] != EscrowType.NORMAL) revert NotNormalNFT();
         if (_balanceOfNFTAt(_tokenId, block.timestamp) == 0) revert ZeroBalance();
@@ -351,7 +351,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     /// @inheritdoc IVotingEscrow
     function isApprovedOrOwner(address _spender, uint256 _tokenId) external view returns (bool) {
         // This allows Voter functions to be performed by the `team` on behalf of team locks
-        if (_spender == team && _teamLocks[_tokenId].endTs != 0) {
+        if (_spender == team && _teamLocks[_tokenId].endTs > block.timestamp) {
             return true;
         }
         return _isApprovedOrOwner(_spender, _tokenId);
@@ -854,6 +854,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     /// @inheritdoc IVotingEscrow
     function depositFor(uint256 _tokenId, uint256 _value) external nonReentrant {
         if (escrowType[_tokenId] == EscrowType.MANAGED && _msgSender() != distributor) revert NotDistributor();
+        if (_teamLocks[_tokenId].endTs != 0 && _msgSender() != distributor) revert TeamLocked();
         _increaseAmountFor(_tokenId, _value, DepositType.DEPOSIT_FOR_TYPE);
     }
 
@@ -959,7 +960,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVotingEscrow
-    function increaseAmount(uint256 _tokenId, uint256 _value) external nonReentrant {
+    function increaseAmount(uint256 _tokenId, uint256 _value) external nonReentrant noTeamLocked(_tokenId) {
         if (!_isApprovedOrOwner(_msgSender(), _tokenId)) revert NotApprovedOrOwner();
         _increaseAmountFor(_tokenId, _value, DepositType.INCREASE_LOCK_AMOUNT);
     }

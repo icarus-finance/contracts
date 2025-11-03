@@ -23,6 +23,7 @@ interface IVoter {
     error SameValue();
     error SpecialVotingWindow();
     error TooManyPools();
+    error TeamLockBlacklisted();
     error UnequalLengths();
     error ZeroBalance();
     error ZeroAddress();
@@ -227,6 +228,11 @@ interface IVoter {
     ///      Throws if the values are the same.
     /// @param _maxVotingNum .
     function setMaxVotingNum(uint256 _maxVotingNum) external;
+
+    /// @notice Temporary blacklist team locked veNFT from voting for 1 day
+    /// @dev Throws if not called by `VotinEscrow.team()`
+    /// @param _tokenId Id of veNFT to blacklist
+    function blacklistVotingTeamLock(uint256 _tokenId) external;
 
     /// @notice Whitelist (or unwhitelist) token for use in bribes.
     /// @dev Throws if not called by governor.

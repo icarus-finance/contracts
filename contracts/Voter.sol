@@ -85,6 +85,8 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
     mapping(address => uint256) internal supplyIndex;
     /// @inheritdoc IVoter
     mapping(address => uint256) public claimable;
+    /// @dev Temporary blacklist for voting
+    mapping(uint256 => uint256) internal tmpVotingBlacklist;
 
     constructor(address _forwarder, address _ve, address _factoryRegistry) ERC2771Context(_forwarder) {
         forwarder = _forwarder;
@@ -168,6 +170,15 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVoter
+    function blacklistVotingTeamLock(uint256 _tokenId) external {
+        if (_msgSender() != IVotingEscrow(ve).team()) revert IVotingEscrow.NotTeam();
+        if (IVotingEscrow(ve).teamLocks(_tokenId).endTs == 0) revert IVotingEscrow.NotTeamLock();
+        if (IVotingEscrow(ve).teamLocks(_tokenId).clawbacked == true) revert IVotingEscrow.AlreadyClawbacked();
+        if (tmpVotingBlacklist[_tokenId] > block.timestamp) revert TeamLockBlacklisted();
+        tmpVotingBlacklist[_tokenId] = block.timestamp + 1 days;
+    }
+    
+    /// @inheritdoc IVoter
     function reset(uint256 _tokenId) external onlyNewEpoch(_tokenId) nonReentrant {
         if (!IVotingEscrow(ve).isApprovedOrOwner(_msgSender(), _tokenId)) revert NotApprovedOrOwner();
         _reset(_tokenId);
@@ -217,6 +228,7 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
     }
 
     function _vote(uint256 _tokenId, uint256 _weight, address[] memory _poolVote, uint256[] memory _weights) internal {
+        if (tmpVotingBlacklist[_tokenId] > block.timestamp) revert TeamLockBlacklisted();
         _reset(_tokenId);
         uint256 _poolCnt = _poolVote.length;
         uint256 _totalVoteWeight = 0;
