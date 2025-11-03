@@ -320,6 +320,51 @@ contract TeamLockTest is BaseTest {
         assertTrue(escrow.voted(tokenId));
     }
 
+    // Test isApprovedOrOwner behavior for team locks
+    function testTeamIsApprovedForActiveTeamLock() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+
+        // Team should be approved for active team lock
+        assertTrue(escrow.isApprovedOrOwner(address(owner), tokenId), "Team should be approved before expiry");
+    }
+
+    function testTeamIsNotApprovedForExpiredTeamLock() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+
+        // Fast forward past team lock expiry
+        vm.warp(teamUnlockTs + 1);
+
+        // Team should NOT be approved after team lock expires
+        assertFalse(escrow.isApprovedOrOwner(address(owner), tokenId), "Team should not be approved after expiry");
+
+        // Only the actual owner should be approved
+        assertTrue(escrow.isApprovedOrOwner(address(owner2), tokenId), "Owner should still be approved");
+    }
+
+    function testOwnerCanStillVoteOnExpiredTeamLock() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+
+        // Fast forward past team lock expiry
+        vm.warp(teamUnlockTs + 1);
+
+        // Move to valid voting window
+        uint256 epochStart = (block.timestamp / WEEK) * WEEK;
+        vm.warp(epochStart + 2 hours);
+
+        address[] memory pools = new address[](1);
+        pools[0] = address(pool);
+        uint256[] memory weights = new uint256[](1);
+        weights[0] = 5000;
+
+        // Owner should still be able to vote after team lock expires
+        vm.prank(address(owner2));
+        voter.vote(tokenId, pools, weights);
+        assertTrue(escrow.voted(tokenId), "Owner should be able to vote after expiry");
+    }
+
     // Test operations that are restricted on team locks
     function testCannotIncreaseAmountOnTeamLock() public {
         uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;

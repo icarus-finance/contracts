@@ -351,7 +351,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     /// @inheritdoc IVotingEscrow
     function isApprovedOrOwner(address _spender, uint256 _tokenId) external view returns (bool) {
         // This allows Voter functions to be performed by the `team` on behalf of team locks
-        if (_spender == team && _teamLocks[_tokenId].endTs != 0) {
+        if (_spender == team && _teamLocks[_tokenId].endTs > block.timestamp) {
             return true;
         }
         return _isApprovedOrOwner(_spender, _tokenId);
