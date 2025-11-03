@@ -165,7 +165,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVotingEscrow
-    function depositManaged(uint256 _tokenId, uint256 _mTokenId) external nonReentrant onlyVoter {
+    function depositManaged(uint256 _tokenId, uint256 _mTokenId) external nonReentrant onlyVoter noTeamLocked(_tokenId) {
         if (escrowType[_mTokenId] != EscrowType.MANAGED) revert NotManagedNFT();
         if (escrowType[_tokenId] != EscrowType.NORMAL) revert NotNormalNFT();
         if (_balanceOfNFTAt(_tokenId, block.timestamp) == 0) revert ZeroBalance();

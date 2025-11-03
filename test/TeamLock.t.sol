@@ -646,4 +646,52 @@ contract TeamLockTest is BaseTest {
         vm.expectRevert(IVoter.TeamLockBlacklisted.selector);
         voter.blacklistVotingTeamLock(tokenId);
     }
+
+    // Test depositManaged restrictions on team locks
+    function testCannotDepositManagedWithTeamLock() public {
+        // Create a managed NFT as owner3
+        escrow.setAllowedManager(address(owner3));
+        vm.prank(address(owner3));
+        uint256 mTokenId = escrow.createManagedLockFor(address(owner3));
+
+        // Create a team locked NFT (owner as team, owner2 as token owner)
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner3), teamUnlockTs);
+
+        // Skip to avoid distribute window restrictions
+        skip(1 hours);
+
+        // Try to deposit the team locked NFT into managed NFT - should fail
+        vm.prank(address(owner3));
+        vm.expectRevert(IVotingEscrow.TeamLocked.selector);
+        voter.depositManaged(tokenId, mTokenId);
+    }
+
+    function testCanDepositManagedAfterTeamUnlock() public {
+        // Create a managed NFT as owner3
+        escrow.setAllowedManager(address(owner3));
+        vm.prank(address(owner3));
+        uint256 mTokenId = escrow.createManagedLockFor(address(owner3));
+
+        // Create a team locked NFT (owner as team, owner3 as token owner)
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner3), teamUnlockTs);
+
+        // Fast forward past team unlock time
+        vm.warp(teamUnlockTs + 1);
+
+        // Unlock the team lock
+        escrow.unlockTeamLock(tokenId);
+
+        // Skip to avoid distribute window restrictions
+        skip(1 hours);
+
+        // Now deposit should succeed since it's no longer a team lock
+        vm.prank(address(owner3));
+        voter.depositManaged(tokenId, mTokenId);
+
+        // Verify the NFT is now locked to the managed NFT
+        assertEq(uint256(escrow.escrowType(tokenId)), uint256(IVotingEscrow.EscrowType.LOCKED));
+        assertEq(escrow.idToManaged(tokenId), mTokenId);
+    }
 }
