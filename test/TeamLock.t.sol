@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import "./BaseTest.sol";
 import {IVotingEscrow} from "contracts/interfaces/IVotingEscrow.sol";
+import {IVoter} from "contracts/interfaces/IVoter.sol";
 
 /**
  * @title TeamLock Test Suite
@@ -519,5 +520,130 @@ contract TeamLockTest is BaseTest {
         // Verify team lock is still intact
         IVotingEscrow.TeamLock memory teamLockAfter = escrow.teamLocks(tokenId);
         assertEq(teamLockAfter.endTs, teamLock.endTs, "Team lock should remain unchanged");
+    }
+
+    function testCannotVoteWhenTeamLockBlacklisted() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+
+        // Move to valid voting window
+        uint256 epochStart = (block.timestamp / WEEK) * WEEK;
+        vm.warp(epochStart + 2 hours);
+
+        // Blacklist the team lock before voting
+        voter.blacklistVotingTeamLock(tokenId);
+
+        // Setup vote parameters
+        address[] memory pools = new address[](1);
+        pools[0] = address(pool);
+        uint256[] memory weights = new uint256[](1);
+        weights[0] = 5000;
+
+        // Try to vote - should fail because blacklisted
+        vm.prank(address(owner2));
+        vm.expectRevert(IVoter.TeamLockBlacklisted.selector);
+        voter.vote(tokenId, pools, weights);
+    }
+
+    function testCannotPokeWhenTeamLockBlacklisted() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+
+        // Move to valid voting window
+        uint256 epochStart = (block.timestamp / WEEK) * WEEK;
+        vm.warp(epochStart + 2 hours);
+
+        // First vote to set up state
+        address[] memory pools = new address[](1);
+        pools[0] = address(pool);
+        uint256[] memory weights = new uint256[](1);
+        weights[0] = 5000;
+
+        vm.prank(address(owner2));
+        voter.vote(tokenId, pools, weights);
+
+        // Move to next epoch
+        skipToNextEpoch(1);
+        vm.warp((block.timestamp / WEEK) * WEEK + 2 hours);
+
+        // Blacklist the team lock
+        voter.blacklistVotingTeamLock(tokenId);
+
+        // Try to poke - should fail
+        vm.expectRevert(IVoter.TeamLockBlacklisted.selector);
+        voter.poke(tokenId);
+    }
+
+    function testCanVoteAfterBlacklistExpires() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+
+        // Move to valid voting window
+        uint256 epochStart = (block.timestamp / WEEK) * WEEK;
+        vm.warp(epochStart + 2 hours);
+
+        // Blacklist the team lock
+        voter.blacklistVotingTeamLock(tokenId);
+
+        // Verify blacklist is active
+        address[] memory pools = new address[](1);
+        pools[0] = address(pool);
+        uint256[] memory weights = new uint256[](1);
+        weights[0] = 5000;
+
+        vm.prank(address(owner2));
+        vm.expectRevert(IVoter.TeamLockBlacklisted.selector);
+        voter.vote(tokenId, pools, weights);
+
+        // Fast forward past blacklist period (1 day + buffer)
+        skip(1 days + 1);
+
+        // Now should be able to vote
+        vm.prank(address(owner2));
+        voter.vote(tokenId, pools, weights);
+        assertTrue(escrow.voted(tokenId), "Should be able to vote after blacklist expires");
+    }
+
+    function testCannotBlacklistTeamLockIfNotTeam() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+
+        // Try to blacklist as non-team
+        vm.prank(address(owner2));
+        vm.expectRevert(IVotingEscrow.NotTeam.selector);
+        voter.blacklistVotingTeamLock(tokenId);
+    }
+
+    function testCannotBlacklistNonTeamLock() public {
+        uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
+
+        // Try to blacklist a normal lock
+        vm.expectRevert(IVotingEscrow.NotTeamLock.selector);
+        voter.blacklistVotingTeamLock(tokenId);
+    }
+
+    function testCannotBlacklistClawbackedTeamLock() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+
+        // Fast forward and clawback
+        vm.warp(block.timestamp + TEAM_LOCK_DURATION / 2);
+        (uint256 newTokenId, ) = escrow.clawbackTeamLock(tokenId);
+
+        // Try to blacklist the clawbacked token
+        vm.expectRevert(IVotingEscrow.AlreadyClawbacked.selector);
+        voter.blacklistVotingTeamLock(newTokenId);
+    }
+
+    function testCannotBlacklistAlreadyBlacklistedTeamLock() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+
+        // Blacklist once
+        voter.blacklistVotingTeamLock(tokenId);
+
+        // Try to blacklist again immediately
+        vm.expectRevert(IVoter.TeamLockBlacklisted.selector);
+        voter.blacklistVotingTeamLock(tokenId);
     }
 }
