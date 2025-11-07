@@ -292,6 +292,7 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
         address _sender = _msgSender();
         if (!IVotingEscrow(ve).isApprovedOrOwner(_sender, _tokenId)) revert NotApprovedOrOwner();
         if (IVotingEscrow(ve).deactivated(_mTokenId)) revert InactiveManagedNFT();
+        _reset(_tokenId);
         uint256 _timestamp = block.timestamp;
         if (_timestamp > ProtocolTimeLibrary.epochVoteEnd(_timestamp)) revert SpecialVotingWindow();
         lastVoted[_tokenId] = _timestamp;
