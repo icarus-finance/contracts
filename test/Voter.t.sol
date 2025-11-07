@@ -1095,6 +1095,80 @@ contract VoterTest is BaseTest {
         assertEq(poolVote, address(pool));
     }
 
+    function testCannotDepositManagedIfVotedInSameEpoch() public {
+        // Create managed NFT and normal NFT
+        skipToNextEpoch(1 hours + 1);
+        AERO.approve(address(escrow), type(uint256).max);
+        uint256 mTokenId = escrow.createManagedLockFor(address(owner));
+        uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
+
+        // Vote with the normal NFT in current epoch
+        address[] memory pools = new address[](1);
+        pools[0] = address(pool);
+        uint256[] memory weights = new uint256[](1);
+        weights[0] = 1;
+        voter.vote(tokenId, pools, weights);
+
+        // Verify the normal NFT has voted
+        assertTrue(escrow.voted(tokenId));
+        assertGt(voter.usedWeights(tokenId), 0);
+
+        // Try to deposit in the same epoch - should fail
+        vm.expectRevert(IVoter.AlreadyVotedOrDeposited.selector);
+        voter.depositManaged(tokenId, mTokenId);
+
+        // Move forward in the same epoch - still should fail
+        skip(1 days);
+        vm.expectRevert(IVoter.AlreadyVotedOrDeposited.selector);
+        voter.depositManaged(tokenId, mTokenId);
+
+        // Move to next epoch - now it should succeed
+        skipToNextEpoch(1 hours + 1);
+        voter.depositManaged(tokenId, mTokenId);
+    }
+
+    function testDepositManagedResetsTokenVotes() public {
+        // Create normal NFT and vote with it
+        skipToNextEpoch(1 hours + 1);
+        AERO.approve(address(escrow), type(uint256).max);
+        uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
+
+        address[] memory pools = new address[](2);
+        pools[0] = address(pool);
+        pools[1] = address(pool2);
+        uint256[] memory weights = new uint256[](2);
+        weights[0] = 1;
+        weights[1] = 1;
+        voter.vote(tokenId, pools, weights);
+
+        // Verify the normal NFT has votes
+        assertTrue(escrow.voted(tokenId));
+        assertGt(voter.usedWeights(tokenId), 0);
+        assertGt(voter.votes(tokenId, address(pool)), 0);
+        assertGt(voter.votes(tokenId, address(pool2)), 0);
+        assertEq(voter.poolVote(tokenId, 0), address(pool));
+        assertEq(voter.poolVote(tokenId, 1), address(pool2));
+
+        // Create managed NFT and move to next epoch
+        uint256 mTokenId = escrow.createManagedLockFor(address(owner));
+        skipToNextEpoch(1 hours + 1);
+
+        // Deposit the normal NFT into the managed NFT
+        voter.depositManaged(tokenId, mTokenId);
+
+        // Verify the normal NFT's votes were reset
+        assertFalse(escrow.voted(tokenId));
+        assertEq(voter.usedWeights(tokenId), 0);
+        assertEq(voter.votes(tokenId, address(pool)), 0);
+        assertEq(voter.votes(tokenId, address(pool2)), 0);
+        vm.expectRevert();
+        voter.poolVote(tokenId, 0);
+
+        // Verify the managed NFT has no votes (since it hasn't voted yet)
+        assertFalse(escrow.voted(mTokenId));
+        assertEq(voter.usedWeights(mTokenId), 0);
+    }
+
     function _seedVoterWithVotingSupply() internal {
         skip(1 hours + 1);
         AERO.approve(address(escrow), TOKEN_1);
