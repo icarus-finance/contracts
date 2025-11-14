@@ -41,7 +41,7 @@ contract PoolFactory is IPoolFactory {
         isPaused = false;
         stableFee = 5; // 0.05%
         volatileFee = 30; // 0.3%
-        unstakedFee = 0;  // 0%
+        unstakedFee = 0; // 0%
     }
 
     /// @inheritdoc IPoolFactory

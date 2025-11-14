@@ -83,6 +83,7 @@ abstract contract Base is Script, Test {
         // Setup voter and distributor
         distributor = new RewardsDistributor(address(escrow));
         voter = new Voter(address(forwarder), address(escrow), address(factoryRegistry));
+        factory.setVoter(address(voter));
 
         escrow.setVoterAndDistributor(address(voter), address(distributor));
         escrow.setAllowedManager(allowedManager);
