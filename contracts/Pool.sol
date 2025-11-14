@@ -28,6 +28,7 @@ contract Pool is IPool, ERC20Permit, ReentrancyGuard {
 
     uint256 internal constant MINIMUM_LIQUIDITY = 10 ** 3;
     uint256 internal constant MINIMUM_K = 10 ** 10;
+    uint256 internal constant BPS = 10000;
 
     /// @inheritdoc IPool
     address public token0;
@@ -35,6 +36,8 @@ contract Pool is IPool, ERC20Permit, ReentrancyGuard {
     address public token1;
     /// @inheritdoc IPool
     address public poolFees;
+    /// @inheritdoc IPool
+    address public gaugeFees;
     /// @inheritdoc IPool
     address public factory;
 
@@ -82,6 +85,7 @@ contract Pool is IPool, ERC20Permit, ReentrancyGuard {
         _voter = IPoolFactory(factory).voter();
         (token0, token1, stable) = (_token0, _token1, _stable);
         poolFees = address(new PoolFees(_token0, _token1));
+        gaugeFees = address(new PoolFees(_token0, _token1));
         string memory symbol0 = ERC20(_token0).symbol();
         string memory symbol1 = ERC20(_token1).symbol();
         if (_stable) {
@@ -150,9 +154,21 @@ contract Pool is IPool, ERC20Permit, ReentrancyGuard {
         if (claimed0 > 0 || claimed1 > 0) {
             claimable0[sender] = 0;
             claimable1[sender] = 0;
-
             PoolFees(poolFees).claimFeesFor(sender, claimed0, claimed1);
+        }
 
+        if (IVoter(_voter).gauges(address(this)) == sender) {
+            uint256 gaugeClaimable0 = IERC20(token0).balanceOf(gaugeFees);
+            uint256 gaugeClaimable1 = IERC20(token1).balanceOf(gaugeFees);
+
+            if (gaugeClaimable0 > 0 || gaugeClaimable1 > 0) {
+                PoolFees(gaugeFees).claimFeesFor(sender, gaugeClaimable0, gaugeClaimable1);
+                claimed0 += gaugeClaimable0;
+                claimed1 += gaugeClaimable1;
+            }
+        }
+
+        if (claimed0 > 0 || claimed1 > 0) {
             emit Claim(sender, sender, claimed0, claimed1);
         }
     }
@@ -161,8 +177,10 @@ contract Pool is IPool, ERC20Permit, ReentrancyGuard {
     function _update0(uint256 amount) internal {
         // Only update on this pool if there is a fee
         if (amount == 0) return;
-        IERC20(token0).safeTransfer(poolFees, amount); // transfer the fees out to PoolFees
-        uint256 _ratio = (amount * 1e18) / totalSupply(); // 1e18 adjustment is removed during claim
+        uint256 gaugeFee = amount * IPoolFactory(factory).getUnstakedFee() / BPS; // Unstaked fee portion always goes to gauge
+        IERC20(token0).safeTransfer(poolFees, amount - gaugeFee); // transfer the fees out to PoolFees
+        if (gaugeFee > 0) IERC20(token1).safeTransfer(gaugeFees, gaugeFee);
+        uint256 _ratio = ((amount - gaugeFee) * 1e18) / totalSupply(); // 1e18 adjustment is removed during claim
         if (_ratio > 0) {
             index0 += _ratio;
         }
@@ -173,8 +191,10 @@ contract Pool is IPool, ERC20Permit, ReentrancyGuard {
     function _update1(uint256 amount) internal {
         // Only update on this pool if there is a fee
         if (amount == 0) return;
-        IERC20(token1).safeTransfer(poolFees, amount);
-        uint256 _ratio = (amount * 1e18) / totalSupply();
+        uint256 gaugeFee = amount * IPoolFactory(factory).getUnstakedFee() / BPS; // Unstaked fee portion always goes to gauge
+        IERC20(token1).safeTransfer(poolFees, amount - gaugeFee);
+        if (gaugeFee > 0) IERC20(token1).safeTransfer(gaugeFees, gaugeFee);
+        uint256 _ratio = ((amount - gaugeFee) * 1e18) / totalSupply();
         if (_ratio > 0) {
             index1 += _ratio;
         }
@@ -374,8 +394,8 @@ contract Pool is IPool, ERC20Permit, ReentrancyGuard {
         {
             // scope for reserve{0,1}Adjusted, avoids stack too deep errors
             (address _token0, address _token1) = (token0, token1);
-            if (amount0In > 0) _update0((amount0In * IPoolFactory(factory).getFee(address(this), stable)) / 10000); // accrue fees for token0 and move them out of pool
-            if (amount1In > 0) _update1((amount1In * IPoolFactory(factory).getFee(address(this), stable)) / 10000); // accrue fees for token1 and move them out of pool
+            if (amount0In > 0) _update0((amount0In * IPoolFactory(factory).getFee(address(this), stable)) / BPS); // accrue fees for token0 and move them out of pool
+            if (amount1In > 0) _update1((amount1In * IPoolFactory(factory).getFee(address(this), stable)) / BPS); // accrue fees for token1 and move them out of pool
             _balance0 = IERC20(_token0).balanceOf(address(this)); // since we removed tokens, we need to reconfirm balances, can also simply use previous balance - amountIn/ 10000, but doing balanceOf again as safety check
             _balance1 = IERC20(_token1).balanceOf(address(this));
             // The curve, either x3y+y3x for stable pools, or x*y for volatile pools
@@ -453,7 +473,7 @@ contract Pool is IPool, ERC20Permit, ReentrancyGuard {
     /// @inheritdoc IPool
     function getAmountOut(uint256 amountIn, address tokenIn) external view returns (uint256) {
         (uint256 _reserve0, uint256 _reserve1) = (reserve0, reserve1);
-        amountIn -= (amountIn * IPoolFactory(factory).getFee(address(this), stable)) / 10000; // remove fee from amount received
+        amountIn -= (amountIn * IPoolFactory(factory).getFee(address(this), stable)) / BPS; // remove fee from amount received
         return _getAmountOut(amountIn, tokenIn, _reserve0, _reserve1);
     }
 

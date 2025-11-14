@@ -13,6 +13,8 @@ contract PoolFactory is IPoolFactory {
 
     uint256 public stableFee;
     uint256 public volatileFee;
+    uint256 public unstakedFee;
+    uint256 public constant MAX_UNSTAED_FEE = 5000; // 50%
     uint256 public constant MAX_FEE = 300; // 3%
     // Override to indicate there is custom 0% fee - as a 0 value in the customFee mapping indicates
     // that no custom fee rate has been set
@@ -39,6 +41,7 @@ contract PoolFactory is IPoolFactory {
         isPaused = false;
         stableFee = 5; // 0.05%
         volatileFee = 30; // 0.3%
+        unstakedFee = 0;  // 0%
     }
 
     /// @inheritdoc IPoolFactory
@@ -113,6 +116,20 @@ contract PoolFactory is IPoolFactory {
 
         customFee[pool] = fee;
         emit SetCustomFee(pool, fee);
+    }
+
+    /// @inheritdoc IPoolFactory
+    function setUnstakedFee(uint256 fee) external {
+        if (msg.sender != feeManager) revert NotFeeManager();
+        if (fee > MAX_UNSTAED_FEE) revert FeeTooHigh();
+
+        unstakedFee = fee;
+        emit SetUnstakedFee(fee);
+    }
+
+    /// @inheritdoc IPoolFactory
+    function getUnstakedFee() external view returns (uint256) {
+        return unstakedFee;
     }
 
     /// @inheritdoc IPoolFactory
