@@ -177,10 +177,8 @@ contract Pool is IPool, ERC20Permit, ReentrancyGuard {
     function _update0(uint256 amount) internal {
         // Only update on this pool if there is a fee
         if (amount == 0) return;
-        uint256 gaugeFee = amount * IPoolFactory(factory).getUnstakedFee() / BPS; // Unstaked fee portion always goes to gauge
-        IERC20(token0).safeTransfer(poolFees, amount - gaugeFee); // transfer the fees out to PoolFees
-        if (gaugeFee > 0) IERC20(token1).safeTransfer(gaugeFees, gaugeFee);
-        uint256 _ratio = ((amount - gaugeFee) * 1e18) / totalSupply(); // 1e18 adjustment is removed during claim
+        IERC20(token0).safeTransfer(poolFees, amount); // transfer the fees out to PoolFees
+        uint256 _ratio = (amount * 1e18) / totalSupply(); // 1e18 adjustment is removed during claim
         if (_ratio > 0) {
             index0 += _ratio;
         }
@@ -191,10 +189,8 @@ contract Pool is IPool, ERC20Permit, ReentrancyGuard {
     function _update1(uint256 amount) internal {
         // Only update on this pool if there is a fee
         if (amount == 0) return;
-        uint256 gaugeFee = amount * IPoolFactory(factory).getUnstakedFee() / BPS; // Unstaked fee portion always goes to gauge
-        IERC20(token1).safeTransfer(poolFees, amount - gaugeFee);
-        if (gaugeFee > 0) IERC20(token1).safeTransfer(gaugeFees, gaugeFee);
-        uint256 _ratio = ((amount - gaugeFee) * 1e18) / totalSupply();
+        IERC20(token1).safeTransfer(poolFees, amount);
+        uint256 _ratio = (amount * 1e18) / totalSupply();
         if (_ratio > 0) {
             index1 += _ratio;
         }
@@ -394,8 +390,20 @@ contract Pool is IPool, ERC20Permit, ReentrancyGuard {
         {
             // scope for reserve{0,1}Adjusted, avoids stack too deep errors
             (address _token0, address _token1) = (token0, token1);
-            if (amount0In > 0) _update0((amount0In * IPoolFactory(factory).getFee(address(this), stable)) / BPS); // accrue fees for token0 and move them out of pool
-            if (amount1In > 0) _update1((amount1In * IPoolFactory(factory).getFee(address(this), stable)) / BPS); // accrue fees for token1 and move them out of pool
+            uint256 _fee = IPoolFactory(factory).getFee(address(this), stable);
+            uint256 _gaugefee = IPoolFactory(factory).getUnstakedFee();
+            if (amount0In > 0) {
+                uint256 _fee0 = (amount0In * _fee) / BPS;
+                uint256 _gaugeFee0 = (_fee0 * _gaugefee) / BPS;
+                if (_gaugeFee0 > 0) IERC20(_token0).safeTransfer(gaugeFees, _gaugeFee0);
+                _update0(_fee0 - _gaugeFee0); // accrue fees for token0 and move them out of pool
+            }
+            if (amount1In > 0) {
+                uint256 _fee1 = (amount1In * _fee) / BPS;
+                uint256 _gaugeFee1 = (_fee1 * _gaugefee) / BPS;
+                if (_gaugeFee1 > 0) IERC20(_token1).safeTransfer(gaugeFees, _gaugeFee1);
+                _update1(_fee1 - _gaugeFee1); // accrue fees for token1 and move them out of pool
+            }
             _balance0 = IERC20(_token0).balanceOf(address(this)); // since we removed tokens, we need to reconfirm balances, can also simply use previous balance - amountIn/ 10000, but doing balanceOf again as safety check
             _balance1 = IERC20(_token1).balanceOf(address(this));
             // The curve, either x3y+y3x for stable pools, or x*y for volatile pools
