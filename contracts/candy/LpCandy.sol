@@ -78,8 +78,8 @@ contract LpCandy is ILpCandy {
         for (uint256 index = 0; index < factoriesCount && index < MAX_FACTORIES; index++) {
             IPoolFactory factory = IPoolFactory(factories[index]);
 
-            address nfpm = factories[index] == 0x5bB5A4b3ec1a5fa737eb86C210D5765C5f695D60
-                ? 0xF89D022FA91E03Edf8a07093031BA68128EB7D67
+            address nfpm = factories[index] == 0x83bBBa92c68a367eAABd9d1AEBe6c71ec5E1d39f
+                ? 0x8e1F74CafDdFfC48051AEfe69d0c28F9ADe1c9e2
                 : address(0);
             uint256 poolsCount = factory.allPoolsLength();
 
@@ -402,8 +402,8 @@ contract LpCandy is ILpCandy {
             IPoolFactory factory = IPoolFactory(_factories[index]);
 
             uint256 poolsCount = factory.allPoolsLength();
-            address nfpmAddr = _factories[index] == 0x5bB5A4b3ec1a5fa737eb86C210D5765C5f695D60
-                ? 0xF89D022FA91E03Edf8a07093031BA68128EB7D67
+            address nfpmAddr = _factories[index] == 0x83bBBa92c68a367eAABd9d1AEBe6c71ec5E1d39f
+                ? 0x8e1F74CafDdFfC48051AEfe69d0c28F9ADe1c9e2
                 : address(0);
 
             // V2/Basic pool

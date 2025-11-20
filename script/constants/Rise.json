@@ -16,32 +16,12 @@
     "pools": [
         {
             "stable": false,
-            "tokenA": "0xF32D39ff9f6Aa7a7A64d7a4F00a54826Ef791a55",
-            "tokenB": "0x4200000000000000000000000000000000000006"
-        },
-        {
-            "stable": false,
             "tokenA": "0x8a93d247134d91e0de6f96547cb0204e5be8e5d8",
             "tokenB": "0x4200000000000000000000000000000000000006"
         },
         {
             "stable": false,
             "tokenA": "0xd6e1afe5ca8d00a2efc01b89997abe2de47fdfaf",
-            "tokenB": "0x4200000000000000000000000000000000000006"
-        },
-        {
-            "stable": false,
-            "tokenA": "0xd6e1afe5ca8d00a2efc01b89997abe2de47fdfaf",
-            "tokenB": "0x8a93d247134d91e0de6f96547cb0204e5be8e5d8"
-        },
-        {
-            "stable": false,
-            "tokenA": "0x99dbe4aea58e518c50a1c04ae9b48c9f6354612f",
-            "tokenB": "0x4200000000000000000000000000000000000006"
-        },
-        {
-            "stable": false,
-            "tokenA": "0x6f6f570f45833e249e27022648a26f4076f48f78",
             "tokenB": "0x4200000000000000000000000000000000000006"
         },
         {
@@ -51,10 +31,6 @@
         }
     ],
     "poolsAero": [
-        {
-            "stable": false,
-            "token": "0x8a93d247134d91e0de6f96547cb0204e5be8e5d8"
-        },
         {
             "stable": false,
             "token": "0x4200000000000000000000000000000000000006"
