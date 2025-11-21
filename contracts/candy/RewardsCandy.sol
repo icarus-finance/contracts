@@ -19,9 +19,9 @@ import {IRewards} from "./interfaces/IRewards.sol";
  * @author Icarus Finance (https://icarus.finance)
  */
 contract RewardsCandy is IRewardsCandy {
-    uint256 public constant MAX_EPOCHS = 200;
-    uint256 public constant MAX_POOLS = 2000;
-    uint256 public constant MAX_REWARDS = 50;
+    uint256 public constant MAX_EPOCHS = 100;
+    uint256 public constant MAX_POOLS = 50;
+    uint256 public constant MAX_REWARDS = 20;
     uint256 public constant WEEK = 7 * 24 * 60 * 60;
 
     IVoter public immutable voter;
@@ -207,11 +207,15 @@ contract RewardsCandy is IRewardsCandy {
         
         IReward reward = IReward(_reward);
         uint256 rewards_len = reward.rewardsListLength();
+
+        if (rewards_len > MAX_REWARDS) {
+            rewards_len = MAX_REWARDS;
+        }
         
-        LpEpochReward[] memory tempRewards = new LpEpochReward[](MAX_REWARDS);
+        LpEpochReward[] memory tempRewards = new LpEpochReward[](rewards_len);
         uint256 rewardCount = 0;
         
-        for (uint256 rindex = 0; rindex < rewards_len && rindex < MAX_REWARDS; rindex++) {
+        for (uint256 rindex = 0; rindex < rewards_len; rindex++) {
             address reward_token = IRewards(address(reward)).rewards(rindex);
             uint256 reward_amount = reward.tokenRewardsPerEpoch(reward_token, _ts);
             
@@ -346,8 +350,11 @@ contract RewardsCandy is IRewardsCandy {
         
         if (address(bribe) != address(0)) {
             uint256 bribes_len = bribe.rewardsListLength();
+            if (bribes_len > MAX_REWARDS) {
+                bribes_len = MAX_REWARDS;
+            }
             
-            for (uint256 bindex = 0; bindex < bribes_len && bindex < MAX_REWARDS; bindex++) {
+            for (uint256 bindex = 0; bindex < bribes_len; bindex++) {
                 address bribe_token = IRewards(address(bribe)).rewards(bindex);
                 uint256 bribe_amount = bribe.earned(bribe_token, _venft_id);
                 

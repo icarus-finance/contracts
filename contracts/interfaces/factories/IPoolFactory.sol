@@ -8,6 +8,7 @@ interface IPoolFactory {
     event SetVoter(address voter);
     event PoolCreated(address indexed token0, address indexed token1, bool indexed stable, address pool, uint256);
     event SetCustomFee(address indexed pool, uint256 fee);
+    event SetUnstakedFee(uint256 indexed fee);
 
     error FeeInvalid();
     error FeeTooHigh();
@@ -65,6 +66,12 @@ interface IPoolFactory {
     /// @notice Set overriding fee for a pool from the default
     /// @dev A custom fee of zero means the default fee will be used.
     function setCustomFee(address _pool, uint256 _fee) external;
+
+    /// @notice Returns unstaked fee, which always goes to the gauge.
+    function setUnstakedFee(uint256 _fee) external;
+
+    /// @notice Returns unstaked fee, which always goes to the gauge.
+    function getUnstakedFee() external view returns (uint256);
 
     /// @notice Returns fee for a pool, as custom fees are possible.
     function getFee(address _pool, bool _stable) external view returns (uint256);

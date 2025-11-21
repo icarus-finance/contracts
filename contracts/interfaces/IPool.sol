@@ -57,6 +57,9 @@ interface IPool {
     /// @notice Address of linked PoolFees.sol
     function poolFees() external view returns (address);
 
+    /// @notice Address to receive portion of fees that always goes to gauge
+    function gaugeFees() external view returns (address);
+
     /// @notice Address of PoolFactory that created this contract
     function factory() external view returns (address);
 
