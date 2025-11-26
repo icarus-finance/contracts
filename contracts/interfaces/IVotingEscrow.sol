@@ -393,7 +393,7 @@ interface IVotingEscrow is IVotes, IERC4906, IERC6372, IERC721Metadata {
     /// @return TokenId of created veNFT
     function createLockFor(uint256 _value, uint256 _lockDuration, address _to) external returns (uint256);
 
-    /// @notice Deposit `_value` tokens for `_to` and lock for `_lockDuration`, team lock for `_teamLockDuration`.
+    /// @notice Deposit `_value` tokens for `_to` and lock for `_lockDuration`, team lock until `_teamUnlockTs`.
     /// @dev Only callable by `team` address.
     /// @dev Team locked means the veNFT cannot be transfered, merged into other lock, withdrawn or split
     ///      until team lock expires. Owner of team locked veNFT can still deposit more tokens and extend
@@ -410,6 +410,17 @@ interface IVotingEscrow is IVotes, IERC4906, IERC6372, IERC721Metadata {
         address _to,
         uint _teamUnlockTs
     ) external returns (uint256);
+
+    /// @notice Transfer lock from `team` to the new owner, and team lock it for `_teamUnlockTs` 
+    /// @dev Only callable by `team` address.
+    /// @param _tokenId lock NFT
+    /// @param _to Address to deposit
+    /// @param _teamUnlockTs Timestamp of the team unlock
+    function createTeamLockFor(
+        uint256 _tokenId,
+        address _to,
+        uint256 _teamUnlockTs
+    ) external;
 
     /// @notice Unlock a team lock veNFT if the team lock period has expired.
     /// @param _tokenId tokenId to unlock.

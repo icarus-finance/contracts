@@ -900,6 +900,19 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVotingEscrow
+    function createTeamLockFor(
+        uint256 _tokenId,
+        address _to,
+        uint256 _teamUnlockTs
+    ) external nonReentrant onlyTeam {
+        if (!_isApprovedOrOwner(team, _tokenId)) revert NotApprovedOrOwner();
+        if (_teamUnlockTs <= block.timestamp) revert LockDurationNotInFuture();
+
+        _transferFrom(team, _to, _tokenId, team);
+        _teamLocks[_tokenId] = TeamLock({startTs: block.timestamp, endTs: _teamUnlockTs, clawbacked: false});
+    }
+
+    /// @inheritdoc IVotingEscrow
     function unlockTeamLock(uint256 _tokenId) external nonReentrant {
         TeamLock storage teamLock = _teamLocks[_tokenId];
         if (teamLock.endTs == 0) revert NotTeamLock();

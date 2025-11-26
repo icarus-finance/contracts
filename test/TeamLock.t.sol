@@ -739,4 +739,305 @@ contract TeamLockTest is BaseTest {
         assertEq(uint256(escrow.escrowType(tokenId)), uint256(IVotingEscrow.EscrowType.LOCKED));
         assertEq(escrow.idToManaged(tokenId), mTokenId);
     }
+
+    function testCreateTeamLockForExistingToken() public {
+        // Team creates a normal lock
+        uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
+        assertEq(escrow.ownerOf(tokenId), address(owner));
+
+        // Verify no team lock initially
+        IVotingEscrow.TeamLock memory teamLockBefore = escrow.teamLocks(tokenId);
+        assertEq(teamLockBefore.endTs, 0);
+
+        // Team transfers it with a team lock to owner2
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        escrow.createTeamLockFor(tokenId, address(owner2), teamUnlockTs);
+
+        // Verify transfer occurred
+        assertEq(escrow.ownerOf(tokenId), address(owner2));
+
+        // Verify team lock was applied
+        IVotingEscrow.TeamLock memory teamLockAfter = escrow.teamLocks(tokenId);
+        assertEq(teamLockAfter.startTs, block.timestamp);
+        assertEq(teamLockAfter.endTs, teamUnlockTs);
+        assertFalse(teamLockAfter.clawbacked);
+
+        // Verify lock data remains unchanged
+        IVotingEscrow.LockedBalance memory locked = escrow.locked(tokenId);
+        assertEq(uint256(uint128(locked.amount)), TOKEN_1);
+        assertEq(locked.end, ((block.timestamp + MAXTIME) / WEEK) * WEEK);
+    }
+
+    function testCreateTeamLockForExistingTokenToSameOwner() public {
+        // Team creates a normal lock
+        uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
+        
+        // Team can transfer it to itself with a team lock
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        escrow.createTeamLockFor(tokenId, address(owner), teamUnlockTs);
+
+        // Still owned by team but now team locked
+        assertEq(escrow.ownerOf(tokenId), address(owner));
+        
+        IVotingEscrow.TeamLock memory teamLock = escrow.teamLocks(tokenId);
+        assertEq(teamLock.endTs, teamUnlockTs);
+    }
+
+    function testCannotCreateTeamLockForExistingTokenIfNotTeam() public {
+        uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+
+        vm.prank(address(owner2));
+        vm.expectRevert(IVotingEscrow.NotTeam.selector);
+        escrow.createTeamLockFor(tokenId, address(owner2), teamUnlockTs);
+    }
+
+    function testCannotCreateTeamLockForTokenNotOwnedByTeam() public {
+        // Owner2 creates a lock (not team)
+        deal(address(AERO), address(owner2), TOKEN_1);
+        vm.startPrank(address(owner2));
+        AERO.approve(address(escrow), TOKEN_1);
+        uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
+        vm.stopPrank();
+
+        // Team tries to team lock it without approval
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        vm.expectRevert(IVotingEscrow.NotApprovedOrOwner.selector);
+        escrow.createTeamLockFor(tokenId, address(owner3), teamUnlockTs);
+    }
+
+    function testCreateTeamLockForTokenOwnedByTeam() public {
+        // Team creates a lock and keeps it
+        uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
+        assertEq(escrow.ownerOf(tokenId), address(owner));
+
+        // Team transfers it with team lock to owner3
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        escrow.createTeamLockFor(tokenId, address(owner3), teamUnlockTs);
+
+        // Verify transfer and team lock
+        assertEq(escrow.ownerOf(tokenId), address(owner3));
+        
+        IVotingEscrow.TeamLock memory teamLock = escrow.teamLocks(tokenId);
+        assertEq(teamLock.endTs, teamUnlockTs);
+    }
+
+    function testCannotCreateTeamLockForExistingTokenWithPastUnlockTime() public {
+        uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
+        uint256 teamUnlockTs = block.timestamp; // Not in future
+
+        vm.expectRevert(IVotingEscrow.LockDurationNotInFuture.selector);
+        escrow.createTeamLockFor(tokenId, address(owner2), teamUnlockTs);
+    }
+
+    function testCreateTeamLockForExistingTokenRestrictsTransfer() public {
+        uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        
+        escrow.createTeamLockFor(tokenId, address(owner2), teamUnlockTs);
+
+        // Owner2 cannot transfer it
+        vm.prank(address(owner2));
+        vm.expectRevert(IVotingEscrow.TeamLocked.selector);
+        escrow.transferFrom(address(owner2), address(owner3), tokenId);
+    }
+
+    function testCreateTeamLockForExistingTokenRestrictsMerge() public {
+        uint256 tokenId1 = escrow.createLock(TOKEN_1, MAXTIME);
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        
+        escrow.createTeamLockFor(tokenId1, address(owner2), teamUnlockTs);
+
+        // Create another lock for owner2
+        deal(address(AERO), address(owner2), TOKEN_1);
+        vm.startPrank(address(owner2));
+        AERO.approve(address(escrow), TOKEN_1);
+        uint256 tokenId2 = escrow.createLock(TOKEN_1, MAXTIME);
+        
+        // Cannot merge team locked token
+        vm.expectRevert(IVotingEscrow.TeamLocked.selector);
+        escrow.merge(tokenId1, tokenId2);
+        vm.stopPrank();
+    }
+
+    function testCreateTeamLockForExistingTokenRestrictsSplit() public {
+        uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        
+        escrow.createTeamLockFor(tokenId, address(owner2), teamUnlockTs);
+
+        // Owner2 cannot split it
+        vm.prank(address(owner2));
+        vm.expectRevert(IVotingEscrow.TeamLocked.selector);
+        escrow.split(tokenId, TOKEN_1 / 2);
+    }
+
+    function testCreateTeamLockForExistingTokenRestrictsWithdraw() public {
+        uint256 tokenId = escrow.createLock(1 weeks, 1 weeks);
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        
+        escrow.createTeamLockFor(tokenId, address(owner2), teamUnlockTs);
+
+        // Fast forward past lock expiry but not team lock
+        vm.warp(block.timestamp + 2 weeks);
+
+        // Owner2 cannot withdraw
+        vm.prank(address(owner2));
+        vm.expectRevert(IVotingEscrow.TeamLocked.selector);
+        escrow.withdraw(tokenId);
+    }
+
+    function testCreateTeamLockForExistingTokenCannotIncreaseAmount() public {
+        uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        
+        escrow.createTeamLockFor(tokenId, address(owner2), teamUnlockTs);
+
+        // Owner2 cannot increase amount on team locked token
+        deal(address(AERO), address(owner2), TOKEN_1);
+        vm.startPrank(address(owner2));
+        AERO.approve(address(escrow), TOKEN_1);
+        vm.expectRevert(IVotingEscrow.TeamLocked.selector);
+        escrow.increaseAmount(tokenId, TOKEN_1);
+        vm.stopPrank();
+    }
+
+    function testCreateTeamLockForExistingTokenAllowsIncreaseUnlockTime() public {
+        uint256 tokenId = escrow.createLock(TOKEN_1, 1 weeks);
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        
+        escrow.createTeamLockFor(tokenId, address(owner2), teamUnlockTs);
+
+        IVotingEscrow.LockedBalance memory lockBefore = escrow.locked(tokenId);
+
+        // Owner2 can increase unlock time
+        vm.prank(address(owner2));
+        escrow.increaseUnlockTime(tokenId, MAXTIME);
+
+        IVotingEscrow.LockedBalance memory lockAfter = escrow.locked(tokenId);
+        assertGt(lockAfter.end, lockBefore.end);
+    }
+
+    function testCreateTeamLockForExistingTokenCanBeUnlockedAfterExpiry() public {
+        uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        
+        escrow.createTeamLockFor(tokenId, address(owner2), teamUnlockTs);
+
+        // Fast forward past team unlock
+        vm.warp(teamUnlockTs + 1);
+
+        // Anyone can unlock the team lock
+        escrow.unlockTeamLock(tokenId);
+
+        // Now owner2 can transfer freely
+        vm.prank(address(owner2));
+        escrow.transferFrom(address(owner2), address(owner3), tokenId);
+
+        assertEq(escrow.ownerOf(tokenId), address(owner3));
+    }
+
+    function testCreateTeamLockForExistingTokenCanBeClawbacked() public {
+        uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        
+        escrow.createTeamLockFor(tokenId, address(owner2), teamUnlockTs);
+
+        // Fast forward to midpoint
+        vm.warp(block.timestamp + TEAM_LOCK_DURATION / 2);
+
+        // Team can clawback
+        (uint256 newTokenId, uint256 clawbackTokenId) = escrow.clawbackTeamLock(tokenId);
+
+        // Verify split
+        assertEq(escrow.ownerOf(newTokenId), address(owner2));
+        assertEq(escrow.ownerOf(clawbackTokenId), address(owner));
+
+        // Amounts should be split 50/50
+        IVotingEscrow.LockedBalance memory newLocked = escrow.locked(newTokenId);
+        IVotingEscrow.LockedBalance memory clawbackLocked = escrow.locked(clawbackTokenId);
+
+        assertEq(uint256(uint128(newLocked.amount)), TOKEN_1 / 2);
+        assertEq(uint256(uint128(clawbackLocked.amount)), TOKEN_1 - TOKEN_1 / 2);
+    }
+
+    // Note: Voting behavior is already tested in testTeamCanVoteOnTeamLock and testOwnerCanAlsoVoteOnTeamLock
+    // The createTeamLockFor(tokenId) overload doesn't change voting behavior
+
+    function testCannotTeamLockAlreadyTeamLockedToken() public {
+        // Create token with team lock using original function
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+
+        // Verify it has team lock
+        IVotingEscrow.TeamLock memory teamLock = escrow.teamLocks(tokenId);
+        assertEq(teamLock.endTs, teamUnlockTs);
+        
+        // Owner2 cannot transfer it back to team due to team lock restriction
+        vm.prank(address(owner2));
+        vm.expectRevert(IVotingEscrow.TeamLocked.selector);
+        escrow.transferFrom(address(owner2), address(owner), tokenId);
+    }
+
+    function testCannotCreateTeamLockForAlreadyTeamLockedToken() public {
+        // Create token with team lock using original function
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(this), teamUnlockTs);
+
+        // Verify it has team lock
+        IVotingEscrow.TeamLock memory teamLock = escrow.teamLocks(tokenId);
+        assertEq(teamLock.endTs, teamUnlockTs);
+        
+        // Team tries to apply another team lock to already team-locked token
+        // This fails because the token is owned by owner2, not team
+        uint256 newTeamUnlockTs = block.timestamp + TEAM_LOCK_DURATION * 2;
+        vm.expectRevert(IVotingEscrow.TeamLocked.selector);
+        escrow.createTeamLockFor(tokenId, address(owner3), newTeamUnlockTs);
+    }
+
+    function testCreateTeamLockForExistingPermanentToken() public {
+        // Create permanent lock
+        uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
+        escrow.lockPermanent(tokenId);
+
+        IVotingEscrow.LockedBalance memory lockBefore = escrow.locked(tokenId);
+        assertTrue(lockBefore.isPermanent);
+
+        // Team can still transfer it with team lock
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        escrow.createTeamLockFor(tokenId, address(owner2), teamUnlockTs);
+
+        // Verify transfer and team lock
+        assertEq(escrow.ownerOf(tokenId), address(owner2));
+        
+        IVotingEscrow.TeamLock memory teamLock = escrow.teamLocks(tokenId);
+        assertEq(teamLock.endTs, teamUnlockTs);
+
+        // Should still be permanent
+        IVotingEscrow.LockedBalance memory lockAfter = escrow.locked(tokenId);
+        assertTrue(lockAfter.isPermanent);
+    }
+
+    function testCreateTeamLockForMultipleTokensSequentially() public {
+        // Create multiple tokens
+        uint256 tokenId1 = escrow.createLock(TOKEN_1, MAXTIME);
+        uint256 tokenId2 = escrow.createLock(TOKEN_1, MAXTIME);
+        uint256 tokenId3 = escrow.createLock(TOKEN_1, MAXTIME);
+
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+
+        // Team lock all of them to different owners
+        escrow.createTeamLockFor(tokenId1, address(owner2), teamUnlockTs);
+        escrow.createTeamLockFor(tokenId2, address(owner3), teamUnlockTs);
+        escrow.createTeamLockFor(tokenId3, address(owner4), teamUnlockTs);
+
+        // Verify all transfers and team locks
+        assertEq(escrow.ownerOf(tokenId1), address(owner2));
+        assertEq(escrow.ownerOf(tokenId2), address(owner3));
+        assertEq(escrow.ownerOf(tokenId3), address(owner4));
+
+        assertEq(escrow.teamLocks(tokenId1).endTs, teamUnlockTs);
+        assertEq(escrow.teamLocks(tokenId2).endTs, teamUnlockTs);
+        assertEq(escrow.teamLocks(tokenId3).endTs, teamUnlockTs);
+    }
 }

@@ -14,11 +14,12 @@ contract PoolFactory is IPoolFactory {
     uint256 public stableFee;
     uint256 public volatileFee;
     uint256 public unstakedFee;
-    uint256 public constant MAX_UNSTAED_FEE = 5000; // 50%
+    uint256 public constant MAX_UNSTAKED_FEE = 5000; // 50%
     uint256 public constant MAX_FEE = 300; // 3%
-    // Override to indicate there is custom 0% fee - as a 0 value in the customFee mapping indicates
+    // Override to indicate there is custom 0% fee - as a 0 value in the customFee and customUnstakedFee mappings indicates
     // that no custom fee rate has been set
     uint256 public constant ZERO_FEE_INDICATOR = 420;
+    uint256 public constant ZERO_UNSTAKED_FEE_INDICATOR = 42000;
     address public feeManager;
 
     /// @dev used to change the name/symbol of the pool by calling emergencyCouncil
@@ -28,6 +29,7 @@ contract PoolFactory is IPoolFactory {
     address[] public allPools;
     mapping(address => bool) private _isPool; // simplified check if its a pool, given that `stable` flag might not be available in peripherals
     mapping(address => uint256) public customFee; // override for custom fees
+    mapping(address => uint256) public customUnstakedFee; // override for custom fees
 
     address internal _temp0;
     address internal _temp1;
@@ -121,15 +123,30 @@ contract PoolFactory is IPoolFactory {
     /// @inheritdoc IPoolFactory
     function setUnstakedFee(uint256 fee) external {
         if (msg.sender != feeManager) revert NotFeeManager();
-        if (fee > MAX_UNSTAED_FEE) revert FeeTooHigh();
+        if (fee > MAX_UNSTAKED_FEE) revert FeeTooHigh();
 
         unstakedFee = fee;
         emit SetUnstakedFee(fee);
     }
 
     /// @inheritdoc IPoolFactory
-    function getUnstakedFee() external view returns (uint256) {
-        return unstakedFee;
+    function setCustomUnstakedFee(address pool, uint256 fee) external {
+        if (msg.sender != feeManager) revert NotFeeManager();
+        if (fee > MAX_UNSTAKED_FEE && fee != ZERO_UNSTAKED_FEE_INDICATOR) revert FeeTooHigh();
+        if (!_isPool[pool]) revert InvalidPool();
+
+        customUnstakedFee[pool] = fee;
+        emit SetCustomUnstakedFee(pool, fee);
+    }
+
+    /// @inheritdoc IPoolFactory
+    function getUnstakedFee(address pool) external view returns (uint256) {
+        uint256 fee = customUnstakedFee[pool];
+        return fee == ZERO_UNSTAKED_FEE_INDICATOR
+            ? 0
+            :fee != 0
+                ? fee
+                : unstakedFee;
     }
 
     /// @inheritdoc IPoolFactory

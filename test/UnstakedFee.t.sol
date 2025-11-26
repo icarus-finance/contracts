@@ -20,7 +20,7 @@ contract UnstakedFeeTest is BaseTest {
         factory.setUnstakedFee(1000);
         
         assertEq(factory.unstakedFee(), 1000);
-        assertEq(factory.getUnstakedFee(), 1000);
+        assertEq(factory.getUnstakedFee(address(pool)), 1000);
     }
 
     function test_SetUnstakedFee_RevertIfNotFeeManager() public {

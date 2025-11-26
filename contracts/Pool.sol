@@ -391,7 +391,7 @@ contract Pool is IPool, ERC20Permit, ReentrancyGuard {
             // scope for reserve{0,1}Adjusted, avoids stack too deep errors
             (address _token0, address _token1) = (token0, token1);
             uint256 _fee = IPoolFactory(factory).getFee(address(this), stable);
-            uint256 _gaugefee = IPoolFactory(factory).getUnstakedFee();
+            uint256 _gaugefee = IPoolFactory(factory).getUnstakedFee(address(this));
             if (amount0In > 0) {
                 uint256 _fee0 = (amount0In * _fee) / BPS;
                 uint256 _gaugeFee0 = (_fee0 * _gaugefee) / BPS;
