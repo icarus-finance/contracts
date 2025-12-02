@@ -38,6 +38,9 @@ contract LpCandy is ILpCandy {
     uint256 public constant MAX_POOLS = 2000;
     uint256 public constant MAX_ITERATIONS = 16000;
 
+    address internal constant CL_FACTORY = 0x83bBBa92c68a367eAABd9d1AEBe6c71ec5E1d39f;
+    address internal constant CL_NFPM = 0x8e1F74CafDdFfC48051AEfe69d0c28F9ADe1c9e2;
+
     IVoter public immutable voter;
     IFactoryRegistry public immutable registry;
     address public immutable convertor;
@@ -75,7 +78,7 @@ contract LpCandy is ILpCandy {
 
         for (uint256 index = 0; index < factories.length && index < MAX_FACTORIES; index++) {
             IPoolFactory factory = IPoolFactory(factories[index]);
-            bool isCL = factories[index] == 0x5bB5A4b3ec1a5fa737eb86C210D5765C5f695D60;
+            bool isCL = factories[index] == CL_FACTORY;
 
             for (uint256 pindex = 0; pindex < factory.allPoolsLength() && pindex < MAX_ITERATIONS; pindex++) {
                 // If we've collected enough pools, exit
@@ -419,8 +422,8 @@ contract LpCandy is ILpCandy {
             IPoolFactory factory = IPoolFactory(_factories[index]);
 
             uint256 poolsCount = factory.allPoolsLength();
-            address nfpmAddr = _factories[index] == 0x83bBBa92c68a367eAABd9d1AEBe6c71ec5E1d39f
-                ? 0x8e1F74CafDdFfC48051AEfe69d0c28F9ADe1c9e2
+            address nfpmAddr = _factories[index] == CL_FACTORY
+                ? CL_NFPM
                 : address(0);
 
             // V2/Basic pool

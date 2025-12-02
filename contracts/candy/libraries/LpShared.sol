@@ -16,8 +16,8 @@ library LpShared {
     uint256 internal constant MAX_ITERATIONS = 16000;
 
     // CL Factory and NFPM addresses (network specific)
-    address internal constant CL_FACTORY = 0x5bB5A4b3ec1a5fa737eb86C210D5765C5f695D60;
-    address internal constant CL_NFPM = 0xF89D022FA91E03Edf8a07093031BA68128EB7D67;
+    address internal constant CL_FACTORY = 0x83bBBa92c68a367eAABd9d1AEBe6c71ec5E1d39f;
+    address internal constant CL_NFPM = 0x8e1F74CafDdFfC48051AEfe69d0c28F9ADe1c9e2;
 
     /**
      * @param _limit The max amount of pools to return

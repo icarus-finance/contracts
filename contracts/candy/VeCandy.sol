@@ -92,9 +92,16 @@ contract VeCandy {
     function all(uint256 _limit, uint256 _offset) external view returns (VeNFT[] memory) {
         VeNFT[] memory tempCol = new VeNFT[](_limit);
         uint256 colCount = 0;
+        uint256 toSkip = _offset;
         
-        for (uint256 index = _offset; index < _offset + MAX_RESULTS && colCount < _limit; index++) {
+        for (uint256 index = 0; index < MAX_RESULTS && colCount < _limit; index++) {
             if (ve.ownerOf(index) == address(0)) {
+                continue;
+            }
+            
+            // Skip veNFTs for offset (applied after filtering)
+            if (toSkip > 0) {
+                toSkip--;
                 continue;
             }
             
