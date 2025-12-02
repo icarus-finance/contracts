@@ -25,13 +25,19 @@ contract RewardsCandy is IRewardsCandy {
     uint256 public constant WEEK = 7 * 24 * 60 * 60;
 
     IVoter public immutable voter;
+    IFactoryRegistry public immutable registry;
+    address public immutable convertor;
 
     /**
      * @dev Sets up our external contract addresses
      * @param _voter Address of the voter contract
+     * @param _registry Address of the registry contract
+     * @param _convertor Address of the convertor contract
      */
-    constructor(address _voter) {
+    constructor(address _voter, address _registry, address _convertor) {
         voter = IVoter(_voter);
+        registry = IFactoryRegistry(_registry);
+        convertor = _convertor;
     }
 
     /**
@@ -45,7 +51,7 @@ contract RewardsCandy is IRewardsCandy {
         view 
         returns (LpEpoch[] memory) 
     {
-        ILpCandy.PoolData[] memory pools = LpShared.pools(_limit, _offset, address(0));
+        ILpCandy.PoolData[] memory pools = LpShared.pools(_limit, _offset, address(0), registry, voter, convertor);
         uint256 poolsCount = pools.length;
         uint256 counted = 0;
         
@@ -251,7 +257,7 @@ contract RewardsCandy is IRewardsCandy {
         view 
         returns (Reward[] memory) 
     {
-        ILpCandy.PoolData[] memory pools = LpShared.pools(_limit, _offset, address(0));
+        ILpCandy.PoolData[] memory pools = LpShared.pools(_limit, _offset, address(0), registry, voter, convertor);
         uint256 pools_count = pools.length;
         uint256 counted = 0;
         

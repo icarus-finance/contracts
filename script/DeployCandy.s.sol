@@ -56,7 +56,9 @@ contract DeployCandy is Script {
         );
 
         rewards = new RewardsCandy(
-            address(voter)
+            address(voter),
+            address(factoryRegistry),
+            address(convertor)
         );
 
         ve = new VeCandy(
