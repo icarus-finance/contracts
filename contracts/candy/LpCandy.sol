@@ -79,25 +79,38 @@ contract LpCandy is ILpCandy {
         for (uint256 index = 0; index < factories.length && index < MAX_FACTORIES; index++) {
             IPoolFactory factory = IPoolFactory(factories[index]);
             bool isCL = factories[index] == CL_FACTORY;
+            uint256 poolsLength = factory.allPoolsLength();
 
-            for (uint256 pindex = 0; pindex < factory.allPoolsLength() && pindex < MAX_ITERATIONS; pindex++) {
+            for (uint256 pindex = 0; pindex < poolsLength && pindex < MAX_ITERATIONS; pindex++) {
                 // If we've collected enough pools, exit
                 if (poolCount >= _limit) {
                     break;
                 }
 
-                (SwapLp memory swapLp, bool passesFilter) = _buildSwapLp(factory, pindex, isCL);
-
-                // Only process pools that pass the filter
-                if (passesFilter) {
-                    // Skip pools for offset (applied after filtering)
-                    if (toSkip > 0) {
-                        toSkip--;
-                        continue;
-                    }
-
-                    pools[poolCount++] = swapLp;
+                address poolAddr = factory.allPools(pindex);
+                
+                // Quick filter check: reserve0 > 0 or convertor
+                bool passesFilter;
+                if (poolAddr == convertor) {
+                    passesFilter = true;
+                } else if (isCL) {
+                    passesFilter = _safeBalanceOf(ICandyPool(poolAddr).token0(), poolAddr) > 0 || _safeBalanceOf(ICandyPool(poolAddr).token1(), poolAddr) > 0;
+                } else {
+                    passesFilter = ICandyPool(poolAddr).reserve0() > 0;
                 }
+
+                if (!passesFilter) {
+                    continue;
+                }
+
+                // Skip pools for offset (applied after filtering)
+                if (toSkip > 0) {
+                    toSkip--;
+                    continue;
+                }
+
+                // Only build full SwapLp when we're actually going to use it
+                pools[poolCount++] = _buildSwapLp(factory, poolAddr, isCL);
             }
 
             // Break outer loop if limit reached
@@ -121,42 +134,35 @@ contract LpCandy is ILpCandy {
     }
 
     /**
-     * @notice Helper to build SwapLp and determine if it passes the filter
+     * @notice Helper to build SwapLp struct
      * @param _factory The pool factory
-     * @param _pindex The pool index
+     * @param _poolAddr The pool address
      * @param _isCL Whether this is a CL factory
      * @return swapLp The SwapLp struct
-     * @return passesFilter Whether the pool passes the reserve filter
      */
     function _buildSwapLp(
         IPoolFactory _factory,
-        uint256 _pindex,
+        address _poolAddr,
         bool _isCL
-    ) internal view returns (SwapLp memory swapLp, bool passesFilter) {
-        address poolAddr = _factory.allPools(_pindex);
-        ICandyPool pool = ICandyPool(poolAddr);
+    ) internal view returns (SwapLp memory swapLp) {
+        ICandyPool pool = ICandyPool(_poolAddr);
         address token0 = pool.token0();
         int24 typeId = -1;
-        uint256 reserve0;
         uint256 poolFee;
 
         if (_isCL) {
             typeId = pool.tickSpacing();
-            reserve0 = _safeBalanceOf(token0, poolAddr);
             poolFee = uint256(pool.fee());
         } else {
             bool isStable = pool.stable();
             if (isStable) {
                 typeId = 0;
             }
-            reserve0 = pool.reserve0();
-            poolFee = _factory.getFee(poolAddr, isStable);
+            poolFee = _factory.getFee(_poolAddr, isStable);
         }
 
-        passesFilter = reserve0 > 0 || poolAddr == convertor;
-
         swapLp = SwapLp({
-            lp: poolAddr,
+            lp: _poolAddr,
             typeId: typeId,
             token0: token0,
             token1: pool.token1(),
@@ -440,21 +446,28 @@ contract LpCandy is ILpCandy {
                         continue;
                     }
 
+                    // Quick balance check before expensive _v2Position call
+                    uint256 lpBalance = ICandyPool(poolAddr).balanceOf(_account);
+                    address gaugeAddr = voter.gauges(poolAddr);
+                    uint256 stakedBalance = gaugeAddr != address(0) ? IGauge(gaugeAddr).balanceOf(_account) : 0;
+                    
+                    // Skip if user has no position in this pool
+                    if (lpBalance == 0 && stakedBalance == 0) {
+                        continue;
+                    }
+
+                    // Skip positions for offset (applied after filtering)
+                    if (toSkip > 0) {
+                        toSkip--;
+                        continue;
+                    }
+
                     Position memory pos = _v2Position(_account, poolAddr);
 
-                    // Only count positions that have actual data
-                    if (pos.lp != address(0) && (pos.liquidity > 0 || pos.staked > 0 || pos.emissions_earned > 0 || pos.unstaked_earned0 > 0 || pos.unstaked_earned1 > 0)) {
-                        // Skip positions for offset (applied after filtering)
-                        if (toSkip > 0) {
-                            toSkip--;
-                            continue;
-                        }
-
-                        if (positionsCount < MAX_POSITIONS) {
-                            positionsData[positionsCount++] = pos;
-                        } else {
-                            break;
-                        }
+                    if (positionsCount < MAX_POSITIONS) {
+                        positionsData[positionsCount++] = pos;
+                    } else {
+                        break;
                     }
                 }
             } else {
