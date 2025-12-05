@@ -72,7 +72,7 @@ contract Minter is IMinter {
         ve = IVotingEscrow(_ve);
         team = msg.sender;
         rewardsDistributor = IRewardsDistributor(_rewardsDistributor);
-        activePeriod = ((block.timestamp) / WEEK) * WEEK; // allow emissions this coming epoch
+        activePeriod = type(uint256).max - WEEK; // Set far future - emissions start after initialize()
     }
 
     /// @inheritdoc IMinter
@@ -108,6 +108,9 @@ contract Minter is IMinter {
             emit DistributeLocked(params.lockedWallets[i], params.lockedAmounts[i], _tokenId);
         }
         aero.forceApprove(address(ve), 0);
+
+        // Set activePeriod to current week - emissions can now start
+        activePeriod = (block.timestamp / WEEK) * WEEK;
     }
 
     /// @inheritdoc IMinter
