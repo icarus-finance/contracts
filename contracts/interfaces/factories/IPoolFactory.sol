@@ -10,6 +10,7 @@ interface IPoolFactory {
     event SetCustomFee(address indexed pool, uint256 fee);
     event SetUnstakedFee(uint256 indexed fee);
     event SetCustomUnstakedFee(address indexed pool, uint256 indexed fee);
+    event SetFee(bool stable, uint256 fee);
 
     error FeeInvalid();
     error FeeTooHigh();

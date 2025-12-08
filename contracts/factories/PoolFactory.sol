@@ -108,6 +108,7 @@ contract PoolFactory is IPoolFactory {
         } else {
             volatileFee = _fee;
         }
+        emit SetFee(_stable, _fee);
     }
 
     /// @inheritdoc IPoolFactory

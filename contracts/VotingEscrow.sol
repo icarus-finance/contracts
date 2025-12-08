@@ -905,7 +905,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
         address _to,
         uint256 _teamUnlockTs
     ) external nonReentrant onlyTeam {
-        if (!_isApprovedOrOwner(team, _tokenId)) revert NotApprovedOrOwner();
+        if (_ownerOf(_tokenId) != team) revert NotApprovedOrOwner();
         if (_teamUnlockTs <= block.timestamp) revert LockDurationNotInFuture();
 
         _transferFrom(team, _to, _tokenId, team);
