@@ -35,13 +35,13 @@ contract MinterTest is BaseTest {
         assertEq(minter.TAIL_START(), 8_969_150 * 1e18);
         assertEq(minter.weekly(), 10_000_000 * 1e18);
         assertEq(minter.tailEmissionRate(), 67); // .67%
-        assertEq(minter.activePeriod(), 604800);
+        assertEq(minter.activePeriod(), _getEpochStart(block.timestamp)); // set during initialize
         assertEq(minter.team(), address(owner));
         assertEq(minter.teamRate(), 500); // 5%
         assertEq(minter.MAXIMUM_TEAM_RATE(), 500); // 5%
         assertEq(minter.pendingTeam(), address(0));
         assertEq(minter.epochCount(), 0);
-        assertFalse(minter.initialized());
+        assertTrue(minter.initialized()); // initialized in Base setup
     }
 
     function testWeeklyEmissionGrowsFirst14WeeksThenFlipsAndDecays() public {
@@ -343,7 +343,10 @@ contract MinterTest is BaseTest {
 
     function testAcceptTeam() public {
         address newTeam = address(owner2);
-        stdstore.target(address(minter)).sig("pendingTeam()").checked_write(newTeam);
+        // Use setTeam instead of stdstore to avoid storage packing issues
+        // (pendingTeam and initialized share a storage slot)
+        vm.prank(minter.team());
+        minter.setTeam(newTeam);
 
         vm.prank(newTeam);
         vm.expectEmit(true, false, false, false, address(minter));

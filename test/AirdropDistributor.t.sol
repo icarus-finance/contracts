@@ -21,22 +21,9 @@ contract AirdropDistributorTest is BaseTest {
     }
 
     function _setUp() public override {
-        address[] memory _wallets = new address[](1);
-        uint256[] memory _amounts = new uint256[](1);
-        _wallets[0] = address(airdrop);
-        _amounts[0] = INITIAL_DISTRIBUTOR_BALANCE;
-
-        // Mints tokens to Airdrop Distributor
+        // Deal tokens to Airdrop Distributor
         assertEq(AERO.balanceOf(address(airdrop)), 0);
-        vm.prank(minter.team());
-        minter.initialize(
-            IMinter.AirdropParams({
-                liquidWallets: _wallets,
-                liquidAmounts: _amounts,
-                lockedWallets: new address[](0),
-                lockedAmounts: new uint256[](0)
-            })
-        );
+        deal(address(AERO), address(airdrop), INITIAL_DISTRIBUTOR_BALANCE);
     }
 
     function testAirdropDistributorDeployment() public {

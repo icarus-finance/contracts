@@ -63,6 +63,7 @@ abstract contract Base is Script, Test {
     Voter public voter;
     RewardsDistributor public distributor;
     Minter public minter;
+    Minter public minter2;
     AirdropDistributor public airdrop;
     Gauge public gauge;
     address public governor;
@@ -99,8 +100,15 @@ abstract contract Base is Script, Test {
 
         // Setup minter
         minter = new Minter(address(voter), address(escrow), address(distributor));
+        minter2 = new Minter(address(voter), address(escrow), address(distributor));
         distributor.setMinter(address(minter));
         AERO.setMinter(address(minter));
+        minter.initialize(IMinter.AirdropParams({
+            liquidWallets: new address[](0),
+            liquidAmounts: new uint256[](0),
+            lockedWallets: new address[](0),
+            lockedAmounts: new uint256[](0)
+        }));
 
         airdrop = new AirdropDistributor(address(escrow));
 

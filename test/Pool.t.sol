@@ -279,6 +279,12 @@ contract PoolTest is BaseTest {
         minter = new Minter(address(voter), address(escrow), address(distributor));
         distributor.setMinter(address(minter));
         AERO.setMinter(address(minter));
+        minter.initialize(IMinter.AirdropParams({
+            liquidWallets: new address[](0),
+            liquidAmounts: new uint256[](0),
+            lockedWallets: new address[](0),
+            lockedAmounts: new uint256[](0)
+        }));
         address[] memory tokens = new address[](5);
         tokens[0] = address(USDC);
         tokens[1] = address(FRAX);
