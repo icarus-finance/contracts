@@ -84,7 +84,7 @@ contract DeployCore is Base {
 
         // Set contract vars
         factory.setFeeManager(feeManager);
-        factory.setVoter(address(voter));
+        // factory.setVoter(address(voter));
 
         // finish broadcasting transactions
         vm.stopBroadcast();

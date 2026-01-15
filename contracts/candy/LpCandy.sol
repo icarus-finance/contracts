@@ -38,6 +38,9 @@ contract LpCandy is ILpCandy {
     uint256 public constant MAX_POOLS = 2000;
     uint256 public constant MAX_ITERATIONS = 16000;
 
+    address internal constant CL_FACTORY = 0x83bBBa92c68a367eAABd9d1AEBe6c71ec5E1d39f;
+    address internal constant CL_NFPM = 0x8e1F74CafDdFfC48051AEfe69d0c28F9ADe1c9e2;
+
     IVoter public immutable voter;
     IFactoryRegistry public immutable registry;
     address public immutable convertor;
@@ -67,71 +70,52 @@ contract LpCandy is ILpCandy {
      */
     function forSwaps(uint256 _limit, uint256 _offset) external view returns (SwapLp[] memory) {
         address[] memory factories = registry.poolFactories();
-        uint256 factoriesCount = factories.length;
 
         // Pre-allocate with maximum size, we'll resize later
         SwapLp[] memory pools = new SwapLp[](_limit);
         uint256 poolCount = 0;
         uint256 toSkip = _offset;
-        uint256 left = _limit;
 
-        for (uint256 index = 0; index < factoriesCount && index < MAX_FACTORIES; index++) {
+        for (uint256 index = 0; index < factories.length && index < MAX_FACTORIES; index++) {
             IPoolFactory factory = IPoolFactory(factories[index]);
+            bool isCL = factories[index] == CL_FACTORY;
+            uint256 poolsLength = factory.allPoolsLength();
 
-            address nfpm = factories[index] == 0x5bB5A4b3ec1a5fa737eb86C210D5765C5f695D60
-                ? 0xF89D022FA91E03Edf8a07093031BA68128EB7D67
-                : address(0);
-            uint256 poolsCount = factory.allPoolsLength();
-
-            for (uint256 pindex = 0; pindex < poolsCount && pindex < MAX_ITERATIONS; pindex++) {
-                // If no pools to process are left...
-                if (left == 0) {
+            for (uint256 pindex = 0; pindex < poolsLength && pindex < MAX_ITERATIONS; pindex++) {
+                // If we've collected enough pools, exit
+                if (poolCount >= _limit) {
                     break;
                 }
 
-                // Basically skip calls for offset records...
+                address poolAddr = factory.allPools(pindex);
+                
+                // Quick filter check: reserve0 > 0 or convertor
+                bool passesFilter;
+                if (poolAddr == convertor) {
+                    passesFilter = true;
+                } else if (isCL) {
+                    passesFilter = _safeBalanceOf(ICandyPool(poolAddr).token0(), poolAddr) > 0 || _safeBalanceOf(ICandyPool(poolAddr).token1(), poolAddr) > 0;
+                } else {
+                    passesFilter = ICandyPool(poolAddr).reserve0() > 0;
+                }
+
+                if (!passesFilter) {
+                    continue;
+                }
+
+                // Skip pools for offset (applied after filtering)
                 if (toSkip > 0) {
                     toSkip--;
                     continue;
-                } else {
-                    left--;
                 }
 
-                address poolAddr = factory.allPools(pindex);
-                ICandyPool pool = ICandyPool(poolAddr);
-                int24 typeId = -1;
-                address token0 = pool.token0();
-                address token1 = pool.token1();
-                uint256 reserve0 = 0;
-                uint256 poolFee = 0;
+                // Only build full SwapLp when we're actually going to use it
+                pools[poolCount++] = _buildSwapLp(factory, poolAddr, isCL);
+            }
 
-                if (nfpm != address(0)) {
-                    typeId = pool.tickSpacing();
-                    reserve0 = _safeBalanceOf(token0, poolAddr);
-                    poolFee = uint256(pool.fee());
-                } else {
-                    if (pool.stable()) {
-                        typeId = 0;
-                    }
-                    reserve0 = pool.reserve0();
-                    poolFee = factory.getFee(poolAddr, (typeId == 0));
-                }
-
-                if (reserve0 > 0 || poolAddr == convertor) {
-                    pools[poolCount] = SwapLp({
-                        lp: poolAddr,
-                        typeId: typeId,
-                        token0: token0,
-                        token1: token1,
-                        factory: address(factory),
-                        pool_fee: poolFee
-                    });
-                    poolCount++;
-
-                    if (poolCount >= _limit) {
-                        break;
-                    }
-                }
+            // Break outer loop if limit reached
+            if (poolCount >= _limit) {
+                break;
             }
         }
 
@@ -150,6 +134,44 @@ contract LpCandy is ILpCandy {
     }
 
     /**
+     * @notice Helper to build SwapLp struct
+     * @param _factory The pool factory
+     * @param _poolAddr The pool address
+     * @param _isCL Whether this is a CL factory
+     * @return swapLp The SwapLp struct
+     */
+    function _buildSwapLp(
+        IPoolFactory _factory,
+        address _poolAddr,
+        bool _isCL
+    ) internal view returns (SwapLp memory swapLp) {
+        ICandyPool pool = ICandyPool(_poolAddr);
+        address token0 = pool.token0();
+        int24 typeId = -1;
+        uint256 poolFee;
+
+        if (_isCL) {
+            typeId = pool.tickSpacing();
+            poolFee = uint256(pool.fee());
+        } else {
+            bool isStable = pool.stable();
+            if (isStable) {
+                typeId = 0;
+            }
+            poolFee = _factory.getFee(_poolAddr, isStable);
+        }
+
+        swapLp = SwapLp({
+            lp: _poolAddr,
+            typeId: typeId,
+            token0: token0,
+            token1: pool.token1(),
+            factory: address(_factory),
+            pool_fee: poolFee
+        });
+    }
+
+    /**
      * @notice Returns a collection of tokens data based on available pools
      * @param _limit The max amount of tokens to return
      * @param _offset The amount of pools to skip
@@ -163,7 +185,7 @@ contract LpCandy is ILpCandy {
         address _account,
         address[] memory _addresses
     ) external view returns (Token[] memory) {
-        PoolData[] memory pools = LpShared.pools(_limit, _offset, address(0));
+        PoolData[] memory pools = LpShared.pools(_limit, _offset, address(0), registry, voter, convertor);
         uint256 poolsCount = pools.length;
         uint256 addressesCount = _addresses.length;
 
@@ -238,7 +260,7 @@ contract LpCandy is ILpCandy {
         // Pre-allocate with maximum size, we'll resize later
         Lp[] memory col = new Lp[](_limit);
         uint256 colCount = 0;
-        PoolData[] memory pools = LpShared.pools(_limit, _offset, address(0));
+        PoolData[] memory pools = LpShared.pools(_limit, _offset, address(0), registry, voter, convertor);
         uint256 poolsCount = pools.length;
 
         for (uint256 index = 0; index < poolsCount && colCount < _limit; index++) {
@@ -276,7 +298,7 @@ contract LpCandy is ILpCandy {
      */
     function byAddress(address _address) external view returns (Lp memory) {
         // Limit is max, internal call will return when _address is hit
-        PoolData[] memory poolData = LpShared.pools(16000, 0, _address);
+        PoolData[] memory poolData = LpShared.pools(16000, 0, _address, registry, voter, convertor);
         require(poolData.length > 0, "Pool not found");
 
         ICandyPool pool = ICandyPool(poolData[0].pool);
@@ -299,7 +321,7 @@ contract LpCandy is ILpCandy {
     function byIndex(uint256 _index) external view returns (Lp memory) {
         // Basically index is the offset and the limit is always one...
         // This will fire if _index is out of bounds
-        PoolData[] memory poolData = LpShared.pools(1, _index, address(0));
+        PoolData[] memory poolData = LpShared.pools(1, _index, address(0), registry, voter, convertor);
         require(poolData.length > 0, "Pool index out of bounds");
 
         ICandyPool pool = ICandyPool(poolData[0].pool);
@@ -374,8 +396,8 @@ contract LpCandy is ILpCandy {
 
     /**
      * @notice Returns a collection of positions for a set of factories
-     * @param _limit The max amount of pools to process
-     * @param _offset The amount of pools to skip (for optimization)
+     * @param _limit The max amount of positions to return
+     * @param _offset The amount of positions to skip
      * @param _account The account to fetch positions for
      * @param _factories The factories to fetch from
      * @return Array of Position structs
@@ -395,68 +417,70 @@ contract LpCandy is ILpCandy {
         }
 
         uint256 toSkip = _offset;
-        uint256 poolsDone = 0;
         uint256 factoriesCount = _factories.length;
 
         for (uint256 index = 0; index < MAX_FACTORIES && index < factoriesCount; index++) {
+            // Exit if we've collected enough positions
+            if (positionsCount >= _limit) {
+                break;
+            }
+
             IPoolFactory factory = IPoolFactory(_factories[index]);
 
             uint256 poolsCount = factory.allPoolsLength();
-            address nfpmAddr = _factories[index] == 0x5bB5A4b3ec1a5fa737eb86C210D5765C5f695D60
-                ? 0xF89D022FA91E03Edf8a07093031BA68128EB7D67
+            address nfpmAddr = _factories[index] == CL_FACTORY
+                ? CL_NFPM
                 : address(0);
 
             // V2/Basic pool
             if (nfpmAddr == address(0)) {
                 for (uint256 pindex = 0; pindex < MAX_ITERATIONS && pindex < poolsCount; pindex++) {
-                    if (poolsDone >= _limit) {
+                    if (positionsCount >= _limit) {
                         break;
-                    }
-
-                    // Skip for offset
-                    if (toSkip > 0) {
-                        toSkip--;
-                        continue;
-                    } else {
-                        poolsDone++;
                     }
 
                     address poolAddr = factory.allPools(pindex);
 
+                    // Skip convertor pool entirely
                     if (poolAddr == convertor) {
+                        continue;
+                    }
+
+                    // Quick balance check before expensive _v2Position call
+                    uint256 lpBalance = ICandyPool(poolAddr).balanceOf(_account);
+                    address gaugeAddr = voter.gauges(poolAddr);
+                    uint256 stakedBalance = gaugeAddr != address(0) ? IGauge(gaugeAddr).balanceOf(_account) : 0;
+                    
+                    // Skip if user has no position in this pool
+                    if (lpBalance == 0 && stakedBalance == 0) {
+                        continue;
+                    }
+
+                    // Skip positions for offset (applied after filtering)
+                    if (toSkip > 0) {
+                        toSkip--;
                         continue;
                     }
 
                     Position memory pos = _v2Position(_account, poolAddr);
 
-                    if (pos.lp != address(0) && (pos.liquidity > 0 || pos.staked > 0 || pos.emissions_earned > 0 || pos.unstaked_earned0 > 0 || pos.unstaked_earned1 > 0)) {
-                        if (positionsCount < MAX_POSITIONS) {
-                            positionsData[positionsCount++] = pos;
-                        } else {
-                            break;
-                        }
+                    if (positionsCount < MAX_POSITIONS) {
+                        positionsData[positionsCount++] = pos;
+                    } else {
+                        break;
                     }
                 }
             } else {
                 INFPositionManager nfpm = INFPositionManager(nfpmAddr);
                 // CL pools
                 for (uint256 pindex = 0; pindex < MAX_POOLS && pindex < poolsCount; pindex++) {
-                    if (poolsDone >= _limit) {
+                    if (positionsCount >= _limit) {
                         break;
-                    }
-
-                    // Skip for offset
-                    if (toSkip > 0) {
-                        toSkip--;
-                        continue;
-                    } else {
-                        poolsDone++;
                     }
 
                     address poolAddr = factory.allPools(pindex);
                     address gaugeAddr = voter.gauges(poolAddr);
                     ICLGauge gauge = ICLGauge(gaugeAddr);
-                    // bool staked = false;
 
                     // Fetch unstaked CL positions if supported
                     uint256[] memory userPosIds;
@@ -468,6 +492,16 @@ contract LpCandy is ILpCandy {
 
                     if (userPosIds.length > 0) {
                         for (uint256 upindex = 0; upindex < userPosIds.length; upindex++) {
+                            if (positionsCount >= _limit) {
+                                break;
+                            }
+
+                            // Skip positions for offset
+                            if (toSkip > 0) {
+                                toSkip--;
+                                continue;
+                            }
+
                             Position memory pos = _clPosition(
                                 userPosIds[upindex],
                                 _account,
@@ -490,6 +524,16 @@ contract LpCandy is ILpCandy {
                         uint256[] memory stakedPositionIds = gauge.stakedValues(_account);
 
                         for (uint256 sindex = 0; sindex < stakedPositionIds.length; sindex++) {
+                            if (positionsCount >= _limit) {
+                                break;
+                            }
+
+                            // Skip positions for offset
+                            if (toSkip > 0) {
+                                toSkip--;
+                                continue;
+                            }
+
                             Position memory pos = _clPosition(
                                 stakedPositionIds[sindex],
                                 _account,

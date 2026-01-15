@@ -92,9 +92,16 @@ contract VeCandy {
     function all(uint256 _limit, uint256 _offset) external view returns (VeNFT[] memory) {
         VeNFT[] memory tempCol = new VeNFT[](_limit);
         uint256 colCount = 0;
+        uint256 toSkip = _offset;
         
-        for (uint256 index = _offset; index < _offset + MAX_RESULTS && colCount < _limit; index++) {
+        for (uint256 index = 0; index < MAX_RESULTS && colCount < _limit; index++) {
             if (ve.ownerOf(index) == address(0)) {
+                continue;
+            }
+            
+            // Skip veNFTs for offset (applied after filtering)
+            if (toSkip > 0) {
+                toSkip--;
                 continue;
             }
             
@@ -113,26 +120,40 @@ contract VeCandy {
 
     /**
      * @notice Returns user collection of veNFT data
+     * @param _limit The max amount of veNFTs to return
+     * @param _offset The amount of veNFTs to skip
      * @param _account The account address
      * @return Array for VeNFT structs
      */
-    function byAccount(address _account) external view returns (VeNFT[] memory) {
+    function byAccount(uint256 _limit, uint256 _offset, address _account) external view returns (VeNFT[] memory) {
         if (_account == address(0)) {
             return new VeNFT[](0);
         }
         
-        VeNFT[] memory tempCol = new VeNFT[](MAX_RESULTS);
+        VeNFT[] memory tempCol = new VeNFT[](_limit);
         uint256 colCount = 0;
+        uint256 toSkip = _offset;
         
-        for (uint256 index = 0; index < MAX_RESULTS; index++) {
+        for (uint256 index = 0; index < MAX_RESULTS && colCount < _limit; index++) {
             uint256 venft_id = ve.ownerToNFTokenIdList(_account, index);
             
             if (venft_id == 0) {
                 break;
             }
             
+            // Skip veNFTs for offset
+            if (toSkip > 0) {
+                toSkip--;
+                continue;
+            }
+            
             tempCol[colCount] = _byId(venft_id);
             colCount++;
+        }
+        
+        // If limit is reached just return the array
+        if (colCount == _limit) {
+            return tempCol;
         }
         
         // Resize array to actual size

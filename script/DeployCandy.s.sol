@@ -48,16 +48,18 @@ contract DeployCandy is Script {
 
         vm.startBroadcast(deployerAddress);
 
-        candy = new LpCandy(
-            address(voter),
-            address(factoryRegistry),
-            address(convertor),
-            address(slipstreamHelper)
-        );
+        // candy = new LpCandy(
+        //     address(voter),
+        //     address(factoryRegistry),
+        //     address(convertor),
+        //     address(slipstreamHelper)
+        // );
 
-        rewards = new RewardsCandy(
-            address(voter)
-        );
+        // rewards = new RewardsCandy(
+        //     address(voter),
+        //     address(factoryRegistry),
+        //     address(convertor)
+        // );
 
         ve = new VeCandy(
             address(voter),
@@ -69,8 +71,8 @@ contract DeployCandy is Script {
         // Write to file
         path = string.concat(basePath, "output/DeployCandy-");
         path = string.concat(path, outputFilename);
-        vm.writeJson(vm.serializeAddress("v2", "LpCandy", address(candy)), path);
-        vm.writeJson(vm.serializeAddress("v2", "RewardsCandy", address(rewards)), path);
+        // vm.writeJson(vm.serializeAddress("v2", "LpCandy", address(candy)), path);
+        // vm.writeJson(vm.serializeAddress("v2", "RewardsCandy", address(rewards)), path);
         vm.writeJson(vm.serializeAddress("v2", "VeCandy", address(ve)), path);
     }
 }

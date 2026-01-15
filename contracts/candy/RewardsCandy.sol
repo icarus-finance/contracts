@@ -25,19 +25,25 @@ contract RewardsCandy is IRewardsCandy {
     uint256 public constant WEEK = 7 * 24 * 60 * 60;
 
     IVoter public immutable voter;
+    IFactoryRegistry public immutable registry;
+    address public immutable convertor;
 
     /**
      * @dev Sets up our external contract addresses
      * @param _voter Address of the voter contract
+     * @param _registry Address of the registry contract
+     * @param _convertor Address of the convertor contract
      */
-    constructor(address _voter) {
+    constructor(address _voter, address _registry, address _convertor) {
         voter = IVoter(_voter);
+        registry = IFactoryRegistry(_registry);
+        convertor = _convertor;
     }
 
     /**
      * @notice Returns all pools latest epoch data
-     * @param _limit The max amount of pools to check for epochs
-     * @param _offset The amount of pools to skip
+     * @param _limit The max amount of alive pools to return epochs for
+     * @param _offset The amount of alive pools to skip
      * @return Array for LpEpoch structs
      */
     function epochsLatest(uint256 _limit, uint256 _offset) 
@@ -45,23 +51,34 @@ contract RewardsCandy is IRewardsCandy {
         view 
         returns (LpEpoch[] memory) 
     {
-        ILpCandy.PoolData[] memory pools = LpShared.pools(_limit, _offset, address(0));
+        // Fetch more pools than needed to account for dead gauges being filtered out
+        // We fetch from offset 0 and apply offset manually after filtering
+        uint256 fetchLimit = (_limit + _offset) * 2; // Fetch extra to handle dead pools
+        if (fetchLimit > 500) fetchLimit = 500; // Cap to avoid gas issues
+        
+        ILpCandy.PoolData[] memory pools = LpShared.pools(fetchLimit, 0, address(0), registry, voter, convertor);
         uint256 poolsCount = pools.length;
-        uint256 counted = 0;
+        uint256 toSkip = _offset;
         
         LpEpoch[] memory tempCol = new LpEpoch[](_limit);
         uint256 actualCount = 0;
         
-        for (uint256 index = 0; index < poolsCount && counted < _limit; index++) {
+        for (uint256 index = 0; index < poolsCount && actualCount < _limit; index++) {
             ILpCandy.PoolData memory poolData = pools[index];
             
+            // Only process alive gauges
             if (!voter.isAlive(poolData.gauge)) {
+                continue;
+            }
+            
+            // Skip alive pools for offset (applied after filtering)
+            if (toSkip > 0) {
+                toSkip--;
                 continue;
             }
             
             tempCol[actualCount] = _epochLatestByAddress(poolData.pool, poolData.gauge);
             actualCount++;
-            counted++;
         }
 
         if (actualCount == _limit) {
@@ -251,7 +268,7 @@ contract RewardsCandy is IRewardsCandy {
         view 
         returns (Reward[] memory) 
     {
-        ILpCandy.PoolData[] memory pools = LpShared.pools(_limit, _offset, address(0));
+        ILpCandy.PoolData[] memory pools = LpShared.pools(_limit, _offset, address(0), registry, voter, convertor);
         uint256 pools_count = pools.length;
         uint256 counted = 0;
         

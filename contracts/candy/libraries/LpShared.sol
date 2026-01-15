@@ -15,20 +15,29 @@ library LpShared {
     uint256 internal constant MAX_POOLS = 2000;
     uint256 internal constant MAX_ITERATIONS = 16000;
 
-    IFactoryRegistry internal constant registry =
-        IFactoryRegistry(0x5394D7ABbE45852a74B77198a8a805101fe81974);
-    IVoter internal constant voter = IVoter(0x4ef9959218f463b51cB7Cb98F72Af6aC64676A1b);
-    address internal constant convertor = 0x1111111111111111111111111111111111111111;
+    // CL Factory and NFPM addresses (network specific)
+    address internal constant CL_FACTORY = 0x83bBBa92c68a367eAABd9d1AEBe6c71ec5E1d39f;
+    address internal constant CL_NFPM = 0x8e1F74CafDdFfC48051AEfe69d0c28F9ADe1c9e2;
 
     /**
      * @param _limit The max amount of pools to return
      * @param _offset The amount of pools to skip (for optimization)
      * @param _toFind The pool address to find
+     * @param _registry The factory registry address
+     * @param _voter The voter address
+     * @param _convertor The convertor address to skip
      * @notice Returns a compiled list of pool and its factory and gauge
-     * @return Array of four addresses (factory, pool, gauge, nfpm)
+     * @return Array of PoolData structs
      */
-    function pools(uint256 _limit, uint256 _offset, address _toFind) public view returns (ILpCandy.PoolData[] memory) {
-        address[] memory factories = registry.poolFactories();
+    function pools(
+        uint256 _limit,
+        uint256 _offset,
+        address _toFind,
+        IFactoryRegistry _registry,
+        IVoter _voter,
+        address _convertor
+    ) public view returns (ILpCandy.PoolData[] memory) {
+        address[] memory factories = _registry.poolFactories();
         uint256 factoriesCount = factories.length;
 
         uint256 toSkip = _offset;
@@ -41,9 +50,7 @@ library LpShared {
             IPoolFactory factory = IPoolFactory(factories[index]);
 
             uint256 poolsCount = factory.allPoolsLength();
-            address nfpm = factories[index] == 0x5bB5A4b3ec1a5fa737eb86C210D5765C5f695D60
-                ? 0xF89D022FA91E03Edf8a07093031BA68128EB7D67
-                : address(0);
+            address nfpm = factories[index] == CL_FACTORY ? CL_NFPM : address(0);
 
             for (uint256 pindex = 0; pindex < MAX_ITERATIONS && pindex < poolsCount; pindex++) {
                 // Check if we've collected enough pools
@@ -54,7 +61,7 @@ library LpShared {
                 address poolAddr = factory.allPools(pindex);
 
                 // Skip the convertor pool entirely (doesn't count towards offset or results)
-                if (pindex == 0 && poolAddr == convertor) {
+                if (pindex == 0 && poolAddr == _convertor) {
                     continue;
                 }
 
@@ -68,7 +75,7 @@ library LpShared {
                     continue;
                 }
 
-                address gaugeAddr = voter.gauges(poolAddr);
+                address gaugeAddr = _voter.gauges(poolAddr);
 
                 poolsData[poolCount] = ILpCandy.PoolData({factory: address(factory), pool: poolAddr, gauge: gaugeAddr, nfpm: nfpm});
                 poolCount++;
