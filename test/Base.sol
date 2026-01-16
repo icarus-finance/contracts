@@ -72,7 +72,7 @@ abstract contract Base is Script, Test {
     /// @dev Global address to set
     address public allowedManager;
 
-    function _coreSetup() public {
+    function _coreSetup(bool _init) public {
         deployFactories();
 
         forwarder = new Forwarder();
@@ -102,13 +102,15 @@ abstract contract Base is Script, Test {
         minter = new Minter(address(voter), address(escrow), address(distributor));
         minter2 = new Minter(address(voter), address(escrow), address(distributor));
         distributor.setMinter(address(minter));
+        if (_init) {
         AERO.setMinter(address(minter));
-        minter.initialize(IMinter.AirdropParams({
-            liquidWallets: new address[](0),
-            liquidAmounts: new uint256[](0),
-            lockedWallets: new address[](0),
-            lockedAmounts: new uint256[](0)
-        }));
+            minter.initialize(IMinter.AirdropParams({
+                liquidWallets: new address[](0),
+                liquidAmounts: new uint256[](0),
+                lockedWallets: new address[](0),
+                lockedAmounts: new uint256[](0)
+            }));
+        }
 
         airdrop = new AirdropDistributor(address(escrow));
 

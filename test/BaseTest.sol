@@ -84,7 +84,7 @@ abstract contract BaseTest is Base, TestOwner {
     /// @dev Note that most permissions are given to owner
     function _testSetup() public {
         _testSetupBefore();
-        _coreSetup();
+        _coreSetup(true);
         _testSetupAfter();
     }
 

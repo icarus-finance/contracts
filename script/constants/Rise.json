@@ -1,69 +1,20 @@
 {
-    "allowedManager": "0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813",
-    "feeManager": "0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813",
-    "emergencyCouncil": "0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813",
-    "team": "0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813",
+    "allowedManager": "0x3f7f1158A89780433981c77780F62B66935B318A",
+    "feeManager": "0x3f7f1158A89780433981c77780F62B66935B318A",
+    "emergencyCouncil": "0x3f7f1158A89780433981c77780F62B66935B318A",
+    "team": "0x3f7f1158A89780433981c77780F62B66935B318A",
     "WETH": "0x4200000000000000000000000000000000000006",
-    "whitelistTokens": [
-        "0x4200000000000000000000000000000000000006",
-        "0x8a93d247134d91e0de6f96547cb0204e5be8e5d8",
-        "0x40918ba7f132e0acba2ce4de4c4baf9bd2d7d849",
-        "0xf32d39ff9f6aa7a7a64d7a4f00a54826ef791a55",
-        "0xd6e1afe5ca8d00a2efc01b89997abe2de47fdfaf",
-        "0x99dbe4aea58e518c50a1c04ae9b48c9f6354612f",
-        "0x6f6f570f45833e249e27022648a26f4076f48f78"
-    ],
+    "whitelistTokens": [],
     "pools": [
         {
             "stable": false,
             "tokenA": "0x8a93d247134d91e0de6f96547cb0204e5be8e5d8",
             "tokenB": "0x4200000000000000000000000000000000000006"
-        },
-        {
-            "stable": false,
-            "tokenA": "0xd6e1afe5ca8d00a2efc01b89997abe2de47fdfaf",
-            "tokenB": "0x4200000000000000000000000000000000000006"
-        },
-        {
-            "stable": true,
-            "tokenA": "0x8a93d247134d91e0de6f96547cb0204e5be8e5d8",
-            "tokenB": "0x40918ba7f132e0acba2ce4de4c4baf9bd2d7d849"
         }
     ],
-    "poolsAero": [
-        {
-            "stable": false,
-            "token": "0x4200000000000000000000000000000000000006"
-        }
-    ],
+    "poolsAero": [],
     "minter": {
-        "liquid": [
-            {
-                "amount": 350000000000000000000000000,
-                "wallet": "0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813"
-            },
-            {
-                "amount": 50000000000000000000000000,
-                "wallet": "0x7E6D003c0A3AA5BE66e3fbDb4Cddb7Ac22F045dB"
-            }
-        ],
-        "locked": [
-            {
-                "amount": 40000000000000000000000000,
-                "wallet": "0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813"
-            },
-            {
-                "amount": 10000000000000000000000000,
-                "wallet": "0x05D3ed0385bEc3a47F1Fc67971E75B6e3041d813"
-            },
-            {
-                "amount": 40000000000000000000000000,
-                "wallet": "0x7E6D003c0A3AA5BE66e3fbDb4Cddb7Ac22F045dB"
-            },
-            {
-                "amount": 10000000000000000000000000,
-                "wallet": "0x7E6D003c0A3AA5BE66e3fbDb4Cddb7Ac22F045dB"
-            }
-        ]
+        "liquid": [],
+        "locked": []
     }
 }

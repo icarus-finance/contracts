@@ -45,7 +45,7 @@ contract DeployCore is Base {
 
     function run() public {
         _deploySetupBefore();
-        _coreSetup();
+        _coreSetup(false);
         _deploySetupAfter();
     }
 
@@ -71,11 +71,12 @@ contract DeployCore is Base {
 
     function _deploySetupAfter() public {
         // Initializes the Minter
-        _initializeMinter();
+        // _initializeMinter();
 
         // Set protocol state to team
         escrow.setTeam(team);
         minter.setTeam(team);
+        minter.acceptTeam();
         factory.setPauser(team);
         voter.setEmergencyCouncil(emergencyCouncil);
         voter.setEpochGovernor(team);
@@ -106,28 +107,28 @@ contract DeployCore is Base {
         vm.writeJson(vm.serializeAddress("v2", "AirdropDistributor", address(airdrop)), path);
     }
 
-    function _initializeMinter() public {
-        // Fetching Liquid Token Airdrop info, including the address of the recently deployed AirdropDistributor
-        AirdropInfo[] memory infos = abi.decode(jsonConstants.parseRaw(".minter.liquid"), (AirdropInfo[]));
-        (address[] memory liquidWallets, uint256[] memory liquidAmounts) = _getLiquidAirdropInfo(
-            address(airdrop),
-            AIRDROPPER_BALANCE,
-            infos
-        );
+    // function _initializeMinter() public {
+    //     // Fetching Liquid Token Airdrop info, including the address of the recently deployed AirdropDistributor
+    //     AirdropInfo[] memory infos = abi.decode(jsonConstants.parseRaw(".minter.liquid"), (AirdropInfo[]));
+    //     (address[] memory liquidWallets, uint256[] memory liquidAmounts) = _getLiquidAirdropInfo(
+    //         address(airdrop),
+    //         AIRDROPPER_BALANCE,
+    //         infos
+    //     );
 
-        // Fetching Locked NFTs Airdrop info
-        infos = abi.decode(jsonConstants.parseRaw(".minter.locked"), (AirdropInfo[]));
-        (address[] memory lockedWallets, uint256[] memory lockedAmounts) = _getLockedAirdropInfo(infos);
-        // Airdrops All Tokens
-        minter.initialize(
-            IMinter.AirdropParams({
-                liquidWallets: liquidWallets,
-                liquidAmounts: liquidAmounts,
-                lockedWallets: lockedWallets,
-                lockedAmounts: lockedAmounts
-            })
-        );
-    }
+    //     // Fetching Locked NFTs Airdrop info
+    //     infos = abi.decode(jsonConstants.parseRaw(".minter.locked"), (AirdropInfo[]));
+    //     (address[] memory lockedWallets, uint256[] memory lockedAmounts) = _getLockedAirdropInfo(infos);
+    //     // Airdrops All Tokens
+    //     minter.initialize(
+    //         IMinter.AirdropParams({
+    //             liquidWallets: liquidWallets,
+    //             liquidAmounts: liquidAmounts,
+    //             lockedWallets: lockedWallets,
+    //             lockedAmounts: lockedAmounts
+    //         })
+    //     );
+    // }
 
     function _getLiquidAirdropInfo(
         address airdropDistributor,
