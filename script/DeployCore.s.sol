@@ -85,6 +85,7 @@ contract DeployCore is Base {
 
         // Set contract vars
         factory.setFeeManager(feeManager);
+        factory.setUnstakedFee(1000);
         // factory.setVoter(address(voter));
 
         // finish broadcasting transactions

@@ -18,6 +18,8 @@ library LpShared {
     // CL Factory and NFPM addresses (network specific)
     address internal constant CL_FACTORY = 0x83bBBa92c68a367eAABd9d1AEBe6c71ec5E1d39f;
     address internal constant CL_NFPM = 0x8e1F74CafDdFfC48051AEfe69d0c28F9ADe1c9e2;
+    // address internal constant CL_FACTORY = 0x6f7DA11c13Ba09A153dA06d376044e5859Db607B;
+    // address internal constant CL_NFPM = 0x195D3037cb4AF610B96EF2984b4013eE836568E1;
 
     /**
      * @param _limit The max amount of pools to return
@@ -37,6 +39,10 @@ library LpShared {
         IVoter _voter,
         address _convertor
     ) public view returns (ILpCandy.PoolData[] memory) {
+        if (_toFind != address(0) && _limit > 1) {
+            _limit = 1;
+        }
+
         address[] memory factories = _registry.poolFactories();
         uint256 factoriesCount = factories.length;
 

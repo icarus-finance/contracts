@@ -40,6 +40,8 @@ contract LpCandy is ILpCandy {
 
     address internal constant CL_FACTORY = 0x83bBBa92c68a367eAABd9d1AEBe6c71ec5E1d39f;
     address internal constant CL_NFPM = 0x8e1F74CafDdFfC48051AEfe69d0c28F9ADe1c9e2;
+    // address internal constant CL_FACTORY = 0x6f7DA11c13Ba09A153dA06d376044e5859Db607B;
+    // address internal constant CL_NFPM = 0x195D3037cb4AF610B96EF2984b4013eE836568E1;
 
     IVoter public immutable voter;
     IFactoryRegistry public immutable registry;
@@ -297,8 +299,8 @@ contract LpCandy is ILpCandy {
      * @return Lp struct
      */
     function byAddress(address _address) external view returns (Lp memory) {
-        // Limit is max, internal call will return when _address is hit
-        PoolData[] memory poolData = LpShared.pools(16000, 0, _address, registry, voter, convertor);
+        // Limit is 1 since we only need the match
+        PoolData[] memory poolData = LpShared.pools(1, 0, _address, registry, voter, convertor);
         require(poolData.length > 0, "Pool not found");
 
         ICandyPool pool = ICandyPool(poolData[0].pool);

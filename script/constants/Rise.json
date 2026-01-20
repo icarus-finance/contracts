@@ -5,13 +5,7 @@
     "team": "0x3f7f1158A89780433981c77780F62B66935B318A",
     "WETH": "0x4200000000000000000000000000000000000006",
     "whitelistTokens": [],
-    "pools": [
-        {
-            "stable": false,
-            "tokenA": "0x8a93d247134d91e0de6f96547cb0204e5be8e5d8",
-            "tokenB": "0x4200000000000000000000000000000000000006"
-        }
-    ],
+    "pools": [],
     "poolsAero": [],
     "minter": {
         "liquid": [],
