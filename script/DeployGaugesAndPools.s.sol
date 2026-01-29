@@ -31,7 +31,7 @@ contract DeployGaugesAndPools is Script {
     }
 
     address[] pools;
-    address[] gauges;
+    // address[] gauges;
 
     constructor() {}
 
@@ -43,13 +43,13 @@ contract DeployGaugesAndPools is Script {
         // load in vars
         jsonConstants = vm.readFile(path);
         PoolNonAero[] memory _pools = abi.decode(jsonConstants.parseRaw(".pools"), (PoolNonAero[]));
-        PoolAero[] memory poolsAero = abi.decode(jsonConstants.parseRaw(".poolsAero"), (PoolAero[]));
+        // PoolAero[] memory poolsAero = abi.decode(jsonConstants.parseRaw(".poolsAero"), (PoolAero[]));
 
         path = string.concat(basePath, "output/DeployCore-");
         path = string.concat(path, outputFilename);
         jsonOutput = vm.readFile(path);
         factory = PoolFactory(abi.decode(jsonOutput.parseRaw(".PoolFactory"), (address)));
-        voter = Voter(abi.decode(jsonOutput.parseRaw(".Voter"), (address)));
+        // voter = Voter(abi.decode(jsonOutput.parseRaw(".Voter"), (address)));
         AERO = abi.decode(jsonOutput.parseRaw(".IRS"), (address));
 
         vm.startBroadcast(deployerAddress);
@@ -57,27 +57,27 @@ contract DeployGaugesAndPools is Script {
         // Deploy all non-AERO pools & gauges
         for (uint256 i = 0; i < _pools.length; i++) {
             address newPool = factory.createPool(_pools[i].tokenA, _pools[i].tokenB, _pools[i].stable);
-            address newGauge = voter.createGauge(address(factory), newPool);
+            // address newGauge = voter.createGauge(address(factory), newPool);
 
             pools.push(newPool);
-            gauges.push(newGauge);
+            // gauges.push(newGauge);
         }
 
         // Deploy all AERO pools & gauges
-        for (uint256 i = 0; i < poolsAero.length; i++) {
-            address newPool = factory.createPool(AERO, poolsAero[i].token, poolsAero[i].stable);
-            address newGauge = voter.createGauge(address(factory), newPool);
+        // for (uint256 i = 0; i < poolsAero.length; i++) {
+            // address newPool = factory.createPool(AERO, poolsAero[i].token, poolsAero[i].stable);
+            // address newGauge = voter.createGauge(address(factory), newPool);
 
-            pools.push(newPool);
-            gauges.push(newGauge);
-        }
+            // pools.push(newPool);
+            // gauges.push(newGauge);
+        // }
 
         vm.stopBroadcast();
 
         // Write to file
         path = string.concat(basePath, "output/DeployGaugesAndPools-");
         path = string.concat(path, outputFilename);
-        vm.writeJson(vm.serializeAddress("v2", "gaugesPools", gauges), path);
+        // vm.writeJson(vm.serializeAddress("v2", "gaugesPools", gauges), path);
         vm.writeJson(vm.serializeAddress("v2", "pools", pools), path);
     }
 }

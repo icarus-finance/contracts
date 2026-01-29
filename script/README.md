@@ -35,11 +35,6 @@ forge script script/DeployCore.s.sol:DeployCore --broadcast --slow --rpc-url "ri
 forge script script/DeployGaugesAndPools.s.sol:DeployGaugesAndPools --broadcast --slow --rpc-url "rise_testnet" --verify --verifier "blockscout" -vvvv --verifier-url "https://explorer.testnet.riselabs.xyz/api"
 ```
 
-<!-- 4. Distribute locked NFTs using the AirdropDistributor. This needs to be done by the `airdrop.owner()` address.
-```
-forge script script/DistributeAirdrops.s.sol:DistributeAirdrops --broadcast --slow --gas-estimate-multiplier 200 --legacy --rpc-url base --verify -vvvv
-``` -->
-
 4. Deploy governor contracts
 ```
 forge script script/DeployGovernors.s.sol:DeployGovernors --broadcast --slow --rpc-url "rise_testnet" --verify --verifier "blockscout" -vvvv --verifier-url "https://explorer.testnet.riselabs.xyz/api"

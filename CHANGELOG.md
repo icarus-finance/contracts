@@ -4,6 +4,8 @@ All notable changes to the initial Aerodrome codebase will be documented in this
 
 Initial code was forked from [aerodrome-finance/contracts@a5fae2e](https://github.com/aerodrome-finance/contracts/tree/a5fae2e87e490d6b10f133e28cc11bcc58c5346a).
 
+All code under expired BUSL-1.1 license was changed to GPL-2.0.
+
 ## Updated
 
 - Updated Forge-std to v1.10.0
