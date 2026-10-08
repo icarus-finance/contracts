@@ -7,6 +7,32 @@ import {IVotingEscrow} from "./IVotingEscrow.sol";
 import {IRewardsDistributor} from "./IRewardsDistributor.sol";
 
 interface IMinter {
+    struct WeeklyCap {
+        uint256 amount;
+        bool reported;
+    }
+
+    error NotCapReporter();
+    error InvalidCapEpoch();
+
+    event SetCapReporter(address indexed reporter, bool allowed);
+    event SetWeeklyCap(uint256 indexed epoch, uint256 amount, address indexed reporter);
+    event WeeklyCapApplied(uint256 indexed epoch, uint256 scheduledEmission, uint256 emission, bool reported);
+
+    /// @notice Accounts authorized by team to publish or remove epoch caps.
+    function capReporters(address reporter) external view returns (bool);
+
+    /// @notice Gauge funding cap in raw token units. Zero amount and reported=false mean no cap.
+    function weeklyCaps(uint256 epoch) external view returns (uint256 amount, bool reported);
+
+    /// @notice Team grants/revokes reporting authority. Revocation does not delete existing reports.
+    function setCapReporter(address reporter, bool allowed) external;
+
+    /// @notice Publish/replace a cap for a week-aligned current or future epoch before it is processed.
+    /// @dev Amount zero removes the report and restores scheduled funding. Missing reports never inherit
+    ///      a previous epoch's cap. Team must also be whitelisted to report.
+    function setWeeklyCap(uint256 epoch, uint256 amount) external;
+
     struct AirdropParams {
         // List of addresses to receive Liquid Tokens from the airdrop
         address[] liquidWallets;
@@ -134,6 +160,7 @@ interface IMinter {
     ///         weekly * ((aero.totalsupply - ve.totalSupply) / aero.totalsupply) ^ 2 / 2
     ///         Note that ve.totalSupply is the locked ve supply
     ///         aero.totalSupply is the total ve supply minted
+    /// @dev Returns zero when the emission or existing token supply is zero.
     /// @param _minted Amount of AERO minted this epoch
     /// @return _growth Rebases
     function calculateGrowth(uint256 _minted) external view returns (uint256 _growth);

@@ -52,6 +52,12 @@ See `CHANGELOG.md` for specific changes to Aerodrome.
 | `EpochGovernor.sol` | A simple epoch-based governance contract used exclusively for adjusting emissions. |
 
 
+## Design notes
+
+The [proposed gauge-cap controller](docs/gauge-cap-controller-design.md) assesses fee-based
+per-gauge emissions caps; that proposal is not implemented.
+The implemented [global weekly emissions cap](docs/weekly-emissions-cap.md) is configured in Minter.
+
 ## Testing
 
 This repository uses Foundry for testing and foundry or hardhat for deployment. 

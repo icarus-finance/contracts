@@ -118,10 +118,10 @@ contract MinterTest is BaseTest {
         voter.distribute(0, voter.length());
 
         skipToNextEpoch(1);
-        // totalSupply ~= 65_429_708 * 1e18
-        // expected mint = totalSupply * .67% ~= 8_969_149
+        uint256 voterBalanceBefore = AERO.balanceOf(address(voter));
+        uint256 expectedTailEmission = (AERO.totalSupply() * minter.tailEmissionRate()) / minter.MAX_BPS();
         minter.updatePeriod();
-        assertApproxEqAbs(AERO.balanceOf(address(voter)), 430_810 * 1e18, TOKEN_1);
+        assertEq(AERO.balanceOf(address(voter)) - voterBalanceBefore, expectedTailEmission);
         assertLt(minter.weekly(), minter.TAIL_START());
     }
 
@@ -279,9 +279,10 @@ contract MinterTest is BaseTest {
 
         uint256 pre = AERO.balanceOf(address(voter));
         skipToNextEpoch(1);
+        uint256 expectedClaimable = _expectedCompletedRebase(minter.weekly());
         minter.updatePeriod();
-        assertEq(distributor.claimable(tokenId), 4999991534325080005726385);
-        // emissions decay by 1% after one epoch
+        assertEq(distributor.claimable(tokenId), expectedClaimable);
+        // emissions grow by 3% after one epoch
         uint256 post = AERO.balanceOf(address(voter));
         assertEq(post - pre, (10 * TOKEN_1M));
         assertEq(minter.weekly(), ((10 * TOKEN_1M) * 103) / 100);
@@ -289,11 +290,12 @@ contract MinterTest is BaseTest {
         pre = post;
         skipToNextEpoch(1);
         vm.roll(vm.getBlockNumber() + 1);
+        expectedClaimable = _expectedCompletedRebase(minter.weekly());
         minter.updatePeriod();
         post = AERO.balanceOf(address(voter));
 
-        // check rebase accumulated
-        assertEq(distributor.claimable(1), 10149991131702758598187944);
+        // The sole veNFT receives all completed-week rebases, including the prior week's remainder.
+        assertEq(distributor.claimable(tokenId), expectedClaimable);
         distributor.claim(1);
         assertEq(distributor.claimable(1), 0);
 
@@ -328,6 +330,20 @@ contract MinterTest is BaseTest {
         vm.roll(vm.getBlockNumber() + 1);
         minter.updatePeriod();
         distributor.claim(1);
+    }
+
+    /// @dev Before any claims, the sole veNFT owns the entire historical voting supply.
+    ///      Exclude the new rebase portion assigned to the still-open epoch by checkpointToken.
+    function _expectedCompletedRebase(uint256 emission) internal view returns (uint256) {
+        uint256 epoch = _getEpochStart(block.timestamp);
+        uint256 supply = AERO.totalSupply();
+        uint256 unlockedSupply = supply - escrow.totalSupplyAt(epoch - 1);
+        uint256 growth = (((emission * unlockedSupply) / supply) * unlockedSupply) / supply / 2;
+        uint256 checkpointTime = distributor.lastTokenTime();
+        uint256 completedGrowth = (growth * (epoch - checkpointTime)) / (block.timestamp - checkpointTime);
+        // Use allocated buckets: checkpoint rounding can leave one wei of unallocated token dust.
+        uint256 priorAllocated = distributor.claimable(tokenId) + distributor.tokensPerWeek(epoch - 1 weeks);
+        return priorAllocated + completedGrowth;
     }
 
     function testSetTeam() public {

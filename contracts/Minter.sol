@@ -61,6 +61,10 @@ contract Minter is IMinter {
     address public pendingTeam;
     /// @inheritdoc IMinter
     bool public initialized;
+    /// @inheritdoc IMinter
+    mapping(address => bool) public capReporters;
+    /// @inheritdoc IMinter
+    mapping(uint256 => WeeklyCap) public weeklyCaps;
 
     constructor(
         address _voter, // the voting & distribution system
@@ -80,8 +84,8 @@ contract Minter is IMinter {
         if (initialized) revert AlreadyInitialized();
         if (msg.sender != team) revert NotTeam();
         if (
-            (params.liquidWallets.length != params.liquidAmounts.length) ||
-            (params.lockedWallets.length != params.lockedAmounts.length)
+            (params.liquidWallets.length != params.liquidAmounts.length)
+                || (params.lockedWallets.length != params.lockedAmounts.length)
         ) revert InvalidParams();
         initialized = true;
 
@@ -137,10 +141,35 @@ contract Minter is IMinter {
 
     /// @inheritdoc IMinter
     function calculateGrowth(uint256 _minted) public view returns (uint256 _growth) {
-        uint256 _veTotal = ve.totalSupplyAt(activePeriod - 1);
+        if (_minted == 0) return 0;
         uint256 _aeroTotal = aero.totalSupply();
+        // An empty initialization has no existing holders to receive a rebase.
+        if (_aeroTotal == 0) return 0;
+        uint256 _veTotal = ve.totalSupplyAt(activePeriod - 1);
 
         return (((_minted * (_aeroTotal - _veTotal)) / _aeroTotal) * (_aeroTotal - _veTotal)) / _aeroTotal / 2;
+    }
+
+    /// @inheritdoc IMinter
+    function setCapReporter(address _reporter, bool _allowed) external {
+        if (msg.sender != team) revert NotTeam();
+        if (_reporter == address(0)) revert ZeroAddress();
+        capReporters[_reporter] = _allowed;
+        emit SetCapReporter(_reporter, _allowed);
+    }
+
+    /// @inheritdoc IMinter
+    function setWeeklyCap(uint256 _epoch, uint256 _amount) external {
+        if (!capReporters[msg.sender]) revert NotCapReporter();
+        _validateCapEpoch(_epoch);
+        weeklyCaps[_epoch] = WeeklyCap({amount: _amount, reported: _amount != 0});
+        emit SetWeeklyCap(_epoch, _amount, msg.sender);
+    }
+
+    function _validateCapEpoch(uint256 _epoch) internal view {
+        if (_epoch % WEEK != 0 || _epoch < (block.timestamp / WEEK) * WEEK || (initialized && _epoch <= activePeriod)) {
+            revert InvalidCapEpoch();
+        }
     }
 
     /// @inheritdoc IMinter
@@ -190,10 +219,15 @@ contract Minter is IMinter {
                 weekly = _weekly;
             }
 
+            WeeklyCap memory _cap = weeklyCaps[_period];
+            uint256 _scheduledEmission = _emission;
+            if (_cap.reported) _emission = Math.min(_emission, _cap.amount);
+            emit WeeklyCapApplied(_period, _scheduledEmission, _emission, _cap.reported);
+
             uint256 _growth = calculateGrowth(_emission);
 
             uint256 _rate = teamRate;
-            uint256 _teamEmissions = (_rate * (_growth + _weekly)) / (MAX_BPS - _rate);
+            uint256 _teamEmissions = (_rate * (_growth + _emission)) / (MAX_BPS - _rate);
 
             uint256 _required = _growth + _emission + _teamEmissions;
             uint256 _balanceOf = aero.balanceOf(address(this));

@@ -613,19 +613,8 @@ contract MinterDeferredInitializationTest is Test {
                     EDGE CASES AND POTENTIAL ISSUES
     //////////////////////////////////////////////////////////////*/
 
-    function testCalculateGrowthRevertsBeforeInit() public {
-        // IMPORTANT FINDING: calculateGrowth will revert with division by zero
-        // when aero.totalSupply() is 0 (before any tokens are minted)
-        // This is because the formula divides by _aeroTotal:
-        // return (((_minted * (_aeroTotal - _veTotal)) / _aeroTotal) * (_aeroTotal - _veTotal)) / _aeroTotal / 2;
-        //
-        // However, this is NOT a problem in practice because:
-        // 1. updatePeriod() can't be triggered before initialization (activePeriod is far future)
-        // 2. calculateGrowth is only called from updatePeriod()
-        // 3. Once initialized, tokens are minted, so totalSupply > 0
-        
-        vm.expectRevert(); // Division by zero
-        minter.calculateGrowth(TOKEN_1M);
+    function testCalculateGrowthIsZeroBeforeInitialSupply() public view {
+        assertEq(minter.calculateGrowth(TOKEN_1M), 0);
     }
 
     function testCalculateGrowthWorksAfterInit() public {
