@@ -25,6 +25,11 @@ contract SimpleBribeVotingRewardFlow is ExtendedBaseTest {
         skip(1);
     }
 
+    // Rebases change relative lock balances after each owner's claim history diverges.
+    function _voteShare(address votePool, uint256 tokenId, uint256 reward) internal view returns (uint256) {
+        return reward * voter.votes(tokenId, votePool) / voter.weights(votePool);
+    }
+
     function testMultiEpochBribeVotingRewardFlow() public {
         // set up votes and rewards
         address[] memory pools = new address[](1);
@@ -158,8 +163,8 @@ contract SimpleBribeVotingRewardFlow is ExtendedBaseTest {
         bribeVotingReward2.getReward(1, rewards);
         post = LR.balanceOf(address(owner));
         usdcPost = USDC.balanceOf(address(owner));
-        assertEq(post - pre, currentBribe / 2);
-        assertEq(usdcPost - usdcPre, usdcBribe / 2);
+        assertApproxEqAbs(post - pre, _voteShare(address(pool2), 1, currentBribe), 1);
+        assertApproxEqAbs(usdcPost - usdcPre, _voteShare(address(pool2), 1, usdcBribe), 1);
 
         // claim for second voter
         pre = LR.balanceOf(address(owner3));
@@ -168,8 +173,8 @@ contract SimpleBribeVotingRewardFlow is ExtendedBaseTest {
         bribeVotingReward2.getReward(3, rewards);
         post = LR.balanceOf(address(owner3));
         usdcPost = USDC.balanceOf(address(owner3));
-        assertEq(post - pre, currentBribe / 2);
-        assertEq(usdcPost - usdcPre, usdcBribe / 2);
+        assertApproxEqAbs(post - pre, _voteShare(address(pool2), 3, currentBribe), 1);
+        assertApproxEqAbs(usdcPost - usdcPre, _voteShare(address(pool2), 3, usdcBribe), 1);
 
         // claim deferred bribe
         pre = LR.balanceOf(address(owner));
@@ -209,25 +214,23 @@ contract SimpleBribeVotingRewardFlow is ExtendedBaseTest {
         /// epoch five
         skipToNextEpoch(1);
 
-        // owner share: 996575326492544010/(978082175809808010+996575326492544010) ~= .505
         pre = LR.balanceOf(address(owner));
         usdcPre = USDC.balanceOf(address(owner));
         vm.prank(address(voter));
         bribeVotingReward.getReward(1, rewards);
         post = LR.balanceOf(address(owner));
         usdcPost = USDC.balanceOf(address(owner));
-        assertApproxEqRel(post - pre, (currentBribe * 504683) / 1000000, PRECISION);
-        assertApproxEqRel(usdcPost - usdcPre, (usdcBribe * 504683) / 1000000, PRECISION);
+        assertApproxEqAbs(post - pre, _voteShare(address(pool), 1, currentBribe), 1);
+        assertApproxEqAbs(usdcPost - usdcPre, _voteShare(address(pool), 1, usdcBribe), 1);
 
-        // owner2 share: 978082175809808010/(978082175809808010+996575326492544010) ~= .495
         pre = LR.balanceOf(address(owner2));
         usdcPre = USDC.balanceOf(address(owner2));
         vm.prank(address(voter));
         bribeVotingReward.getReward(2, rewards);
         post = LR.balanceOf(address(owner2));
         usdcPost = USDC.balanceOf(address(owner2));
-        assertApproxEqRel(post - pre, (currentBribe * 495317) / 1000000, PRECISION);
-        assertApproxEqRel(usdcPost - usdcPre, (usdcBribe * 495317) / 1000000, PRECISION);
+        assertApproxEqAbs(post - pre, _voteShare(address(pool), 2, currentBribe), 1);
+        assertApproxEqAbs(usdcPost - usdcPre, _voteShare(address(pool), 2, usdcBribe), 1);
 
         currentBribe = TOKEN_1 * 6;
         usdcBribe = USDC_1 * 6;
@@ -250,25 +253,23 @@ contract SimpleBribeVotingRewardFlow is ExtendedBaseTest {
         /// epoch six
         skipToNextEpoch(1);
 
-        // owner share: 992465745379384005/(992465745379384005+1946575326502534409) ~= .338
         pre = LR.balanceOf(address(owner));
         usdcPre = USDC.balanceOf(address(owner));
         vm.prank(address(voter));
         bribeVotingReward.getReward(1, rewards);
         post = LR.balanceOf(address(owner));
         usdcPost = USDC.balanceOf(address(owner));
-        assertApproxEqRel(post - pre, (currentBribe * 338) / 1000, 1e15); // 3 decimal places
-        assertApproxEqRel(usdcPost - usdcPre, (usdcBribe * 338) / 1000, 1e15);
+        assertApproxEqAbs(post - pre, _voteShare(address(pool), 1, currentBribe), 1);
+        assertApproxEqAbs(usdcPost - usdcPre, _voteShare(address(pool), 1, usdcBribe), 1);
 
-        // owner2 share: 1946575326502534409/(992465745379384005+1946575326502534409) ~= .662
         pre = LR.balanceOf(address(owner2));
         usdcPre = USDC.balanceOf(address(owner2));
         vm.prank(address(voter));
         bribeVotingReward.getReward(2, rewards);
         post = LR.balanceOf(address(owner2));
         usdcPost = USDC.balanceOf(address(owner2));
-        assertApproxEqRel(post - pre, (currentBribe * 662) / 1000, 1e15);
-        assertApproxEqRel(usdcPost - usdcPre, (usdcBribe * 662) / 1000, 1e15);
+        assertApproxEqAbs(post - pre, _voteShare(address(pool), 2, currentBribe), 1);
+        assertApproxEqAbs(usdcPost - usdcPre, _voteShare(address(pool), 2, usdcBribe), 1);
 
         skip(1 hours);
         // stop voting with owner2
@@ -305,33 +306,33 @@ contract SimpleBribeVotingRewardFlow is ExtendedBaseTest {
 
         skipToNextEpoch(1);
 
-        // owner should receive 1/5, owner3 should receive 4/5 of pool bribes
+        // Shares follow the post-rebase allocations to pool.
         pre = LR.balanceOf(address(owner));
         vm.prank(address(voter));
         bribeVotingReward.getReward(1, rewards);
         post = LR.balanceOf(address(owner));
-        assertEq(post - pre, currentBribe / 5);
+        assertApproxEqAbs(post - pre, _voteShare(address(pool), 1, currentBribe), 1);
 
         pre = LR.balanceOf(address(owner3));
         vm.prank(address(voter));
         bribeVotingReward.getReward(3, rewards);
         post = LR.balanceOf(address(owner3));
-        assertEq(post - pre, (currentBribe * 4) / 5);
+        assertApproxEqAbs(post - pre, _voteShare(address(pool), 3, currentBribe), 1);
 
-        // owner should receive 4/5, owner3 should receive 1/5 of pool2 bribes
+        // Shares follow the post-rebase allocations to pool2.
         rewards[0] = address(USDC);
         delete rewards[1];
         usdcPre = USDC.balanceOf(address(owner));
         vm.prank(address(voter));
         bribeVotingReward2.getReward(1, rewards);
         usdcPost = USDC.balanceOf(address(owner));
-        assertEq(usdcPost - usdcPre, (usdcBribe * 4) / 5);
+        assertApproxEqAbs(usdcPost - usdcPre, _voteShare(address(pool2), 1, usdcBribe), 1);
 
         usdcPre = USDC.balanceOf(address(owner3));
         vm.prank(address(voter));
         bribeVotingReward2.getReward(3, rewards);
         usdcPost = USDC.balanceOf(address(owner3));
-        assertEq(usdcPost - usdcPre, usdcBribe / 5);
+        assertApproxEqAbs(usdcPost - usdcPre, _voteShare(address(pool2), 3, usdcBribe), 1);
 
         skipToNextEpoch(1);
 
@@ -356,30 +357,28 @@ contract SimpleBribeVotingRewardFlow is ExtendedBaseTest {
 
         // check earned
         earned = bribeVotingReward.earned(address(LR), 1);
-        assertEq(earned, currentBribe / 2);
+        assertApproxEqAbs(earned, _voteShare(address(pool), 1, currentBribe), 1);
         earned = bribeVotingReward.earned(address(USDC), 1);
-        assertEq(earned, usdcBribe / 2);
+        assertApproxEqAbs(earned, _voteShare(address(pool), 1, usdcBribe), 1);
         earned = bribeVotingReward.earned(address(LR), 3);
-        assertEq(earned, currentBribe / 2);
+        assertApproxEqAbs(earned, _voteShare(address(pool), 3, currentBribe), 1);
         earned = bribeVotingReward.earned(address(USDC), 3);
-        assertEq(earned, usdcBribe / 2);
+        assertApproxEqAbs(earned, _voteShare(address(pool), 3, usdcBribe), 1);
 
         currentBribe = TOKEN_1 * 9;
         usdcBribe = USDC_1 * 9;
         _createBribeWithAmount(bribeVotingReward, address(LR), currentBribe);
         _createBribeWithAmount(bribeVotingReward, address(USDC), usdcBribe);
 
-        uint256 expected = (TOKEN_1 * 8) / 2;
         // check earned remains the same even if bribe gets re-deposited
         earned = bribeVotingReward.earned(address(LR), 1);
-        assertEq(earned, expected);
+        assertApproxEqAbs(earned, _voteShare(address(pool), 1, TOKEN_1 * 8), 2);
         earned = bribeVotingReward.earned(address(LR), 3);
-        assertEq(earned, expected);
-        expected = (USDC_1 * 8) / 2;
+        assertApproxEqAbs(earned, _voteShare(address(pool), 3, TOKEN_1 * 8), 2);
         earned = bribeVotingReward.earned(address(USDC), 1);
-        assertEq(earned, expected);
+        assertApproxEqAbs(earned, _voteShare(address(pool), 1, USDC_1 * 8), 2);
         earned = bribeVotingReward.earned(address(USDC), 3);
-        assertEq(earned, expected);
+        assertApproxEqAbs(earned, _voteShare(address(pool), 3, USDC_1 * 8), 2);
 
         skipToNextEpoch(1);
 
@@ -388,16 +387,14 @@ contract SimpleBribeVotingRewardFlow is ExtendedBaseTest {
         _createBribeWithAmount(bribeVotingReward, address(LR), currentBribe);
         _createBribeWithAmount(bribeVotingReward, address(USDC), usdcBribe);
 
-        expected = (TOKEN_1 * 8 + TOKEN_1 * 9) / 2;
         earned = bribeVotingReward.earned(address(LR), 1);
-        assertEq(earned, expected);
+        assertApproxEqAbs(earned, _voteShare(address(pool), 1, TOKEN_1 * 8 + TOKEN_1 * 9), 2);
         earned = bribeVotingReward.earned(address(LR), 3);
-        assertEq(earned, expected);
-        expected = (USDC_1 * 8 + USDC_1 * 9) / 2;
+        assertApproxEqAbs(earned, _voteShare(address(pool), 3, TOKEN_1 * 8 + TOKEN_1 * 9), 2);
         earned = bribeVotingReward.earned(address(USDC), 1);
-        assertEq(earned, expected);
+        assertApproxEqAbs(earned, _voteShare(address(pool), 1, USDC_1 * 8 + USDC_1 * 9), 2);
         earned = bribeVotingReward.earned(address(USDC), 3);
-        assertEq(earned, expected);
+        assertApproxEqAbs(earned, _voteShare(address(pool), 3, USDC_1 * 8 + USDC_1 * 9), 2);
 
         skipToNextEpoch(1);
 
@@ -410,10 +407,8 @@ contract SimpleBribeVotingRewardFlow is ExtendedBaseTest {
         bribeVotingReward.getReward(1, rewards);
         post = LR.balanceOf(address(owner));
         usdcPost = USDC.balanceOf(address(owner));
-        expected = (TOKEN_1 * 8 + TOKEN_1 * 9 + TOKEN_1 * 10) / 2;
-        assertEq(post - pre, expected);
-        expected = (USDC_1 * 8 + USDC_1 * 9 + USDC_1 * 10) / 2;
-        assertEq(usdcPost - usdcPre, expected);
+        assertApproxEqAbs(post - pre, _voteShare(address(pool), 1, TOKEN_1 * 8 + TOKEN_1 * 9 + TOKEN_1 * 10), 2);
+        assertApproxEqAbs(usdcPost - usdcPre, _voteShare(address(pool), 1, USDC_1 * 8 + USDC_1 * 9 + USDC_1 * 10), 2);
 
         pre = LR.balanceOf(address(owner3));
         usdcPre = USDC.balanceOf(address(owner3));
@@ -421,10 +416,8 @@ contract SimpleBribeVotingRewardFlow is ExtendedBaseTest {
         bribeVotingReward.getReward(3, rewards);
         post = LR.balanceOf(address(owner3));
         usdcPost = USDC.balanceOf(address(owner3));
-        expected = (TOKEN_1 * 8 + TOKEN_1 * 9 + TOKEN_1 * 10) / 2;
-        assertEq(post - pre, expected);
-        expected = (USDC_1 * 8 + USDC_1 * 9 + USDC_1 * 10) / 2;
-        assertEq(usdcPost - usdcPre, expected);
+        assertApproxEqAbs(post - pre, _voteShare(address(pool), 3, TOKEN_1 * 8 + TOKEN_1 * 9 + TOKEN_1 * 10), 2);
+        assertApproxEqAbs(usdcPost - usdcPre, _voteShare(address(pool), 3, USDC_1 * 8 + USDC_1 * 9 + USDC_1 * 10), 2);
     }
 
     function testCanClaimRewardAfterTransferWhileVoted() public {

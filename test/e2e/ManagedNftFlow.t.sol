@@ -103,7 +103,7 @@ contract ManagedNftFlow is ExtendedBaseTest {
         // simulate rebases for epoch 0
         deal(address(AERO), address(distributor), TOKEN_1);
         vm.startPrank(address(distributor));
-        AERO.approve(address(escrow), TOKEN_1);
+        AERO.approve(address(escrow), type(uint256).max);
         escrow.depositFor(mTokenId, TOKEN_1);
         vm.stopPrank();
         supply += TOKEN_1;
@@ -153,7 +153,7 @@ contract ManagedNftFlow is ExtendedBaseTest {
         // simulate rebases for epoch 1:
         deal(address(AERO), address(distributor), TOKEN_1);
         vm.startPrank(address(distributor));
-        AERO.approve(address(escrow), TOKEN_1);
+        AERO.approve(address(escrow), type(uint256).max);
         escrow.depositFor(mTokenId, TOKEN_1);
         vm.stopPrank();
         supply += TOKEN_1;
@@ -207,7 +207,7 @@ contract ManagedNftFlow is ExtendedBaseTest {
         // simulate rebases for epoch 2:
         deal(address(AERO), address(distributor), TOKEN_1);
         vm.startPrank(address(distributor));
-        AERO.approve(address(escrow), TOKEN_1);
+        AERO.approve(address(escrow), type(uint256).max);
         escrow.depositFor(mTokenId, TOKEN_1);
         vm.stopPrank();
         supply += TOKEN_1;
@@ -323,21 +323,23 @@ contract ManagedNftFlow is ExtendedBaseTest {
         // owner votes for pool now
         voter.vote(tokenId, pools, weights);
 
+        uint256 expectedBribe = (TOKEN_1 * voter.votes(tokenId, address(pool))) / voter.weights(address(pool));
+
         // create aero bribe for epoch 4
         _createBribeWithAmount(bribeVotingReward, address(AERO), TOKEN_1);
 
         skipToNextEpoch(1);
 
         // test normal nft behavior post withdrawal
-        // ~= approx TOKEN_1 * 3 / 4, some drift due to voting power decay
-        assertEq(bribeVotingReward.earned(address(AERO), tokenId), 749095271054930289);
+        // Reward share follows the actual post-rebase vote allocations.
+        assertEq(bribeVotingReward.earned(address(AERO), tokenId), expectedBribe);
 
         pre = AERO.balanceOf(address(owner));
         vm.prank(address(voter));
         bribeVotingReward.getReward(tokenId, rewards);
         post = AERO.balanceOf(address(owner));
 
-        assertEq(post - pre, 749095271054930289);
+        assertEq(post - pre, expectedBribe);
     }
 
     function testTransferManagedNftFlow() public {
@@ -501,12 +503,15 @@ contract ManagedNftFlow is ExtendedBaseTest {
         assertEq(freeManagedReward.earned(address(AERO), tokenId2), (TOKEN_1 * 5) / 2);
 
         skip(1 hours);
+        uint256 expectedLockedReward = lockedManagedReward.earned(address(AERO), tokenId2);
+        assertGt(expectedLockedReward, 0); // The epoch 2 vote automatically compounded rebases.
         pre = AERO.balanceOf(address(escrow));
         vm.prank(address(owner2));
         voter.withdrawManaged(tokenId2);
         post = AERO.balanceOf(address(escrow));
 
-        assertEq(post - pre, 0);
+        assertEq(post - pre, expectedLockedReward);
+        assertEq(convert(escrow.locked(tokenId2).amount), TOKEN_1 + expectedLockedReward);
     }
 
     function testManagedNftRebaseFlow() public {
@@ -573,8 +578,10 @@ contract ManagedNftFlow is ExtendedBaseTest {
         skipToNextEpoch(1);
         minter.updatePeriod();
 
+        uint256 expectedRebase = distributor.claimable(mTokenId);
+        assertEq(expectedRebase, distributor.claimable(tokenId2));
         uint256 rebase = distributor.claim(mTokenId);
-        assertEq(rebase, 4723887052133285931305344);
+        assertEq(rebase, expectedRebase);
         // check locked, user points and global points update correctly on rebase claim
         locked = escrow.locked(mTokenId);
         assertEq(convert(locked.amount), TOKEN_1M + rebase);
@@ -588,8 +595,8 @@ contract ManagedNftFlow is ExtendedBaseTest {
         assertEq(convert(userPoint.slope), 0);
         assertEq(userPoint.ts, 1814401);
         assertEq(userPoint.blk, 3);
-        assertEq(userPoint.permanent, 5723887052133285931305344); // TOKEN_1M + rebase
-        assertEq(escrow.balanceOfNFT(mTokenId), 5723887052133285931305344);
+        assertEq(userPoint.permanent, TOKEN_1M + rebase); // TOKEN_1M + rebase
+        assertEq(escrow.balanceOfNFT(mTokenId), TOKEN_1M + rebase);
 
         // check global point updates correctly when rebases are claimed
         assertEq(escrow.epoch(), 6);
@@ -599,8 +606,8 @@ contract ManagedNftFlow is ExtendedBaseTest {
         assertEq(convert(globalPoint.slope), 23782343985); // TOKEN_1 * 3 / MAXTIME
         assertEq(globalPoint.ts, 1814401);
         assertEq(globalPoint.blk, 3);
-        assertEq(globalPoint.permanentLockBalance, 6723887052133285931305344); // TOKEN_1M * 2 + rebase
-        assertEq(escrow.totalSupply(), 6723887052133285931305344 + 2963013674496024015); // TOKEN_1M * 2 + rebase + bias
+        assertEq(globalPoint.permanentLockBalance, TOKEN_1M * 2 + rebase); // TOKEN_1M * 2 + rebase
+        assertEq(escrow.totalSupply(), TOKEN_1M * 2 + rebase + 2963013674496024015); // TOKEN_1M * 2 + rebase + bias
 
         uint256 managedRebaseTotal = rebase;
         assertGt(rebase, 0);

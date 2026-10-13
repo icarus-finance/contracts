@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import "./BaseTest.sol";
+import {ProtocolTimeLibrary} from "../contracts/libraries/ProtocolTimeLibrary.sol";
 
 contract PoolTest is BaseTest {
     constructor() {
@@ -273,8 +274,6 @@ contract PoolTest is BaseTest {
 
     function deployMinter() public {
         routerAddLiquidity();
-
-        distributor = new RewardsDistributor(address(escrow));
 
         minter = new Minter(address(voter), address(escrow), address(distributor));
         distributor.setMinter(address(minter));
@@ -754,9 +753,20 @@ contract PoolTest is BaseTest {
         address[] memory gauges = new address[](1);
         gauges[0] = address(gauge);
         voter.updateFor(gauges);
+        // Voting rolls emissions forward and compounds rebases, so derive this
+        // cycle's gauge reward from its current allocation rather than a snapshot.
+        uint256 allocatedReward = voter.claimable(address(gauge));
+        uint256 gaugeBalanceBefore = AERO.balanceOf(address(gauge));
+        assertGt(allocatedReward, 0);
+        assertLe(gauge.periodFinish(), vm.getBlockTimestamp());
         voter.distribute(0, voter.length());
+        assertEq(AERO.balanceOf(address(gauge)) - gaugeBalanceBefore, allocatedReward);
+        assertEq(voter.claimable(address(gauge)), 0);
+        assertEq(
+            gauge.rewardRate(),
+            allocatedReward / (ProtocolTimeLibrary.epochNext(vm.getBlockTimestamp()) - vm.getBlockTimestamp())
+        );
         voter.claimRewards(gauges);
-        assertEq(gauge.rewardRate(), 71886434476216289470);
         console2.log(gauge.rewardPerTokenStored());
     }
 

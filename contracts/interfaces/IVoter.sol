@@ -156,6 +156,8 @@ interface IVoter {
     ///         Can only vote or deposit into a managed NFT once per epoch.
     ///         Can only vote for gauges that have not been killed.
     /// @dev Weights are distributed proportional to the sum of the weights in the array.
+    ///      Updates the emission period and claims rebases before reading NFT voting power.
+    ///      Allocations use post-rebase power; _weights may be frontend-computed post-rebase amounts.
     ///      Throws if length of _poolVote and _weights do not match.
     /// @param _tokenId     Id of veNFT you are voting with.
     /// @param _poolVote    Array of pools you are voting for.

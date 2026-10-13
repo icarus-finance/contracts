@@ -704,7 +704,8 @@ contract VoterTest is BaseTest {
         AERO.approve(address(escrow), TOKEN_1);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
 
-        skipToNextEpoch(2 hours); // past epochVoteStart
+        // Establish votes before the first rollover so all funding has an eligible gauge.
+        skipAndRoll(2 hours); // past epochVoteStart
 
         // vote for gauge
         address[] memory pools = new address[](1);
@@ -741,7 +742,7 @@ contract VoterTest is BaseTest {
 
         // zero-out rewards from minter so in a new rebase, new AERO is minted
         vm.prank(address(minter));
-        AERO.transfer(address(1), 9999999999999999999999999);
+        AERO.transfer(address(1), claimableBefore);
 
         assertEq(AERO.balanceOf(address(minter)), 0);
 

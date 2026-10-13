@@ -123,12 +123,23 @@ contract WashTradeTest is BaseTest {
         routerAddLiquidity();
 
         voter = new Voter(address(forwarder), address(escrow), address(factoryRegistry));
+        distributor = new RewardsDistributor(address(escrow));
+        escrow.setVoterAndDistributor(address(voter), address(distributor));
+        minter = new Minter(address(voter), address(escrow), address(distributor));
+        distributor.setMinter(address(minter));
+        AERO.setMinter(address(minter));
+        minter.initialize(IMinter.AirdropParams({
+            liquidWallets: new address[](0),
+            liquidAmounts: new uint256[](0),
+            lockedWallets: new address[](0),
+            lockedAmounts: new uint256[](0)
+        }));
         address[] memory tokens = new address[](4);
         tokens[0] = address(USDC);
         tokens[1] = address(FRAX);
         tokens[2] = address(DAI);
         tokens[3] = address(AERO);
-        voter.initialize(tokens, address(owner));
+        voter.initialize(tokens, address(minter));
 
         assertEq(voter.length(), 0);
     }
@@ -193,8 +204,6 @@ contract WashTradeTest is BaseTest {
     function voterReset() public {
         routerPool3GetAmountsOutAndSwapExactTokensForTokens();
 
-        distributor = new RewardsDistributor(address(escrow));
-        escrow.setVoterAndDistributor(address(voter), address(distributor));
         skip(1 hours);
         voter.reset(1);
     }

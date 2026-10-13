@@ -27,10 +27,10 @@ contract RevenueRewardPrecisionTest is BaseTest {
         deal(address(DAI), address(gauge), TOKEN_100M);
 
         // Set up users with initial AERO tokens
-        deal(address(AERO), user, TOKEN_100M);
-        deal(address(AERO), user1, TOKEN_100M);
-        deal(address(AERO), user2, TOKEN_100M);
-        deal(address(AERO), user3, TOKEN_100M);
+        deal(address(AERO), user, TOKEN_100M, true);
+        deal(address(AERO), user1, TOKEN_100M, true);
+        deal(address(AERO), user2, TOKEN_100M, true);
+        deal(address(AERO), user3, TOKEN_100M, true);
     }
 
     /// @notice Test edge case where rewards * balanceOf < totalSupply

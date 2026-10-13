@@ -623,7 +623,7 @@ contract ManagedNftTest is BaseTest {
         weights[0] = 10000;
         vm.startPrank(address(owner2));
         voter.vote(mTokenId, pools, weights);
-        assertEq(voter.totalWeight(), TOKEN_1 * 2);
+        assertEq(voter.totalWeight(), convert(escrow.locked(mTokenId).amount));
 
         skipAndRoll(1);
 
@@ -632,8 +632,8 @@ contract ManagedNftTest is BaseTest {
         vm.stopPrank();
         voter.withdrawManaged(tokenId2);
 
-        // properly synced with voting balance
-        assertEq(voter.totalWeight(), TOKEN_1);
+        // Synced with historical voting balance despite same-block transfer and compounded rebases.
+        assertEq(voter.totalWeight(), convert(escrow.locked(mTokenId).amount));
     }
 
     function testDepositManagedWithFlashProtection() public {
@@ -655,13 +655,13 @@ contract ManagedNftTest is BaseTest {
         voter.vote(mTokenId, pools, weights);
 
         // Same block transfer/depositManaged
-        assertEq(voter.totalWeight(), TOKEN_1);
+        assertEq(voter.totalWeight(), convert(escrow.locked(mTokenId).amount));
         escrow.transferFrom(address(owner2), address(owner3), mTokenId);
         vm.stopPrank();
         voter.depositManaged(tokenId2, mTokenId);
 
-        // properly synced with voting balance
-        assertEq(voter.totalWeight(), TOKEN_1 * 2);
+        // Synced with historical voting balance despite same-block transfer and compounded rebases.
+        assertEq(voter.totalWeight(), convert(escrow.locked(mTokenId).amount));
     }
 
     function testWithdrawManagedResetsLastVotedOnce() public {
@@ -683,8 +683,19 @@ contract ManagedNftTest is BaseTest {
         voter.vote(mTokenId, pools, weights);
 
         // The only locked veNFT withdraws - resetting the voting power and lastVoted
-        assertEq(voter.totalWeight(), TOKEN_1);
+        assertEq(voter.totalWeight(), convert(escrow.locked(mTokenId).amount));
         assertEq(voter.lastVoted(mTokenId), vm.getBlockTimestamp());
+        // Immediate withdrawal leaves this epoch's rebases in the managed lock and retains lastVoted.
+        uint256 snapshot = vm.snapshotState();
+        uint256 expectedResidual = convert(escrow.locked(mTokenId).amount) - TOKEN_1;
+        voter.withdrawManaged(tokenId);
+        assertGt(expectedResidual, 0);
+        assertEq(voter.totalWeight(), expectedResidual);
+        assertEq(voter.lastVoted(mTokenId), vm.getBlockTimestamp());
+        assertTrue(vm.revertToState(snapshot));
+
+        // Current-epoch rebases must mature before the sole depositor can empty the managed lock.
+        skipToNextEpoch(2 hours);
         voter.withdrawManaged(tokenId);
         assertEq(voter.totalWeight(), 0);
         assertEq(voter.lastVoted(mTokenId), 0);
@@ -693,7 +704,7 @@ contract ManagedNftTest is BaseTest {
         voter.depositManaged(tokenId, mTokenId);
         vm.prank(address(owner2));
         voter.vote(mTokenId, pools, weights);
-        assertEq(voter.totalWeight(), TOKEN_1);
+        assertEq(voter.totalWeight(), convert(escrow.locked(mTokenId).amount));
         assertEq(voter.lastVoted(mTokenId), vm.getBlockTimestamp());
         // veNFT cannot withdraw until next epoch
         vm.expectRevert(IVoter.AlreadyVotedOrDeposited.selector);
@@ -704,8 +715,10 @@ contract ManagedNftTest is BaseTest {
         voter.vote(mTokenId, pools, weights);
 
         // The only locked veNFT withdraws - resetting the voting power and lastVoted
-        assertEq(voter.totalWeight(), TOKEN_1);
+        assertEq(voter.totalWeight(), convert(escrow.locked(mTokenId).amount));
         assertEq(voter.lastVoted(mTokenId), vm.getBlockTimestamp());
+        // Current-epoch rebases must mature before the sole depositor can empty the managed lock.
+        skipToNextEpoch(2 hours);
         voter.withdrawManaged(tokenId);
         assertEq(voter.totalWeight(), 0);
         assertEq(voter.lastVoted(mTokenId), 0);
@@ -714,7 +727,7 @@ contract ManagedNftTest is BaseTest {
         voter.depositManaged(tokenId2, mTokenId);
         vm.prank(address(owner2));
         voter.vote(mTokenId, pools, weights);
-        assertEq(voter.totalWeight(), TOKEN_1);
+        assertEq(voter.totalWeight(), convert(escrow.locked(mTokenId).amount));
         assertEq(voter.lastVoted(mTokenId), vm.getBlockTimestamp());
         // veNFT cannot withdraw until next epoch
         vm.expectRevert(IVoter.AlreadyVotedOrDeposited.selector);

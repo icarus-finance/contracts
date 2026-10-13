@@ -569,6 +569,7 @@ contract MinterDeferredInitializationTest is Test {
         // Verify votes registered
         assertGt(voter.weights(address(stablePool)), 0);
         assertGt(voter.weights(address(volatilePool)), 0);
+        assertEq(minter.epochCount(), 1, "Voting should process the first emission epoch");
 
         // === Phase 4: Emissions begin ===
         
@@ -582,7 +583,7 @@ contract MinterDeferredInitializationTest is Test {
 
         // Verify emissions occurred
         assertGt(AERO.totalSupply(), supplyBefore, "New tokens should be minted");
-        assertEq(minter.epochCount(), 1, "Epoch should advance");
+        assertEq(minter.epochCount(), 2, "Distribution should process the next emission epoch");
         assertGt(AERO.balanceOf(address(stableGauge)), 0, "Stable gauge should have rewards");
         assertGt(AERO.balanceOf(address(volatileGauge)), 0, "Volatile gauge should have rewards");
 

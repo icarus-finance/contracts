@@ -9,6 +9,7 @@ import {IMinter} from "./interfaces/IMinter.sol";
 import {IPool} from "./interfaces/IPool.sol";
 import {IPoolFactory} from "./interfaces/factories/IPoolFactory.sol";
 import {IReward} from "./interfaces/IReward.sol";
+import {IRewardsDistributor} from "./interfaces/IRewardsDistributor.sol";
 import {IVoter} from "./interfaces/IVoter.sol";
 import {IVotingEscrow} from "./interfaces/IVotingEscrow.sol";
 import {IFactoryRegistry} from "./interfaces/factories/IFactoryRegistry.sol";
@@ -294,6 +295,8 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
         if ((_timestamp > ProtocolTimeLibrary.epochVoteEnd(_timestamp)) && !isWhitelistedNFT[_tokenId]) {
             revert NotWhitelistedNFT();
         }
+        IMinter(minter).updatePeriod();
+        IRewardsDistributor(IVotingEscrow(ve).distributor()).claim(_tokenId);
         lastVoted[_tokenId] = _timestamp;
         uint256 _weight = IVotingEscrow(ve).balanceOfNFT(_tokenId);
         _vote(_tokenId, _weight, _poolVote, _weights);
