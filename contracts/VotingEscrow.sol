@@ -854,7 +854,6 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     /// @inheritdoc IVotingEscrow
     function depositFor(uint256 _tokenId, uint256 _value) external nonReentrant {
         if (escrowType[_tokenId] == EscrowType.MANAGED && _msgSender() != distributor) revert NotDistributor();
-        if (_teamLocks[_tokenId].endTs != 0 && _msgSender() != distributor) revert TeamLocked();
         _increaseAmountFor(_tokenId, _value, DepositType.DEPOSIT_FOR_TYPE);
     }
 
@@ -973,7 +972,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVotingEscrow
-    function increaseAmount(uint256 _tokenId, uint256 _value) external nonReentrant noTeamLocked(_tokenId) {
+    function increaseAmount(uint256 _tokenId, uint256 _value) external nonReentrant {
         if (!_isApprovedOrOwner(_msgSender(), _tokenId)) revert NotApprovedOrOwner();
         _increaseAmountFor(_tokenId, _value, DepositType.INCREASE_LOCK_AMOUNT);
     }

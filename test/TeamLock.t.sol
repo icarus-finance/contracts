@@ -239,12 +239,12 @@ contract TeamLockTest is BaseTest {
         escrow.merge(tokenId1, tokenId2);
     }
 
-    function testCannotMergeIntoTeamLock() public {
+    function testCannotMergeIntoTeamLockWithoutSourceApproval() public {
         uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
         uint256 tokenId1 = escrow.createLock(TOKEN_1, MAXTIME);
         uint256 tokenId2 = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
 
-        // Owner2 should not be able to merge into their team locked token
+        // Owning the destination does not authorize burning someone else's source NFT.
         vm.prank(address(owner2));
         vm.expectRevert(IVotingEscrow.NotApprovedOrOwner.selector);
         escrow.merge(tokenId1, tokenId2);
@@ -365,47 +365,167 @@ contract TeamLockTest is BaseTest {
         assertTrue(escrow.voted(tokenId), "Owner should be able to vote after expiry");
     }
 
-    // Test operations that are restricted on team locks
-    function testCannotIncreaseAmountOnTeamLock() public {
+    function testCanIncreaseAmountOnTeamLock() public {
         uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
         uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+        IVotingEscrow.LockedBalance memory beforeLock = escrow.locked(tokenId);
+        uint256 supplyBefore = escrow.supply();
+        uint256 escrowBalanceBefore = AERO.balanceOf(address(escrow));
 
-        // Give owner2 some AERO tokens to try to increase amount
-        deal(address(AERO), address(owner2), TOKEN_1);
         vm.startPrank(address(owner2));
         AERO.approve(address(escrow), TOKEN_1);
-        
-        // increaseAmount now has noTeamLocked modifier and should revert
-        vm.expectRevert(IVotingEscrow.TeamLocked.selector);
         escrow.increaseAmount(tokenId, TOKEN_1);
         vm.stopPrank();
+
+        IVotingEscrow.LockedBalance memory afterLock = escrow.locked(tokenId);
+        assertEq(uint256(uint128(afterLock.amount)), TOKEN_1 * 2);
+        assertEq(afterLock.end, beforeLock.end);
+        assertEq(escrow.supply(), supplyBefore + TOKEN_1);
+        assertEq(AERO.balanceOf(address(escrow)), escrowBalanceBefore + TOKEN_1);
+        assertEq(escrow.teamLocks(tokenId).endTs, teamUnlockTs);
     }
 
-    function testCannotDepositForOnTeamLock() public {
+    function testCannotIncreaseTeamLockAmountWithoutApproval() public {
+        uint256 tokenId = escrow.createTeamLockFor(
+            TOKEN_1, MAXTIME, address(owner2), block.timestamp + TEAM_LOCK_DURATION
+        );
+        vm.prank(address(owner3));
+        vm.expectRevert(IVotingEscrow.NotApprovedOrOwner.selector);
+        escrow.increaseAmount(tokenId, TOKEN_1);
+    }
+
+    function testAnyoneCanDepositForTeamLock() public {
         uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
         uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+        uint256 supplyBefore = escrow.supply();
+        uint256 payerBalanceBefore = AERO.balanceOf(address(owner3));
 
-        // Give owner2 some AERO tokens to try to deposit
-        deal(address(AERO), address(owner2), TOKEN_1);
+        vm.startPrank(address(owner3));
+        AERO.approve(address(escrow), TOKEN_1);
+        escrow.depositFor(tokenId, TOKEN_1);
+        vm.stopPrank();
+
+        assertEq(uint256(uint128(escrow.locked(tokenId).amount)), TOKEN_1 * 2);
+        assertEq(escrow.supply(), supplyBefore + TOKEN_1);
+        assertEq(AERO.balanceOf(address(owner3)), payerBalanceBefore - TOKEN_1);
+        assertEq(escrow.ownerOf(tokenId), address(owner2));
+        assertEq(escrow.teamLocks(tokenId).endTs, teamUnlockTs);
+    }
+
+    function testAdditionsAndIncomingMergeParticipateInClawback() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, 365 days, address(owner2), teamUnlockTs);
+        uint256 startTs = escrow.teamLocks(tokenId).startTs;
+        uint256 source = escrow.createLockFor(TOKEN_1, MAXTIME, address(owner2));
+        uint256 sourceEnd = escrow.locked(source).end;
+        uint256 supplyBefore = escrow.supply();
+        uint256 escrowBalanceBefore = AERO.balanceOf(address(escrow));
+
+        vm.warp(startTs + TEAM_LOCK_DURATION / 4);
+        escrow.depositFor(tokenId, TOKEN_1);
         vm.startPrank(address(owner2));
         AERO.approve(address(escrow), TOKEN_1);
-        
-        // depositFor should revert when called by non-distributor on team lock
-        vm.expectRevert(IVotingEscrow.TeamLocked.selector);
-        escrow.depositFor(tokenId, TOKEN_1);
+        escrow.increaseAmount(tokenId, TOKEN_1);
+        escrow.merge(source, tokenId);
         vm.stopPrank();
 
-        // Verify only distributor can call depositFor on team locks
-        deal(address(AERO), address(distributor), TOKEN_1);
-        vm.startPrank(address(distributor));
+        assertEq(uint256(uint128(escrow.locked(tokenId).amount)), TOKEN_1 * 4);
+        assertEq(escrow.locked(tokenId).end, sourceEnd);
+        assertEq(escrow.ownerOf(source), address(0));
+        assertEq(escrow.locked(source).amount, 0);
+        assertEq(escrow.supply(), supplyBefore + TOKEN_1 * 2);
+        assertEq(AERO.balanceOf(address(escrow)), escrowBalanceBefore + TOKEN_1 * 2);
+        assertEq(escrow.teamLocks(tokenId).startTs, startTs);
+        assertEq(escrow.teamLocks(tokenId).endTs, teamUnlockTs);
+
+        (uint256 retained, uint256 clawback) = escrow.clawbackTeamLock(tokenId);
+        assertEq(uint256(uint128(escrow.locked(retained).amount)), TOKEN_1);
+        assertEq(uint256(uint128(escrow.locked(clawback).amount)), TOKEN_1 * 3);
+        assertEq(escrow.supply(), supplyBefore + TOKEN_1 * 2);
+        assertEq(escrow.ownerOf(retained), address(owner2));
+        assertEq(escrow.ownerOf(clawback), address(owner));
+    }
+
+    function testTeamCanMergeOwnedNormalLockIntoApprovedTeamLock() public {
+        uint256 tokenId = escrow.createTeamLockFor(
+            TOKEN_1, MAXTIME, address(owner2), block.timestamp + TEAM_LOCK_DURATION
+        );
+        uint256 source = escrow.createLock(TOKEN_1, MAXTIME);
+        vm.expectRevert(IVotingEscrow.NotApprovedOrOwner.selector);
+        escrow.merge(source, tokenId);
+        vm.prank(address(owner2));
+        escrow.approve(address(owner), tokenId);
+        escrow.merge(source, tokenId);
+        assertEq(uint256(uint128(escrow.locked(tokenId).amount)), TOKEN_1 * 2);
+        assertEq(escrow.ownerOf(tokenId), address(owner2));
+        assertEq(escrow.ownerOf(source), address(0));
+    }
+
+    function testPermanentTeamLockAdditionsAndMergeAccounting() public {
+        uint256 tokenId = escrow.createTeamLockFor(
+            TOKEN_1, MAXTIME, address(owner2), block.timestamp + TEAM_LOCK_DURATION
+        );
+        uint256 source = escrow.createLockFor(TOKEN_1, MAXTIME, address(owner2));
+        vm.prank(address(owner2));
+        escrow.lockPermanent(tokenId);
+        uint256 permanentBefore = escrow.permanentLockBalance();
+        uint256 supplyBefore = escrow.supply();
+
+        escrow.depositFor(tokenId, TOKEN_1);
+        vm.startPrank(address(owner2));
         AERO.approve(address(escrow), TOKEN_1);
-        // This should succeed as distributor is allowed
-        escrow.depositFor(tokenId, TOKEN_1);
+        escrow.increaseAmount(tokenId, TOKEN_1);
+        escrow.merge(source, tokenId);
         vm.stopPrank();
 
-        // Verify the deposit was successful
-        IVotingEscrow.LockedBalance memory locked = escrow.locked(tokenId);
-        assertEq(uint256(uint128(locked.amount)), TOKEN_1 * 2, "Distributor should be able to deposit");
+        assertTrue(escrow.locked(tokenId).isPermanent);
+        assertEq(escrow.locked(tokenId).end, 0);
+        assertEq(uint256(uint128(escrow.locked(tokenId).amount)), TOKEN_1 * 4);
+        assertEq(escrow.permanentLockBalance(), permanentBefore + TOKEN_1 * 3);
+        assertEq(escrow.supply(), supplyBefore + TOKEN_1 * 2);
+    }
+
+    function testClawbackedTeamLockAcceptsAdditionsButCannotMergeOut() public {
+        uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+        vm.warp(block.timestamp + TEAM_LOCK_DURATION / 2);
+        (uint256 retained, ) = escrow.clawbackTeamLock(tokenId);
+        uint256 source = escrow.createLockFor(TOKEN_1, MAXTIME, address(owner2));
+
+        escrow.depositFor(retained, TOKEN_1);
+        vm.startPrank(address(owner2));
+        AERO.approve(address(escrow), TOKEN_1);
+        escrow.increaseAmount(retained, TOKEN_1);
+        escrow.merge(source, retained);
+        vm.stopPrank();
+        assertEq(uint256(uint128(escrow.locked(retained).amount)), TOKEN_1 / 2 + TOKEN_1 * 3);
+        assertTrue(escrow.teamLocks(retained).clawbacked);
+        assertEq(escrow.teamLocks(retained).endTs, teamUnlockTs);
+
+        uint256 destination = escrow.createLockFor(TOKEN_1, MAXTIME, address(owner2));
+        vm.prank(address(owner2));
+        vm.expectRevert(IVotingEscrow.TeamLocked.selector);
+        escrow.merge(retained, destination);
+    }
+
+    function testExpiredTeamRestrictionPersistsUntilExplicitUnlock() public {
+        uint256 teamUnlockTs = block.timestamp + 1 weeks;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(owner2), teamUnlockTs);
+        uint256 destination = escrow.createLockFor(TOKEN_1, MAXTIME, address(owner2));
+        vm.warp(teamUnlockTs);
+        escrow.depositFor(tokenId, TOKEN_1);
+        vm.startPrank(address(owner2));
+        AERO.approve(address(escrow), TOKEN_1);
+        escrow.increaseAmount(tokenId, TOKEN_1);
+        vm.expectRevert(IVotingEscrow.TeamLocked.selector);
+        escrow.merge(tokenId, destination);
+        vm.stopPrank();
+
+        escrow.unlockTeamLock(tokenId);
+        vm.prank(address(owner2));
+        escrow.merge(tokenId, destination);
+        assertEq(uint256(uint128(escrow.locked(destination).amount)), TOKEN_1 * 4);
+        assertEq(escrow.teamLocks(destination).endTs, 0);
     }
 
     function testCanIncreaseUnlockTimeOnTeamLock() public {
@@ -546,7 +666,7 @@ contract TeamLockTest is BaseTest {
         uint256 claimableAmount = distributor.claimable(tokenId);
         assertGt(claimableAmount, 0, "Should have claimable rewards");
 
-        // Claim rewards - this should call depositFor which is allowed for distributor on team locks
+        // Claim rewards through the actual distributor compounding path.
         uint256 balanceBeforeClaim = AERO.balanceOf(address(owner2));
         distributor.claim(tokenId);
 
@@ -565,6 +685,13 @@ contract TeamLockTest is BaseTest {
         // Verify team lock is still intact
         IVotingEscrow.TeamLock memory teamLockAfter = escrow.teamLocks(tokenId);
         assertEq(teamLockAfter.endTs, teamLock.endTs, "Team lock should remain unchanged");
+
+        uint256 compoundedAmount = TOKEN_1M + claimableAmount;
+        uint256 expectedClawback = (compoundedAmount * (teamLock.endTs - block.timestamp)) /
+            (teamLock.endTs - teamLock.startTs);
+        (uint256 retained, uint256 clawback) = escrow.clawbackTeamLock(tokenId);
+        assertEq(uint256(uint128(escrow.locked(clawback).amount)), expectedClawback);
+        assertEq(uint256(uint128(escrow.locked(retained).amount)), compoundedAmount - expectedClawback);
     }
 
     function testCannotVoteWhenTeamLockBlacklisted() public {
@@ -887,19 +1014,20 @@ contract TeamLockTest is BaseTest {
         escrow.withdraw(tokenId);
     }
 
-    function testCreateTeamLockForExistingTokenCannotIncreaseAmount() public {
+    function testCreateTeamLockForExistingTokenAllowsIncreaseAmount() public {
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
         uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
         
         escrow.createTeamLockFor(tokenId, address(owner2), teamUnlockTs);
 
-        // Owner2 cannot increase amount on team locked token
+        // The converted lock accepts owner-funded top-ups.
         deal(address(AERO), address(owner2), TOKEN_1);
         vm.startPrank(address(owner2));
         AERO.approve(address(escrow), TOKEN_1);
-        vm.expectRevert(IVotingEscrow.TeamLocked.selector);
         escrow.increaseAmount(tokenId, TOKEN_1);
         vm.stopPrank();
+        assertEq(uint256(uint128(escrow.locked(tokenId).amount)), TOKEN_1 * 2);
+        assertEq(escrow.teamLocks(tokenId).endTs, teamUnlockTs);
     }
 
     function testCreateTeamLockForExistingTokenAllowsIncreaseUnlockTime() public {
