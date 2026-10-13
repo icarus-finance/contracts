@@ -200,6 +200,9 @@ Standard Operations:
 - Can deposit LP tokens for another receipient. 
 - Can withdraw LP tokens. 
 - Can get emission rewards for an account. 
+- Can lock the full IRS emission claim into an owned or new veNFT, including across gauges via Voter.
+- Current VotingEscrow team can configure one shared callback in Voter for all compatible gauges after positive claims; failures revert the claim.
+  See [claim-and-lock](docs/claim-and-lock.md) for callback arguments and integration rules.
 - Can deposit emissions into gauge (requires `Voter`).
 
 ### Reward

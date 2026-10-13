@@ -4,6 +4,7 @@ pragma solidity 0.8.30;
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IReward} from "../interfaces/IReward.sol";
 import {IGauge} from "../interfaces/IGauge.sol";
+import {IClaimHook} from "../interfaces/IClaimHook.sol";
 import {IPool} from "../interfaces/IPool.sol";
 import {IVoter} from "../interfaces/IVoter.sol";
 import {IVotingEscrow} from "../interfaces/IVotingEscrow.sol";
@@ -122,17 +123,60 @@ contract Gauge is IGauge, ERC2771Context, ReentrancyGuard {
 
     /// @inheritdoc IGauge
     function getReward(address _account) external nonReentrant {
+        _claimReward(_account, false, 0, 0);
+    }
+
+    /// @inheritdoc IGauge
+    function getRewardAndLock(
+        address _account,
+        uint256 _tokenId,
+        uint256 _lockDuration
+    ) external nonReentrant returns (uint256) {
+        return _claimReward(_account, true, _tokenId, _lockDuration);
+    }
+
+    function _claimReward(
+        address _account,
+        bool _lock,
+        uint256 _tokenId,
+        uint256 _lockDuration
+    ) internal returns (uint256) {
         address sender = _msgSender();
         if (sender != _account && sender != voter) revert NotAuthorized();
+
+        IVotingEscrow escrow = IVotingEscrow(ve);
+        if (_lock) {
+            if (rewardToken != escrow.token()) revert InvalidRewardToken();
+            if (_tokenId != 0) {
+                if (_lockDuration != 0) revert InvalidParams();
+                if (escrow.ownerOf(_tokenId) != _account) revert NotAuthorized();
+            }
+        }
 
         _updateRewards(_account);
 
         uint256 reward = rewards[_account];
         if (reward > 0) {
             rewards[_account] = 0;
-            IERC20(rewardToken).safeTransfer(_account, reward);
+            uint256 amountLocked;
+            if (_lock) {
+                IERC20(rewardToken).forceApprove(ve, reward);
+                if (_tokenId == 0) {
+                    _tokenId = escrow.createLockFor(reward, _lockDuration, _account);
+                } else {
+                    escrow.depositFor(_tokenId, reward);
+                }
+                IERC20(rewardToken).forceApprove(ve, 0);
+                amountLocked = reward;
+                emit ClaimRewardsLocked(_account, _tokenId, reward);
+            } else {
+                IERC20(rewardToken).safeTransfer(_account, reward);
+            }
             emit ClaimRewards(_account, reward);
+            address hook = IVoter(voter).claimHook();
+            if (hook != address(0)) IClaimHook(hook).onClaim(_tokenId, amountLocked, _account, address(this));
         }
+        return _tokenId;
     }
 
     /// @inheritdoc IGauge

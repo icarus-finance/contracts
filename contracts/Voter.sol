@@ -46,6 +46,9 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
     address public emergencyCouncil;
 
     /// @inheritdoc IVoter
+    address public claimHook;
+
+    /// @inheritdoc IVoter
     uint256 public totalWeight;
     /// @inheritdoc IVoter
     uint256 public maxVotingNum;
@@ -163,6 +166,15 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVoter
+    function setClaimHook(address _hook) external nonReentrant {
+        if (_msgSender() != IVotingEscrow(ve).team()) revert IVotingEscrow.NotTeam();
+        if (_hook != address(0) && _hook.code.length == 0) revert InvalidHook();
+        address oldHook = claimHook;
+        claimHook = _hook;
+        emit ClaimHookSet(oldHook, _hook);
+    }
+
+    /// @inheritdoc IVoter
     function setMaxVotingNum(uint256 _maxVotingNum) external onlyGovernor {
         if (_maxVotingNum < MIN_MAXVOTINGNUM) revert MaximumVotingNumberTooLow();
         if (_maxVotingNum == maxVotingNum) revert SameValue();
@@ -177,7 +189,7 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
         if (tmpVotingBlacklist[_tokenId] > block.timestamp) revert TeamLockBlacklisted();
         tmpVotingBlacklist[_tokenId] = block.timestamp + 1 days;
     }
-    
+
     /// @inheritdoc IVoter
     function reset(uint256 _tokenId) external onlyNewEpoch(_tokenId) nonReentrant {
         if (!IVotingEscrow(ve).isApprovedOrOwner(_msgSender(), _tokenId)) revert NotApprovedOrOwner();
@@ -479,6 +491,20 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
         uint256 _length = _gauges.length;
         for (uint256 i = 0; i < _length; i++) {
             IGauge(_gauges[i]).getReward(_msgSender());
+        }
+    }
+
+    /// @inheritdoc IVoter
+    function claimRewardsAndLock(
+        address[] memory _gauges,
+        uint256 _tokenId,
+        uint256 _lockDuration
+    ) external nonReentrant returns (uint256 tokenId) {
+        address account = _msgSender();
+        tokenId = _tokenId;
+        if (tokenId != 0 && _lockDuration != 0) revert IGauge.InvalidParams();
+        for (uint256 i = 0; i < _gauges.length; i++) {
+            tokenId = IGauge(_gauges[i]).getRewardAndLock(account, tokenId, tokenId == 0 ? _lockDuration : 0);
         }
     }
 

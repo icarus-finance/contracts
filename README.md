@@ -57,6 +57,7 @@ See `CHANGELOG.md` for specific changes to Aerodrome.
 The [proposed gauge-cap controller](docs/gauge-cap-controller-design.md) assesses fee-based
 per-gauge emissions caps; that proposal is not implemented.
 The implemented [global weekly emissions cap](docs/weekly-emissions-cap.md) is configured in Minter.
+Gauge emissions support [claim-and-lock and team callbacks](docs/claim-and-lock.md).
 
 ## Testing
 

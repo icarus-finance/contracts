@@ -16,6 +16,7 @@
 ### Liquidity provider (LP)
 - Can deposit their LP token into the Protocol gauge linked to the liquidity pool
     - Earns AERO emissions
+- Can claim IRS gauge emissions liquid or into an owned/new veNFT; see [claim-and-lock](docs/claim-and-lock.md).
 
 ### veNFT Hodler
 - For a detailed breakdown refer to [VOTINGESCROW.md](https://github.com/aerodrome-finance/contracts/blob/main/VOTINGESCROW.md)
@@ -106,6 +107,9 @@ This is an exhaustive list of all admin permissions in the protocol, sorted by t
     - Can renounce vetoer role.
 
 #### [Voter](https://basescan.org/address/0x16613524e02ad97eDfeF371bC883F2F5d6C480A5#code)
+- Current VotingEscrow Team
+    - Can register, replace or disable the shared claim hook for all compatible gauges with one `setClaimHook` call.
+    - Hook failures revert claims; team can restore claims by disabling the hook globally.
 - Governor
     - Can set governor in Voter.
     - Can set epochGovernor in Voter.

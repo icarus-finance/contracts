@@ -16,6 +16,7 @@ All code under expired BUSL-1.1 license was changed to GPL-2.0.
 
 ## Added
 
+- Added full IRS gauge claim-and-lock into owned or new veNFTs, Voter batching, and a shared team claim hook in Voter with gauge context. See [integration notes](docs/claim-and-lock.md).
 - Added `teamLocks` to the `VotingEscrow`, which enable restricting veNFTs functions until specified timestamp.
     - Transfer, outgoing Merge, Split, DepositManaged functions are disabled until `unlockTeamLock` clears the restriction after expiry.
     - Incoming merges, IRS deposits and rebases grow the full team-locked balance under the original vesting/clawback schedule. See [team lock accounting](docs/team-locks.md).

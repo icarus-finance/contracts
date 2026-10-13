@@ -9,12 +9,15 @@ interface IGauge {
     error RewardRateTooHigh();
     error ZeroAmount();
     error ZeroRewardRate();
+    error InvalidParams();
+    error InvalidRewardToken();
 
     event Deposit(address indexed from, address indexed to, uint256 amount);
     event Withdraw(address indexed from, uint256 amount);
     event NotifyReward(address indexed from, uint256 amount);
     event ClaimFees(address indexed from, uint256 claimed0, uint256 claimed1);
     event ClaimRewards(address indexed from, uint256 amount);
+    event ClaimRewardsLocked(address indexed from, uint256 indexed tokenId, uint256 amount);
 
     /// @notice Address of the pool LP token which is deposited (staked) for rewards
     function stakingToken() external view returns (address);
@@ -83,6 +86,19 @@ interface IGauge {
     /// @dev Throws if not called by same address or voter.
     /// @param _account .
     function getReward(address _account) external;
+
+    /// @notice Claim all accrued rewards into an existing or newly created veNFT.
+    /// @dev Only account or voter. Existing NFTs must be owned by account; escrow restrictions apply.
+    ///      A zero reward performs no lock or callback. Hook failure reverts the entire claim.
+    /// @param account Reward recipient and owner of the resulting veNFT.
+    /// @param tokenId Existing veNFT id, or zero to create a new lock.
+    /// @param lockDuration Duration for a new lock; must be zero for an existing veNFT.
+    /// @return resultingTokenId Existing or newly created id; unchanged when no rewards accrue.
+    function getRewardAndLock(
+        address account,
+        uint256 tokenId,
+        uint256 lockDuration
+    ) external returns (uint256 resultingTokenId);
 
     /// @notice Deposit LP tokens into gauge for msg.sender
     /// @param _amount .
