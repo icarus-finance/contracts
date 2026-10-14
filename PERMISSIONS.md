@@ -109,7 +109,7 @@ This is an exhaustive list of all admin permissions in the protocol, sorted by t
 #### [Voter](https://basescan.org/address/0x16613524e02ad97eDfeF371bC883F2F5d6C480A5#code)
 - Current VotingEscrow Team
     - Can register, replace or disable the shared claim hook for all compatible gauges with one `setClaimHook` call.
-    - Hook failures revert claims; team can restore claims by disabling the hook globally.
+    - Hook callbacks are best-effort: callback reverts do not undo settled claims. Team can replace or disable a faulty hook globally.
 - Governor
     - Can set governor in Voter.
     - Can set epochGovernor in Voter.

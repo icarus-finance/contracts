@@ -89,7 +89,7 @@ interface IGauge {
 
     /// @notice Claim all accrued rewards into an existing or newly created veNFT.
     /// @dev Only account or voter. Existing NFTs must be owned by account; escrow restrictions apply.
-    ///      A zero reward performs no lock or callback. Hook failure reverts the entire claim.
+    ///      A zero reward performs no lock or callback. Callback reverts do not undo the claim.
     /// @param account Reward recipient and owner of the resulting veNFT.
     /// @param tokenId Existing veNFT id, or zero to create a new lock.
     /// @param lockDuration Duration for a new lock; must be zero for an existing veNFT.

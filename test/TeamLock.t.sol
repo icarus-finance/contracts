@@ -412,6 +412,58 @@ contract TeamLockTest is BaseTest {
         assertEq(escrow.teamLocks(tokenId).endTs, teamUnlockTs);
     }
 
+    function testTeamNeedsNftApprovalToIncreaseAmountDespiteVotingAuthority() public {
+        uint256 tokenId = escrow.createTeamLockFor(
+            TOKEN_1, MAXTIME, address(owner2), block.timestamp + TEAM_LOCK_DURATION
+        );
+        uint256 teamBalanceBefore = AERO.balanceOf(address(owner));
+        uint256 recipientBalanceBefore = AERO.balanceOf(address(owner2));
+        assertTrue(escrow.isApprovedOrOwner(address(owner), tokenId), "team can vote");
+
+        vm.expectRevert(IVotingEscrow.NotApprovedOrOwner.selector);
+        escrow.increaseAmount(tokenId, TOKEN_1);
+        assertEq(uint256(uint128(escrow.locked(tokenId).amount)), TOKEN_1);
+        assertEq(AERO.balanceOf(address(owner)), teamBalanceBefore);
+
+        vm.prank(address(owner2));
+        escrow.approve(address(owner), tokenId);
+        escrow.increaseAmount(tokenId, TOKEN_1);
+        assertEq(uint256(uint128(escrow.locked(tokenId).amount)), TOKEN_1 * 2);
+        assertEq(AERO.balanceOf(address(owner)), teamBalanceBefore - TOKEN_1, "approved caller funds addition");
+        assertEq(AERO.balanceOf(address(owner2)), recipientBalanceBefore, "owner does not fund operator deposit");
+        assertEq(escrow.ownerOf(tokenId), address(owner2));
+    }
+
+    function testExpiredEscrowTeamLockRejectsAdditionsWithoutMovingFunds() public {
+        uint256 teamEnd = block.timestamp + TEAM_LOCK_DURATION;
+        uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, 2 weeks, address(owner2), teamEnd);
+        IVotingEscrow.LockedBalance memory beforeLock = escrow.locked(tokenId);
+        uint256 source = escrow.createLockFor(TOKEN_1, MAXTIME, address(owner2));
+        uint256 supplyBefore = escrow.supply();
+        uint256 payerBefore = AERO.balanceOf(address(owner));
+        uint256 escrowBalanceBefore = AERO.balanceOf(address(escrow));
+        vm.warp(beforeLock.end);
+
+        vm.expectRevert(IVotingEscrow.LockExpired.selector);
+        escrow.depositFor(tokenId, TOKEN_1);
+        vm.startPrank(address(owner2));
+        AERO.approve(address(escrow), TOKEN_1);
+        vm.expectRevert(IVotingEscrow.LockExpired.selector);
+        escrow.increaseAmount(tokenId, TOKEN_1);
+        vm.expectRevert(IVotingEscrow.LockExpired.selector);
+        escrow.merge(source, tokenId);
+        vm.stopPrank();
+
+        assertEq(escrow.locked(tokenId).amount, beforeLock.amount);
+        assertEq(escrow.locked(tokenId).end, beforeLock.end);
+        assertEq(escrow.teamLocks(tokenId).endTs, teamEnd);
+        assertEq(escrow.ownerOf(source), address(owner2), "failed merge preserves source");
+        assertEq(uint256(uint128(escrow.locked(source).amount)), TOKEN_1);
+        assertEq(escrow.supply(), supplyBefore);
+        assertEq(AERO.balanceOf(address(owner)), payerBefore);
+        assertEq(AERO.balanceOf(address(escrow)), escrowBalanceBefore);
+    }
+
     function testAdditionsAndIncomingMergeParticipateInClawback() public {
         uint256 teamUnlockTs = block.timestamp + TEAM_LOCK_DURATION;
         uint256 tokenId = escrow.createTeamLockFor(TOKEN_1, 365 days, address(owner2), teamUnlockTs);
@@ -501,6 +553,10 @@ contract TeamLockTest is BaseTest {
         assertEq(uint256(uint128(escrow.locked(retained).amount)), TOKEN_1 / 2 + TOKEN_1 * 3);
         assertTrue(escrow.teamLocks(retained).clawbacked);
         assertEq(escrow.teamLocks(retained).endTs, teamUnlockTs);
+
+        vm.expectRevert(IVotingEscrow.AlreadyClawbacked.selector);
+        escrow.clawbackTeamLock(retained);
+        assertEq(uint256(uint128(escrow.locked(retained).amount)), TOKEN_1 / 2 + TOKEN_1 * 3);
 
         uint256 destination = escrow.createLockFor(TOKEN_1, MAXTIME, address(owner2));
         vm.prank(address(owner2));

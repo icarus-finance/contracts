@@ -79,6 +79,28 @@ contract VoterRebaseTest is BaseTest {
         assertEq(voter.votes(tokenId, address(pool)), TOKEN_1M);
     }
 
+    function testVoteAfterManualRebaseClaimDoesNotCompoundTwice() public {
+        uint256 tokenId = _createLock(true);
+        skipToNextEpoch(1 hours + 1);
+        minter.updatePeriod();
+        uint256 rebase = distributor.claim(tokenId);
+        assertGt(rebase, 0);
+        uint256 lockedBefore = convert(escrow.locked(tokenId).amount);
+        uint256 distributorBalanceBefore = AERO.balanceOf(address(distributor));
+        uint256 cursorBefore = distributor.timeCursorOf(tokenId);
+        uint256 supplyBefore = AERO.totalSupply();
+
+        _voteOne(tokenId, lockedBefore);
+
+        assertEq(convert(escrow.locked(tokenId).amount), lockedBefore);
+        assertEq(voter.usedWeights(tokenId), lockedBefore);
+        assertEq(voter.votes(tokenId, address(pool)), lockedBefore);
+        assertEq(AERO.balanceOf(address(distributor)), distributorBalanceBefore);
+        assertEq(distributor.timeCursorOf(tokenId), cursorBefore);
+        assertEq(AERO.totalSupply(), supplyBefore);
+        assertEq(distributor.claimable(tokenId), 0);
+    }
+
     function testVoteCompoundsTeamLockUnderExistingVestingSchedule() public {
         AERO.approve(address(escrow), TOKEN_1M);
         uint256 tokenId =

@@ -174,7 +174,10 @@ contract Gauge is IGauge, ERC2771Context, ReentrancyGuard {
             }
             emit ClaimRewards(_account, reward);
             address hook = IVoter(voter).claimHook();
-            if (hook != address(0)) IClaimHook(hook).onClaim(_tokenId, amountLocked, _account, address(this));
+            if (hook != address(0)) {
+                // Optional callbacks must not roll back settled rewards.
+                try IClaimHook(hook).onClaim(_tokenId, amountLocked, _account, address(this)) {} catch {}
+            }
         }
         return _tokenId;
     }

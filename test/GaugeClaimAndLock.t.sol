@@ -32,7 +32,6 @@ contract RecordingClaimHook {
 
     function onClaim(uint256 _tokenId, uint256 _amountLocked, address _user, address _gauge) external {
         require(msg.sender == _gauge, "caller mismatch");
-        if (fail || _gauge == failGauge) revert HookFailed();
         gaugeArg = _gauge;
         pool = IVoter(Gauge(_gauge).voter()).poolForGauge(_gauge);
         callsByGauge[_gauge]++;
@@ -48,6 +47,16 @@ contract RecordingClaimHook {
             } catch (bytes memory reason) {
                 reentryBlocked = bytes4(reason) == ReentrancyGuard.ReentrancyGuardReentrantCall.selector;
             }
+        }
+        // Revert after state writes to verify only callback effects roll back.
+        if (fail || _gauge == failGauge) revert HookFailed();
+    }
+}
+
+contract EmptyRevertClaimHook {
+    function onClaim(uint256, uint256, address, address) external pure {
+        assembly {
+            revert(0, 0)
         }
     }
 }
@@ -198,7 +207,7 @@ contract GaugeClaimAndLockTest is BaseTest {
         assertEq(convert(escrow.locked(id).amount), TOKEN_1);
     }
 
-    function testHookRevertRestoresNewLockAndRewards() public {
+    function testHookRevertPreservesNewLockAndRewards() public {
         uint256 reward = _accrue();
         uint256 balanceBefore = AERO.balanceOf(address(this));
         uint256 gaugeBefore = AERO.balanceOf(address(gauge));
@@ -206,34 +215,64 @@ contract GaugeClaimAndLockTest is BaseTest {
         uint256 idBefore = escrow.tokenId();
         voter.setClaimHook(address(hook));
         hook.configure(true, false);
-        vm.expectRevert(RecordingClaimHook.HookFailed.selector);
-        gauge.getRewardAndLock(address(this), 0, MAXTIME);
-        assertEq(gauge.earned(address(this)), reward);
-        assertEq(escrow.tokenId(), idBefore);
+        uint256 id = gauge.getRewardAndLock(address(this), 0, MAXTIME);
+        assertEq(id, idBefore + 1);
+        assertEq(escrow.ownerOf(id), address(this));
+        assertEq(convert(escrow.locked(id).amount), reward);
+        assertEq(gauge.earned(address(this)), 0);
         assertEq(AERO.balanceOf(address(this)), balanceBefore);
-        assertEq(AERO.balanceOf(address(gauge)), gaugeBefore);
-        assertEq(AERO.balanceOf(address(escrow)), escrowBefore);
+        assertEq(AERO.balanceOf(address(gauge)), gaugeBefore - reward);
+        assertEq(AERO.balanceOf(address(escrow)), escrowBefore + reward);
+        assertEq(AERO.allowance(address(gauge), address(escrow)), 0);
+        assertEq(hook.calls(), 0);
+        // A failed callback must not leave the same rewards claimable twice.
+        gauge.getRewardAndLock(address(this), id, 0);
+        assertEq(convert(escrow.locked(id).amount), reward);
+    }
+
+    function testHookRevertPreservesExistingLockDeposit() public {
+        uint256 id = _createLock(MAXTIME);
+        uint256 reward = _accrue();
+        uint256 expiry = escrow.locked(id).end;
+        voter.setClaimHook(address(hook));
+        hook.configure(true, false);
+        assertEq(gauge.getRewardAndLock(address(this), id, 0), id);
+        assertEq(convert(escrow.locked(id).amount), TOKEN_1 + reward);
+        assertEq(escrow.locked(id).end, expiry);
+        assertEq(gauge.earned(address(this)), 0);
         assertEq(AERO.allowance(address(gauge), address(escrow)), 0);
     }
 
-    function testHookRevertRestoresLiquidClaim() public {
+    function testHookRevertPreservesLiquidClaim() public {
         uint256 reward = _accrue();
         uint256 balanceBefore = AERO.balanceOf(address(this));
         voter.setClaimHook(address(hook));
         hook.configure(true, false);
-        vm.expectRevert(RecordingClaimHook.HookFailed.selector);
         gauge.getReward(address(this));
-        assertEq(gauge.earned(address(this)), reward);
-        assertEq(AERO.balanceOf(address(this)), balanceBefore);
+        assertEq(gauge.earned(address(this)), 0);
+        assertEq(AERO.balanceOf(address(this)), balanceBefore + reward);
+        gauge.getReward(address(this));
+        assertEq(AERO.balanceOf(address(this)), balanceBefore + reward);
+    }
+
+    function testEmptyHookRevertPreservesLiquidClaim() public {
+        uint256 reward = _accrue();
+        uint256 balanceBefore = AERO.balanceOf(address(this));
+        voter.setClaimHook(address(new EmptyRevertClaimHook()));
+        gauge.getReward(address(this));
+        assertEq(gauge.earned(address(this)), 0);
+        assertEq(AERO.balanceOf(address(this)), balanceBefore + reward);
     }
 
     function testHookCannotReenterClaim() public {
-        _accrue();
+        uint256 reward = _accrue();
         voter.setClaimHook(address(hook));
         hook.configure(false, true);
-        gauge.getRewardAndLock(address(this), 0, MAXTIME);
+        uint256 id = gauge.getRewardAndLock(address(this), 0, MAXTIME);
         assertTrue(hook.reentryBlocked());
         assertEq(hook.calls(), 1);
+        assertEq(gauge.earned(address(this)), 0);
+        assertEq(convert(escrow.locked(id).amount), reward);
     }
 
     function testTeamCanReplaceAndDisableHookForAllGauges() public {
@@ -337,7 +376,15 @@ contract GaugeClaimAndLockTest is BaseTest {
         assertEq(convert(escrow.locked(id).amount), reward);
     }
 
-    function testVoterBatchSecondHookFailureRestoresBothClaims() public {
+    function testVoterBatchSecondHookFailurePreservesBothClaims() public {
+        _assertBatchHookFailurePreservesClaims(false);
+    }
+
+    function testVoterBatchFirstHookFailureContinuesToSecondGauge() public {
+        _assertBatchHookFailurePreservesClaims(true);
+    }
+
+    function _assertBatchHookFailurePreservesClaims(bool failFirst) internal {
         _accrue();
         pool2.approve(address(gauge2), POOL_1);
         gauge2.deposit(POOL_1);
@@ -348,17 +395,20 @@ contract GaugeClaimAndLockTest is BaseTest {
         uint256 escrowBefore = AERO.balanceOf(address(escrow));
         uint256 idBefore = escrow.tokenId();
         voter.setClaimHook(address(hook));
-        hook.setFailGauge(address(gauge2));
+        hook.setFailGauge(failFirst ? address(gauge) : address(gauge2));
         address[] memory gauges = new address[](2);
         gauges[0] = address(gauge);
         gauges[1] = address(gauge2);
-        vm.expectRevert(RecordingClaimHook.HookFailed.selector);
-        voter.claimRewardsAndLock(gauges, 0, MAXTIME);
-        assertEq(gauge.earned(address(this)), firstReward);
-        assertEq(gauge2.earned(address(this)), secondReward);
-        assertEq(escrow.tokenId(), idBefore);
-        assertEq(AERO.balanceOf(address(escrow)), escrowBefore);
-        assertEq(hook.calls(), 0);
+        uint256 id = voter.claimRewardsAndLock(gauges, 0, MAXTIME);
+        assertEq(gauge.earned(address(this)), 0);
+        assertEq(gauge2.earned(address(this)), 0);
+        assertEq(id, idBefore + 1);
+        assertEq(escrow.tokenId(), id);
+        assertEq(convert(escrow.locked(id).amount), firstReward + secondReward);
+        assertEq(AERO.balanceOf(address(escrow)), escrowBefore + firstReward + secondReward);
+        assertEq(AERO.allowance(address(gauge), address(escrow)), 0);
+        assertEq(AERO.allowance(address(gauge2), address(escrow)), 0);
+        assertEq(hook.calls(), 1);
     }
 
     function testClaimIntoTeamLock() public {

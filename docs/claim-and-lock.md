@@ -31,8 +31,9 @@ Rebase claims already compound active locks; bribe and fee claims retain their s
   fails validation. Claims work after gauge deactivation so users can collect accrued rewards.
 
 Accounting is cleared before external settlement. Gauge grants escrow the exact claim allowance,
-then clears it before the hook. Any transfer, escrow or hook failure rolls back the entire claim
-(and all prior gauges in a batch).
+then clears it before the hook. Any transfer or escrow failure rolls back the entire claim
+(and all prior gauges in a batch). Hook callback reverts are caught: settled rewards and locks persist,
+and subsequent gauges in a batch continue. Failed callbacks are not retried.
 
 ## Team callback
 
@@ -63,8 +64,9 @@ and prevent forged callbacks from awarding rewards. The callback intentionally s
 liquid claim amount. A future bonus policy can inspect escrow state to apply lock-duration rules.
 Batches produce one callback per positive gauge claim, including repeated claims against one NFT.
 
-Hook calls are atomic: a reverting hook blocks claims on its gauge until team repairs or disables
-it via the shared Voter setting. A global reverting hook can block claims across all compatible gauges.
+Hook callbacks are best effort: a reverting callback rolls back only its own effects, leaving the
+claim settled. Team can replace or disable failing hooks via the shared Voter setting. Callers must
+still supply sufficient transaction gas; callbacks consume gas even when they revert.
 Gauge reentrancy protection covers claims, deposit/withdraw and notifications; Voter protects its
 setter and claim-and-lock batch against reentrancy.
 No token allowance is granted to hooks. Future hooks need their own funding, accounting and audit.
