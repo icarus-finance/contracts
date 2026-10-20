@@ -38,7 +38,7 @@
             "tokenB": "0xc5b001DC33727F8F26880B184090D3E252470D45"
         }
     ],
-    "poolsAero": [
+    "poolsIrs": [
         {
             "stable": true,
             "tokenB": "0x46f21fDa29F1339e0aB543763FF683D399e393eC"
@@ -61,7 +61,7 @@
         }
     ],
     "v1": {
-        "AERO": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
+        "IRS": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
         "VotingEscrow": "0x9c7305eb78a432ced5C4D14Cac27E8Ed569A2e26",
         "Voter": "0x09236cfF45047DBee6B921e00704bed6D6B8Cf7e",
         "Factory": "0x25CbdDb98b35ab1FF77413456B31EC81A6B6B746",

@@ -29,7 +29,7 @@ contract VoterTest is BaseTest {
     // Reset is not constrained as epochs are accrue and are distributed once per epoch
     // poke() can be called by anyone anytime to "refresh" an outdated vote state
     function testCannotChangeVoteInSameEpoch() public {
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME);
 
         // vote
@@ -50,7 +50,7 @@ contract VoterTest is BaseTest {
     }
 
     function testCannotResetUntilAfterDistributeWindow() public {
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME);
 
         // vote
@@ -78,7 +78,7 @@ contract VoterTest is BaseTest {
     }
 
     function testCannotResetInSameEpoch() public {
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME);
 
         // vote
@@ -98,7 +98,7 @@ contract VoterTest is BaseTest {
     }
 
     function testCannotPokeUntilAfterDistributeWindow() public {
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME);
 
         // vote
@@ -126,7 +126,7 @@ contract VoterTest is BaseTest {
     }
 
     function testPoke() public {
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME);
         skipAndRoll(1 hours);
 
@@ -140,7 +140,7 @@ contract VoterTest is BaseTest {
 
     function testPokeAfterVote() public {
         skip(1 hours + 1);
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
 
         // vote
@@ -209,7 +209,7 @@ contract VoterTest is BaseTest {
     function testVoteAfterResetInSameEpoch() public {
         skip(1 weeks / 2);
 
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME);
 
         // create a bribe
@@ -244,7 +244,7 @@ contract VoterTest is BaseTest {
 
     function testVote() public {
         skip(1 hours + 1);
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
 
         // vote
@@ -274,7 +274,7 @@ contract VoterTest is BaseTest {
         assertEq(voter.poolVote(tokenId, 1), address(pool2));
 
         vm.startPrank(address(owner2));
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         uint256 tokenId2 = escrow.createLock(TOKEN_1, MAXTIME);
         vm.expectEmit(true, true, false, true, address(voter));
         emit Voted(address(owner2), address(pool), 2, 332410573062176670, 664821146124353340, vm.getBlockTimestamp());
@@ -296,7 +296,7 @@ contract VoterTest is BaseTest {
     }
 
     function testReset() public {
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
         skipAndRoll(1 hours + 1);
 
@@ -311,11 +311,11 @@ contract VoterTest is BaseTest {
 
     function testResetAfterVote() public {
         skipAndRoll(1 hours + 1);
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
 
         vm.startPrank(address(owner2));
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         uint256 tokenId2 = escrow.createLock(TOKEN_1, MAXTIME);
         vm.stopPrank();
 
@@ -385,7 +385,7 @@ contract VoterTest is BaseTest {
 
     function testResetAfterVoteOnKilledGauge() public {
         skipAndRoll(1 hours + 1);
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
 
         // vote
@@ -424,7 +424,7 @@ contract VoterTest is BaseTest {
     }
 
     function testCannotVoteUntilAnHourAfterEpochFlips() public {
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME);
 
         // vote
@@ -452,7 +452,7 @@ contract VoterTest is BaseTest {
     function testCannotVoteAnHourBeforeEpochFlips() public {
         skipToNextEpoch(0);
 
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME);
 
         // vote
@@ -489,7 +489,7 @@ contract VoterTest is BaseTest {
     function testCannotVoteForKilledGauge() public {
         skipToNextEpoch(60 minutes + 1);
 
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME);
 
         // vote
@@ -521,7 +521,7 @@ contract VoterTest is BaseTest {
     function testCannotVoteForGaugeThatDoesNotExist() public {
         skipToNextEpoch(60 minutes + 1);
 
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME);
 
         // vote
@@ -701,7 +701,7 @@ contract VoterTest is BaseTest {
         gauge.deposit(POOL_1);
 
         // Create nft to vote for gauge
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
 
         // Establish votes before the first rollover so all funding has an eligible gauge.
@@ -727,24 +727,24 @@ contract VoterTest is BaseTest {
         assertGt(rebase, 0);
         voter.updateFor(address(gauge));
 
-        uint256 reward = AERO.balanceOf(address(voter));
+        uint256 reward = irs.balanceOf(address(voter));
         assertGt(reward, 0);
         uint256 claimableBefore = voter.claimable(address(gauge));
         assertApproxEqRel(claimableBefore, reward, 1e6);
 
-        assertEq(AERO.balanceOf(address(minter)), 0);
+        assertEq(irs.balanceOf(address(minter)), 0);
 
         voter.killGauge(address(gauge));
         assertEq(voter.claimable(address(gauge)), 0);
         // Minimal remains from rounding
-        assertLt(AERO.balanceOf(address(voter)), 1e2); // check for dust
-        assertEq(AERO.balanceOf(address(minter)), claimableBefore);
+        assertLt(irs.balanceOf(address(voter)), 1e2); // check for dust
+        assertEq(irs.balanceOf(address(minter)), claimableBefore);
 
-        // zero-out rewards from minter so in a new rebase, new AERO is minted
+        // zero-out rewards from minter so in a new rebase, new irs is minted
         vm.prank(address(minter));
-        AERO.transfer(address(1), claimableBefore);
+        irs.transfer(address(1), claimableBefore);
 
-        assertEq(AERO.balanceOf(address(minter)), 0);
+        assertEq(irs.balanceOf(address(minter)), 0);
 
         // next epoch - votes/weights stay on gauge and no rewards get trapped in voter
         skipToNextEpoch(2 hours);
@@ -762,8 +762,8 @@ contract VoterTest is BaseTest {
         assertEq(voter.claimable(address(gauge)), 0);
 
         // Rewards are not trapped in voter (minus rounding from before)
-        assertLt(AERO.balanceOf(address(voter)), 1e2); // check for dust
-        assertGt(AERO.balanceOf(address(minter)), 0);
+        assertLt(irs.balanceOf(address(voter)), 1e2); // check for dust
+        assertGt(irs.balanceOf(address(minter)), 0);
     }
 
     function testCannotKillGaugeIfAlreadyKilled() public {
@@ -876,9 +876,9 @@ contract VoterTest is BaseTest {
         voter.distribute(0, voter.length());
 
         // killed gauge receives no contributions
-        assertEq(AERO.balanceOf(address(gauge)), 0);
+        assertEq(irs.balanceOf(address(gauge)), 0);
         // gauge2 receives distributions
-        assertEq(AERO.balanceOf(address(gauge2)), 4999999999999999999999999);
+        assertEq(irs.balanceOf(address(gauge2)), 4999999999999999999999999);
     }
 
     function testCannotNotifyRewardAmountIfNotMinter() public {
@@ -889,20 +889,20 @@ contract VoterTest is BaseTest {
     function testNotifyRewardAmount() public {
         _seedVoterWithVotingSupply();
 
-        deal(address(AERO), address(minter), TOKEN_1);
+        deal(address(irs), address(minter), TOKEN_1);
         vm.prank(address(minter));
-        AERO.approve(address(voter), TOKEN_1);
+        irs.approve(address(voter), TOKEN_1);
 
-        uint256 minterPre = AERO.balanceOf(address(minter));
-        uint256 voterPre = AERO.balanceOf(address(voter));
+        uint256 minterPre = irs.balanceOf(address(minter));
+        uint256 voterPre = irs.balanceOf(address(voter));
 
         vm.prank(address(minter));
         vm.expectEmit(true, false, false, true, address(voter));
-        emit NotifyReward(address(minter), address(AERO), TOKEN_1);
+        emit NotifyReward(address(minter), address(irs), TOKEN_1);
         voter.notifyRewardAmount(TOKEN_1);
 
-        uint256 minterPost = AERO.balanceOf(address(minter));
-        uint256 voterPost = AERO.balanceOf(address(voter));
+        uint256 minterPost = irs.balanceOf(address(minter));
+        uint256 voterPost = irs.balanceOf(address(voter));
 
         assertEq(voterPost - voterPre, TOKEN_1);
         assertEq(minterPre - minterPost, TOKEN_1);
@@ -911,7 +911,7 @@ contract VoterTest is BaseTest {
     function testCannotDepositManagedIfNotOwnerOrApproved() public {
         uint256 mTokenId = escrow.createManagedLockFor(address(owner2));
         escrow.createManagedLockFor(address(owner));
-        AERO.approve(address(escrow), type(uint256).max);
+        irs.approve(address(escrow), type(uint256).max);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
         skipToNextEpoch(1 hours + 1);
 
@@ -921,7 +921,7 @@ contract VoterTest is BaseTest {
     }
 
     function testCannotDepositManagedWithInactiveManagedNft() public {
-        AERO.approve(address(escrow), type(uint256).max);
+        irs.approve(address(escrow), type(uint256).max);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
         uint256 mTokenId = escrow.createManagedLockFor(address(owner));
 
@@ -935,7 +935,7 @@ contract VoterTest is BaseTest {
     function testCannotDepositManagedAnHourBeforeEpochFlips() public {
         skipToNextEpoch(0);
 
-        AERO.approve(address(escrow), type(uint256).max);
+        irs.approve(address(escrow), type(uint256).max);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
         uint256 mTokenId = escrow.createManagedLockFor(address(owner));
 
@@ -964,7 +964,7 @@ contract VoterTest is BaseTest {
     function testCannotWithdrawManagedIfDepositManagedInSameEpoch() public {
         uint256 mTokenId = escrow.createManagedLockFor(address(owner2));
         escrow.createManagedLockFor(address(owner));
-        AERO.approve(address(escrow), type(uint256).max);
+        irs.approve(address(escrow), type(uint256).max);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
         skipAndRoll(1 hours + 1);
 
@@ -979,7 +979,7 @@ contract VoterTest is BaseTest {
     function testCannotWithdrawManagedIfNotOwnerOrApproved() public {
         uint256 mTokenId = escrow.createManagedLockFor(address(owner2));
         escrow.createManagedLockFor(address(owner));
-        AERO.approve(address(escrow), type(uint256).max);
+        irs.approve(address(escrow), type(uint256).max);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
         skipAndRoll(1 hours + 1);
 
@@ -995,7 +995,7 @@ contract VoterTest is BaseTest {
     function testDepositManagedPokeWithoutExistingVote() public {
         uint256 mTokenId = escrow.createManagedLockFor(address(owner2));
         escrow.createManagedLockFor(address(owner));
-        AERO.approve(address(escrow), type(uint256).max);
+        irs.approve(address(escrow), type(uint256).max);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
 
         skipToNextEpoch(1 hours + 1);
@@ -1011,7 +1011,7 @@ contract VoterTest is BaseTest {
         uint256 mTokenId = escrow.createManagedLockFor(address(owner2));
 
         escrow.createManagedLockFor(address(owner));
-        AERO.approve(address(escrow), type(uint256).max);
+        irs.approve(address(escrow), type(uint256).max);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
         uint256 tokenId2 = escrow.createLock(TOKEN_1, MAXTIME);
 
@@ -1038,7 +1038,7 @@ contract VoterTest is BaseTest {
     function testWithdrawManagedToReset() public {
         uint256 mTokenId = escrow.createManagedLockFor(address(owner2));
         escrow.createManagedLockFor(address(owner));
-        AERO.approve(address(escrow), type(uint256).max);
+        irs.approve(address(escrow), type(uint256).max);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
 
         skipToNextEpoch(1 hours + 1);
@@ -1066,7 +1066,7 @@ contract VoterTest is BaseTest {
     function testWithdrawManagedToPoke() public {
         uint256 mTokenId = escrow.createManagedLockFor(address(owner2));
         escrow.createManagedLockFor(address(owner));
-        AERO.approve(address(escrow), type(uint256).max);
+        irs.approve(address(escrow), type(uint256).max);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
         uint256 tokenId2 = escrow.createLock(TOKEN_1, MAXTIME);
 
@@ -1099,7 +1099,7 @@ contract VoterTest is BaseTest {
     function testCannotDepositManagedIfVotedInSameEpoch() public {
         // Create managed NFT and normal NFT
         skipToNextEpoch(1 hours + 1);
-        AERO.approve(address(escrow), type(uint256).max);
+        irs.approve(address(escrow), type(uint256).max);
         uint256 mTokenId = escrow.createManagedLockFor(address(owner));
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
 
@@ -1131,7 +1131,7 @@ contract VoterTest is BaseTest {
     function testDepositManagedResetsTokenVotes() public {
         // Create normal NFT and vote with it
         skipToNextEpoch(1 hours + 1);
-        AERO.approve(address(escrow), type(uint256).max);
+        irs.approve(address(escrow), type(uint256).max);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
 
         address[] memory pools = new address[](2);
@@ -1172,7 +1172,7 @@ contract VoterTest is BaseTest {
 
     function _seedVoterWithVotingSupply() internal {
         skip(1 hours + 1);
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
         skip(1);
 
@@ -1188,7 +1188,7 @@ contract VoterTest is BaseTest {
     function testClaimAllWithSingleTokenIdBothBribesAndFees() public {
         // Create lock and vote
         skipToNextEpoch(1 hours + 1);
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
 
         // Add bribes to both pools BEFORE voting
@@ -1268,7 +1268,7 @@ contract VoterTest is BaseTest {
     function testClaimAllWithMultipleTokenIds() public {
         // Create two locks and vote
         skipToNextEpoch(1 hours + 1);
-        AERO.approve(address(escrow), TOKEN_1 * 2);
+        irs.approve(address(escrow), TOKEN_1 * 2);
         uint256 tokenId1 = escrow.createLock(TOKEN_1, MAXTIME);
         uint256 tokenId2 = escrow.createLock(TOKEN_1, MAXTIME);
 
@@ -1321,7 +1321,7 @@ contract VoterTest is BaseTest {
     function testClaimAllWithNoRewards() public {
         // Create lock and vote but don't add any rewards
         skipToNextEpoch(1 hours + 1);
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
 
         address[] memory pools = new address[](1);
@@ -1359,7 +1359,7 @@ contract VoterTest is BaseTest {
     function testCannotClaimAllIfNotApprovedOrOwner() public {
         // Create lock and vote
         skipToNextEpoch(1 hours + 1);
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
 
         address[] memory pools = new address[](1);
@@ -1396,7 +1396,7 @@ contract VoterTest is BaseTest {
     function testClaimAllWithMultipleRewardTokens() public {
         // Create lock and vote
         skipToNextEpoch(1 hours + 1);
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
 
         address[] memory pools = new address[](1);
@@ -1456,7 +1456,7 @@ contract VoterTest is BaseTest {
     function testClaimAllCombinedBribesAndFeesMultiplePools() public {
         // Create lock and vote for multiple pools
         skipToNextEpoch(1 hours + 1);
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
 
         // Add bribes to all pools BEFORE voting

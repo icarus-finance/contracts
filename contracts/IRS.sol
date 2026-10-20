@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.30;
 
-import {IAero} from "./interfaces/IAero.sol";
+import {IIRS} from "./interfaces/IIRS.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
-/// @title Aero
+/// @title IRS
 /// @author velodrome.finance
 /// @notice The native token in the Protocol ecosystem
 /// @dev Emitted by the Minter
-contract Aero is IAero, ERC20Permit {
+contract IRS is IIRS, ERC20Permit {
     address public minter;
     address private owner;
 

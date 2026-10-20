@@ -18,7 +18,7 @@ import {PoolFees} from "contracts/PoolFees.sol";
 import {RewardsDistributor, IRewardsDistributor} from "contracts/RewardsDistributor.sol";
 import {IAirdropDistributor, AirdropDistributor} from "contracts/AirdropDistributor.sol";
 import {IRouter, Router} from "contracts/Router.sol";
-import {IAero, Aero} from "contracts/Aero.sol";
+import {IIRS, IRS} from "contracts/IRS.sol";
 import {IVoter, Voter} from "contracts/Voter.sol";
 import {VeArtProxy} from "contracts/VeArtProxy.sol";
 import {IVotingEscrow, VotingEscrow} from "contracts/VotingEscrow.sol";
@@ -46,7 +46,7 @@ abstract contract Base is Script, Test {
     Deployment deploymentType;
 
     IWETH public WETH;
-    Aero public AERO;
+    IRS public irs;
     address[] public tokens;
 
     /// @dev Core Deployment
@@ -77,7 +77,7 @@ abstract contract Base is Script, Test {
 
         forwarder = new Forwarder();
 
-        escrow = new VotingEscrow(address(forwarder), address(AERO), address(factoryRegistry));
+        escrow = new VotingEscrow(address(forwarder), address(irs), address(factoryRegistry));
         artProxy = new VeArtProxy(address(escrow));
         escrow.setArtProxy(address(artProxy));
 
@@ -103,7 +103,7 @@ abstract contract Base is Script, Test {
         minter2 = new Minter(address(voter), address(escrow), address(distributor));
         distributor.setMinter(address(minter));
         if (_init) {
-        AERO.setMinter(address(minter));
+        irs.setMinter(address(minter));
             minter.initialize(IMinter.AirdropParams({
                 liquidWallets: new address[](0),
                 liquidAmounts: new uint256[](0),

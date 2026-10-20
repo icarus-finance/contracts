@@ -26,11 +26,11 @@ contract RevenueRewardPrecisionTest is BaseTest {
         deal(address(USDC), address(gauge), TOKEN_100M);
         deal(address(DAI), address(gauge), TOKEN_100M);
 
-        // Set up users with initial AERO tokens
-        deal(address(AERO), user, TOKEN_100M, true);
-        deal(address(AERO), user1, TOKEN_100M, true);
-        deal(address(AERO), user2, TOKEN_100M, true);
-        deal(address(AERO), user3, TOKEN_100M, true);
+        // Set up users with initial irs tokens
+        deal(address(irs), user, TOKEN_100M, true);
+        deal(address(irs), user1, TOKEN_100M, true);
+        deal(address(irs), user2, TOKEN_100M, true);
+        deal(address(irs), user3, TOKEN_100M, true);
     }
 
     /// @notice Test edge case where rewards * balanceOf < totalSupply
@@ -540,7 +540,7 @@ contract RevenueRewardPrecisionTest is BaseTest {
 
     function _createLock(address _user, uint256 amount, uint256 duration) internal returns (uint256) {
         vm.startPrank(_user);
-        AERO.approve(address(escrow), amount);
+        irs.approve(address(escrow), amount);
         uint256 lockId = escrow.createLock(amount, duration);
         vm.stopPrank();
         return lockId;
@@ -548,7 +548,7 @@ contract RevenueRewardPrecisionTest is BaseTest {
 
     function _createPermanentLock(address _user, uint256 amount, uint256) internal returns (uint256) {
         vm.startPrank(_user);
-        AERO.approve(address(escrow), amount);
+        irs.approve(address(escrow), amount);
         uint256 lockId = escrow.createLock(amount, MAXTIME);
         // Convert to permanent if your contract supports it
         // escrow.lockPermanent(lockId);
@@ -565,7 +565,7 @@ contract RevenueRewardPrecisionTest is BaseTest {
 
     function _increaseAmount(address _user, uint256 tokenId, uint256 amount) internal {
         vm.startPrank(_user);
-        AERO.approve(address(escrow), amount);
+        irs.approve(address(escrow), amount);
         escrow.increaseAmount(tokenId, amount);
         vm.stopPrank();
     }

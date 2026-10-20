@@ -5,7 +5,7 @@ import "./BaseTest.sol";
 
 contract VoterRebaseTest is BaseTest {
     function _createLock(bool permanent) internal returns (uint256 tokenId) {
-        AERO.approve(address(escrow), TOKEN_1M);
+        irs.approve(address(escrow), TOKEN_1M);
         tokenId = escrow.createLock(TOKEN_1M, MAXTIME);
         if (permanent) escrow.lockPermanent(tokenId);
     }
@@ -86,30 +86,30 @@ contract VoterRebaseTest is BaseTest {
         uint256 rebase = distributor.claim(tokenId);
         assertGt(rebase, 0);
         uint256 lockedBefore = convert(escrow.locked(tokenId).amount);
-        uint256 distributorBalanceBefore = AERO.balanceOf(address(distributor));
+        uint256 distributorBalanceBefore = irs.balanceOf(address(distributor));
         uint256 cursorBefore = distributor.timeCursorOf(tokenId);
-        uint256 supplyBefore = AERO.totalSupply();
+        uint256 supplyBefore = irs.totalSupply();
 
         _voteOne(tokenId, lockedBefore);
 
         assertEq(convert(escrow.locked(tokenId).amount), lockedBefore);
         assertEq(voter.usedWeights(tokenId), lockedBefore);
         assertEq(voter.votes(tokenId, address(pool)), lockedBefore);
-        assertEq(AERO.balanceOf(address(distributor)), distributorBalanceBefore);
+        assertEq(irs.balanceOf(address(distributor)), distributorBalanceBefore);
         assertEq(distributor.timeCursorOf(tokenId), cursorBefore);
-        assertEq(AERO.totalSupply(), supplyBefore);
+        assertEq(irs.totalSupply(), supplyBefore);
         assertEq(distributor.claimable(tokenId), 0);
     }
 
     function testVoteCompoundsTeamLockUnderExistingVestingSchedule() public {
-        AERO.approve(address(escrow), TOKEN_1M);
+        irs.approve(address(escrow), TOKEN_1M);
         uint256 tokenId =
             escrow.createTeamLockFor(TOKEN_1M, MAXTIME, address(owner2), vm.getBlockTimestamp() + 2 * 365 days);
         IVotingEscrow.TeamLock memory teamBefore = escrow.teamLocks(tokenId);
         skipToNextEpoch(1 hours + 1);
         (uint256 rebase, uint256 expectedPower) = _preview(tokenId);
         assertGt(rebase, 0);
-        uint256 liquidBefore = AERO.balanceOf(address(owner2));
+        uint256 liquidBefore = irs.balanceOf(address(owner2));
 
         // Team authorization covers voting on this lock without NFT ownership or approval.
         _voteOne(tokenId, expectedPower);
@@ -120,7 +120,7 @@ contract VoterRebaseTest is BaseTest {
         assertEq(teamAfter.startTs, teamBefore.startTs);
         assertEq(teamAfter.endTs, teamBefore.endTs);
         assertEq(teamAfter.clawbacked, teamBefore.clawbacked);
-        assertEq(AERO.balanceOf(address(owner2)), liquidBefore);
+        assertEq(irs.balanceOf(address(owner2)), liquidBefore);
     }
 
     function testVoteCompoundsManagedLockRebase() public {
@@ -155,8 +155,8 @@ contract VoterRebaseTest is BaseTest {
         assertGt(rebase, 0);
         uint256 previousPeriod = minter.activePeriod();
         uint256 previousCheckpoint = distributor.lastTokenTime();
-        uint256 previousSupply = AERO.totalSupply();
-        uint256 previousDistributorBalance = AERO.balanceOf(address(distributor));
+        uint256 previousSupply = irs.totalSupply();
+        uint256 previousDistributorBalance = irs.balanceOf(address(distributor));
         uint256 previousCursor = distributor.timeCursorOf(tokenId);
 
         address[] memory pools = new address[](2);
@@ -175,8 +175,8 @@ contract VoterRebaseTest is BaseTest {
         assertEq(minter.activePeriod(), previousPeriod);
         assertEq(distributor.lastTokenTime(), previousCheckpoint);
         assertEq(distributor.timeCursorOf(tokenId), previousCursor);
-        assertEq(AERO.totalSupply(), previousSupply);
-        assertEq(AERO.balanceOf(address(distributor)), previousDistributorBalance);
+        assertEq(irs.totalSupply(), previousSupply);
+        assertEq(irs.balanceOf(address(distributor)), previousDistributorBalance);
         assertEq(convert(escrow.locked(tokenId).amount), TOKEN_1M);
         assertEq(voter.lastVoted(tokenId), 0);
         assertEq(voter.votes(tokenId, address(pool)), 0);

@@ -202,6 +202,7 @@ contract Gauge is IGauge, ERC2771Context, ReentrancyGuard {
 
     function _depositFor(uint256 _amount, address _recipient) internal nonReentrant {
         if (_amount == 0) revert ZeroAmount();
+        if (_recipient == address(0)) revert InvalidParams();
         if (!IVoter(voter).isAlive(address(this))) revert NotAlive();
 
         address sender = _msgSender();

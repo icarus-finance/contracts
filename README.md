@@ -22,7 +22,7 @@ See `CHANGELOG.md` for specific changes to Aerodrome.
 
 | Filename | Description |
 | --- | --- |
-| `Aero.sol` | Protocol ERC20 token |
+| `IRS.sol` | Protocol ERC20 token |
 | `VotingEscrow.sol` | Protocol ERC-721 (ve)NFT representing the protocol vote-escrow lock. Beyond standard ve-type functions, there is also the ability to merge, split and create managed nfts. |
 | `Minter.sol` | Protocol token minter. Distributes emissions to `Voter.sol` and rebases to `RewardsDistributor.sol`. |
 | `RewardsDistributor.sol` | Is used to handle the rebases distribution for (ve)NFTs/lockers. |
@@ -41,7 +41,7 @@ See `CHANGELOG.md` for specific changes to Aerodrome.
 | `FeesVotingReward.sol` | Stores LP fees (from the gauge via `PoolFees.sol`) to be distributed for the current voting epoch to it's voters. |
 | `BribeVotingReward.sol` | Stores the users/externally provided rewards for the current voting epoch to it's voters. These are deposited externally every week. |
 | `ManagedReward.sol` | Staking implementation for managed veNFTs used by `LockedManagedReward.sol` and `FreeManagedReward.sol` which inherits `Reward.sol`.  Rewards can be earned passively by veNFTs who delegate their voting power to a "managed" veNFT.
-| `LockedManagedReward.sol` | Handles "locked" rewards (i.e. Aero rewards / rebases that are compounded) for managed NFTs. Rewards are not distributed and only returned to `VotingEscrow.sol` when the user withdraws from the managed NFT. | 
+| `LockedManagedReward.sol` | Handles "locked" rewards (i.e. IRS rewards / rebases that are compounded) for managed NFTs. Rewards are not distributed and only returned to `VotingEscrow.sol` when the user withdraws from the managed NFT. |
 | `FreeManagedReward.sol` | Handles "free" (i.e. unlocked) rewards for managed NFTs. Any rewards earned by a managed NFT that a manager passes on will be distributed to the users that deposited into the managed NFT. | 
 
 ### Governance contracts
@@ -77,6 +77,8 @@ forge test
 `yarn format` to run prettier.
 
 `yarn lint` to run solhint (currently disabled in CI).
+
+IRS source/API migration: [token naming and integration](docs/irs-token.md).
 
 ## Deployment
 

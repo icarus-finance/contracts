@@ -10,7 +10,7 @@ contract MinterWeeklyCapTest is BaseTest {
 
     function _setUp() public override {
         minter.setCapReporter(reporter, true);
-        AERO.approve(address(escrow), TOKEN_1M);
+        irs.approve(address(escrow), TOKEN_1M);
         escrow.createLock(TOKEN_1M, MAXTIME);
     }
 
@@ -223,16 +223,16 @@ contract MinterWeeklyCapTest is BaseTest {
         _report(epoch, TOKEN_1M);
         vm.warp(epoch);
         _assertFunding(TOKEN_1M, 0);
-        uint256 supply = AERO.totalSupply();
-        uint256 voterBalance = AERO.balanceOf(address(voter));
-        uint256 distributorBalance = AERO.balanceOf(address(distributor));
-        uint256 teamBalance = AERO.balanceOf(minter.team());
+        uint256 supply = irs.totalSupply();
+        uint256 voterBalance = irs.balanceOf(address(voter));
+        uint256 distributorBalance = irs.balanceOf(address(distributor));
+        uint256 teamBalance = irs.balanceOf(minter.team());
         uint256 scheduled = minter.weekly();
         assertEq(minter.updatePeriod(), epoch);
-        assertEq(AERO.totalSupply(), supply);
-        assertEq(AERO.balanceOf(address(voter)), voterBalance);
-        assertEq(AERO.balanceOf(address(distributor)), distributorBalance);
-        assertEq(AERO.balanceOf(minter.team()), teamBalance);
+        assertEq(irs.totalSupply(), supply);
+        assertEq(irs.balanceOf(address(voter)), voterBalance);
+        assertEq(irs.balanceOf(address(distributor)), distributorBalance);
+        assertEq(irs.balanceOf(minter.team()), teamBalance);
         assertEq(minter.weekly(), scheduled);
         assertEq(minter.epochCount(), 1);
     }
@@ -268,13 +268,13 @@ contract MinterWeeklyCapTest is BaseTest {
         uint256 weekly = minter.TAIL_START() - 1;
         stdstore.target(address(minter)).sig("weekly()").checked_write(weekly);
         uint256 epoch = _nextEpoch();
-        uint256 nominal = AERO.totalSupply() * minter.tailEmissionRate() / minter.MAX_BPS();
+        uint256 nominal = irs.totalSupply() * minter.tailEmissionRate() / minter.MAX_BPS();
         _report(epoch, nominal / 2);
         vm.warp(epoch);
         _assertFunding(nominal / 2, 0);
         assertEq(minter.weekly(), weekly);
         vm.warp(epoch + 1 weeks);
-        nominal = AERO.totalSupply() * minter.tailEmissionRate() / minter.MAX_BPS();
+        nominal = irs.totalSupply() * minter.tailEmissionRate() / minter.MAX_BPS();
         _assertFunding(nominal, 0);
     }
 
@@ -282,7 +282,7 @@ contract MinterWeeklyCapTest is BaseTest {
         uint256 weekly = minter.TAIL_START() - 1;
         stdstore.target(address(minter)).sig("weekly()").checked_write(weekly);
         uint256 epoch = _nextEpoch();
-        uint256 nominal = AERO.totalSupply() * minter.tailEmissionRate() / minter.MAX_BPS();
+        uint256 nominal = irs.totalSupply() * minter.tailEmissionRate() / minter.MAX_BPS();
         _report(epoch, nominal / 2);
         _report(epoch, 0);
         vm.warp(epoch);
@@ -337,22 +337,22 @@ contract MinterWeeklyCapTest is BaseTest {
 
     // Independent balance conservation check, including the pre-mint supply used for rebases.
     function _assertFunding(uint256 emission, uint256 prefund) internal {
-        if (prefund != 0) AERO.transfer(address(minter), prefund);
-        uint256 supply = AERO.totalSupply();
+        if (prefund != 0) irs.transfer(address(minter), prefund);
+        uint256 supply = irs.totalSupply();
         uint256 veSupply = escrow.totalSupplyAt(_getEpochStart(block.timestamp) - 1);
         uint256 growth = (((emission * (supply - veSupply)) / supply) * (supply - veSupply)) / supply / 2;
         uint256 teamAmount = minter.teamRate() * (emission + growth) / (minter.MAX_BPS() - minter.teamRate());
         uint256 required = emission + growth + teamAmount;
-        uint256 held = AERO.balanceOf(address(minter));
-        uint256 voterBefore = AERO.balanceOf(address(voter));
-        uint256 distributorBefore = AERO.balanceOf(address(distributor));
-        uint256 teamBefore = AERO.balanceOf(minter.team());
+        uint256 held = irs.balanceOf(address(minter));
+        uint256 voterBefore = irs.balanceOf(address(voter));
+        uint256 distributorBefore = irs.balanceOf(address(distributor));
+        uint256 teamBefore = irs.balanceOf(minter.team());
         minter.updatePeriod();
-        assertEq(AERO.balanceOf(address(voter)) - voterBefore, emission, "gauge funding");
-        assertEq(AERO.balanceOf(address(distributor)) - distributorBefore, growth, "rebase funding");
-        assertEq(AERO.balanceOf(minter.team()) - teamBefore, teamAmount, "team funding");
-        assertEq(AERO.totalSupply() - supply, required > held ? required - held : 0, "mint only shortfall");
-        assertEq(AERO.balanceOf(address(minter)), held > required ? held - required : 0, "retained prefunding");
-        assertEq(AERO.allowance(address(minter), address(voter)), 0, "no residual allowance");
+        assertEq(irs.balanceOf(address(voter)) - voterBefore, emission, "gauge funding");
+        assertEq(irs.balanceOf(address(distributor)) - distributorBefore, growth, "rebase funding");
+        assertEq(irs.balanceOf(minter.team()) - teamBefore, teamAmount, "team funding");
+        assertEq(irs.totalSupply() - supply, required > held ? required - held : 0, "mint only shortfall");
+        assertEq(irs.balanceOf(address(minter)), held > required ? held - required : 0, "retained prefunding");
+        assertEq(irs.allowance(address(minter), address(voter)), 0, "no residual allowance");
     }
 }

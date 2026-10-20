@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {IAero} from "./IAero.sol";
+import {IIRS} from "./IIRS.sol";
 import {IVoter} from "./IVoter.sol";
 import {IVotingEscrow} from "./IVotingEscrow.sol";
 import {IRewardsDistributor} from "./IRewardsDistributor.sol";
@@ -60,8 +60,8 @@ interface IMinter {
     event DistributeLiquid(address indexed _destination, uint256 _amount);
     event AcceptTeam(address indexed _newTeam);
 
-    /// @notice Interface of Aero.sol
-    function aero() external view returns (IAero);
+    /// @notice Interface of IRS.sol
+    function irs() external view returns (IIRS);
 
     /// @notice Interface of Voter.sol
     function voter() external view returns (IVoter);
@@ -105,7 +105,7 @@ interface IMinter {
     /// @notice Tail emissions rate in basis points
     function tailEmissionRate() external view returns (uint256);
 
-    /// @notice Starting weekly emission of 10M AERO (AERO has 18 decimals)
+    /// @notice Starting weekly emission of 10M IRS (IRS has 18 decimals)
     function weekly() external view returns (uint256);
 
     /// @notice Timestamp of start of epoch that updatePeriod was last called in
@@ -157,11 +157,11 @@ interface IMinter {
     function nudge() external;
 
     /// @notice Calculates rebases according to the formula
-    ///         weekly * ((aero.totalsupply - ve.totalSupply) / aero.totalsupply) ^ 2 / 2
+    ///         weekly * ((irs.totalsupply - ve.totalSupply) / irs.totalsupply) ^ 2 / 2
     ///         Note that ve.totalSupply is the locked ve supply
-    ///         aero.totalSupply is the total ve supply minted
+    ///         irs.totalSupply is the total ve supply minted
     /// @dev Returns zero when the emission or existing token supply is zero.
-    /// @param _minted Amount of AERO minted this epoch
+    /// @param _minted Amount of IRS minted this epoch
     /// @return _growth Rebases
     function calculateGrowth(uint256 _minted) external view returns (uint256 _growth);
 

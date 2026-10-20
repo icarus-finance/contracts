@@ -2,7 +2,7 @@
 pragma solidity 0.8.30;
 
 import "forge-std/Test.sol";
-import {Aero} from "contracts/Aero.sol";
+import {IRS} from "contracts/IRS.sol";
 import {Minter, IMinter} from "contracts/Minter.sol";
 import {Voter} from "contracts/Voter.sol";
 import {VotingEscrow, IVotingEscrow} from "contracts/VotingEscrow.sol";
@@ -23,7 +23,7 @@ contract MinterWeeklyCapInitializationFlowTest is Test {
     uint256 internal constant CAP = 1_000_000 ether;
     address internal reporter;
     address internal user;
-    Aero internal token;
+    IRS internal token;
     VotingEscrow internal escrow;
     Voter internal voter;
     RewardsDistributor internal distributor;
@@ -33,7 +33,7 @@ contract MinterWeeklyCapInitializationFlowTest is Test {
         vm.warp(WEEK);
         reporter = makeAddr("cap reporter");
         user = makeAddr("airdrop recipient");
-        token = new Aero();
+        token = new IRS();
         PoolFactory factory = new PoolFactory(address(new Pool()));
         FactoryRegistry registry = new FactoryRegistry(
             address(factory),

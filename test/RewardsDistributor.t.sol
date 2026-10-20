@@ -16,20 +16,20 @@ contract RewardsDistributorTest is BaseTest {
             minter.updatePeriod();
             return;
         }
-        uint256 supply = AERO.totalSupply();
+        uint256 supply = irs.totalSupply();
         uint256 emission = minter.weekly();
         if (emission < minter.TAIL_START()) emission = (supply * minter.tailEmissionRate()) / minter.MAX_BPS();
         uint256 unlocked = supply - escrow.totalSupplyAt(epoch - 1);
         uint256 growth = (((emission * unlocked) / supply) * unlocked) / supply / 2;
         uint256 previousCheckpoint = distributor.lastTokenTime();
-        uint256 balanceBefore = AERO.balanceOf(address(distributor));
+        uint256 balanceBefore = irs.balanceOf(address(distributor));
         for (uint256 week = _getEpochStart(previousCheckpoint); week <= epoch; week += WEEK) {
             uint256 start = week > previousCheckpoint ? week : previousCheckpoint;
             uint256 end = week + WEEK < block.timestamp ? week + WEEK : block.timestamp;
             expectedRebases[week] += (growth * (end - start)) / (block.timestamp - previousCheckpoint);
         }
         minter.updatePeriod();
-        assertEq(AERO.balanceOf(address(distributor)) - balanceBefore, growth);
+        assertEq(irs.balanceOf(address(distributor)) - balanceBefore, growth);
         for (uint256 week = _getEpochStart(previousCheckpoint); week <= epoch; week += WEEK) {
             assertEq(distributor.tokensPerWeek(week), expectedRebases[week]);
         }
@@ -50,7 +50,7 @@ contract RewardsDistributorTest is BaseTest {
 
     function _setUp() public override {
         // timestamp: 604801
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         uint256 tokenId = escrow.createLock(TOKEN_1, MAXTIME);
         skip(1);
 
@@ -68,14 +68,14 @@ contract RewardsDistributorTest is BaseTest {
     function testInitialize() public view {
         assertEq(distributor.startTime(), 604800);
         assertEq(distributor.lastTokenTime(), 604800);
-        assertEq(distributor.token(), address(AERO));
+        assertEq(distributor.token(), address(irs));
         assertEq(address(distributor.ve()), address(escrow));
     }
 
     function testClaim() public {
         skipToNextEpoch(1 days); // epoch 1, ts: 1296000, blk: 2
 
-        AERO.approve(address(escrow), TOKEN_1M);
+        irs.approve(address(escrow), TOKEN_1M);
         uint256 tokenId = escrow.createLock(TOKEN_1M, MAXTIME);
 
         IVotingEscrow.LockedBalance memory locked = escrow.locked(tokenId);
@@ -91,7 +91,7 @@ contract RewardsDistributorTest is BaseTest {
         assertEq(userPoint.blk, 2);
 
         vm.startPrank(address(owner2));
-        AERO.approve(address(escrow), TOKEN_1M);
+        irs.approve(address(escrow), TOKEN_1M);
         uint256 tokenId2 = escrow.createLock(TOKEN_1M, MAXTIME);
         vm.stopPrank();
 
@@ -145,7 +145,7 @@ contract RewardsDistributorTest is BaseTest {
     function testClaimWithPermanentLocks() public {
         skipToNextEpoch(1 days); // epoch 1, ts: 1296000, blk: 2
 
-        AERO.approve(address(escrow), TOKEN_1M);
+        irs.approve(address(escrow), TOKEN_1M);
         uint256 tokenId = escrow.createLock(TOKEN_1M, MAXTIME);
         escrow.lockPermanent(tokenId);
 
@@ -163,7 +163,7 @@ contract RewardsDistributorTest is BaseTest {
         assertEq(userPoint.permanent, TOKEN_1M);
 
         vm.startPrank(address(owner2));
-        AERO.approve(address(escrow), TOKEN_1M);
+        irs.approve(address(escrow), TOKEN_1M);
         uint256 tokenId2 = escrow.createLock(TOKEN_1M, MAXTIME);
         escrow.lockPermanent(tokenId2);
         vm.stopPrank();
@@ -219,12 +219,12 @@ contract RewardsDistributorTest is BaseTest {
     function testClaimWithBothLocks() public {
         skipToNextEpoch(1 days); // epoch 1, ts: 1296000, blk: 2
 
-        AERO.approve(address(escrow), TOKEN_1M);
+        irs.approve(address(escrow), TOKEN_1M);
         uint256 tokenId = escrow.createLock(TOKEN_1M, MAXTIME);
         escrow.lockPermanent(tokenId);
 
         vm.startPrank(address(owner2));
-        AERO.approve(address(escrow), TOKEN_1M);
+        irs.approve(address(escrow), TOKEN_1M);
         uint256 tokenId2 = escrow.createLock(TOKEN_1M, MAXTIME);
         vm.stopPrank();
 
@@ -269,9 +269,9 @@ contract RewardsDistributorTest is BaseTest {
             _updatePeriodAndModelRebase();
         }
 
-        AERO.approve(address(escrow), TOKEN_1M);
+        irs.approve(address(escrow), TOKEN_1M);
         uint256 tokenId = escrow.createLock(TOKEN_1M, MAXTIME);
-        AERO.approve(address(escrow), TOKEN_1M);
+        irs.approve(address(escrow), TOKEN_1M);
         uint256 tokenId2 = escrow.createLock(TOKEN_1M, MAXTIME);
 
         skipToNextEpoch(0);
@@ -296,9 +296,9 @@ contract RewardsDistributorTest is BaseTest {
 
     function testClaimWithIncreaseAmountOnEpochFlip() public {
         skipToNextEpoch(1 days); // epoch 1
-        AERO.approve(address(escrow), TOKEN_1M);
+        irs.approve(address(escrow), TOKEN_1M);
         uint256 tokenId = escrow.createLock(TOKEN_1M, MAXTIME);
-        AERO.approve(address(escrow), TOKEN_1M);
+        irs.approve(address(escrow), TOKEN_1M);
         uint256 tokenId2 = escrow.createLock(TOKEN_1M, MAXTIME);
 
         skipToNextEpoch(0); // distribute epoch 1's rebases
@@ -310,7 +310,7 @@ contract RewardsDistributorTest is BaseTest {
         assertEq(distributor.claimable(tokenId), _expectedClaimable(tokenId));
         assertEq(distributor.claimable(tokenId2), _expectedClaimable(tokenId2));
         // making lock larger on flip should not impact claimable
-        AERO.approve(address(escrow), TOKEN_1M);
+        irs.approve(address(escrow), TOKEN_1M);
         escrow.increaseAmount(tokenId, TOKEN_1M);
         _updatePeriodAndModelRebase(); // epoch 1's rebases available
         assertEq(distributor.claimable(tokenId), _expectedClaimable(tokenId));
@@ -318,9 +318,9 @@ contract RewardsDistributorTest is BaseTest {
     }
 
     function testClaimWithExpiredNFT() public {
-        // test reward claims to expired NFTs are distributed as unlocked AERO
+        // test reward claims to expired NFTs are distributed as unlocked irs
         // ts: 608402
-        AERO.approve(address(escrow), TOKEN_1M);
+        irs.approve(address(escrow), TOKEN_1M);
         uint256 tokenId = escrow.createLock(TOKEN_1M, WEEK * 4);
 
         skipToNextEpoch(1);
@@ -339,24 +339,24 @@ contract RewardsDistributorTest is BaseTest {
         assertGt(vm.getBlockTimestamp(), locked.end); // lock expired
 
         uint256 rebase = distributor.claimable(tokenId);
-        uint256 pre = AERO.balanceOf(address(owner));
+        uint256 pre = irs.balanceOf(address(owner));
         uint256 expectedClaim = _expectedClaimable(tokenId);
         vm.expectEmit(true, true, true, true, address(distributor));
         emit Claimed(tokenId, 604800, 3628800, expectedClaim);
         distributor.claim(tokenId);
-        uint256 post = AERO.balanceOf(address(owner));
+        uint256 post = irs.balanceOf(address(owner));
 
         locked = escrow.locked(tokenId); // update locked value post claim
-        assertEq(post - pre, rebase); // expired rebase distributed as unlocked AERO
+        assertEq(post - pre, rebase); // expired rebase distributed as unlocked irs
         assertEq(uint256(uint128(locked.amount)), TOKEN_1M); // expired nft locked balance unchanged
     }
 
     function testClaimManyWithExpiredNFT() public {
         // test claim many with one expired nft and one normal nft
         // ts: 608402
-        AERO.approve(address(escrow), TOKEN_1M);
+        irs.approve(address(escrow), TOKEN_1M);
         uint256 tokenId = escrow.createLock(TOKEN_1M, WEEK * 4);
-        AERO.approve(address(escrow), TOKEN_1M);
+        irs.approve(address(escrow), TOKEN_1M);
         uint256 tokenId2 = escrow.createLock(TOKEN_1M, MAXTIME);
 
         skipToNextEpoch(1);
@@ -383,21 +383,21 @@ contract RewardsDistributorTest is BaseTest {
         uint256 rebase = distributor.claimable(tokenId);
         uint256 rebase2 = distributor.claimable(tokenId2);
 
-        uint256 pre = AERO.balanceOf(address(owner));
+        uint256 pre = irs.balanceOf(address(owner));
         assertTrue(distributor.claimMany(tokenIds));
-        uint256 post = AERO.balanceOf(address(owner));
+        uint256 post = irs.balanceOf(address(owner));
 
         locked = escrow.locked(tokenId); // update locked value post claim
         IVotingEscrow.LockedBalance memory postLocked2 = escrow.locked(tokenId2);
 
-        assertEq(post - pre, rebase); // expired rebase distributed as unlocked AERO
+        assertEq(post - pre, rebase); // expired rebase distributed as unlocked irs
         assertEq(uint256(uint128(locked.amount)), TOKEN_1M); // expired nft locked balance unchanged
         assertEq(uint256(uint128(postLocked2.amount)) - uint256(uint128(locked.amount)), rebase2); // rebase accrued to normal nft
     }
 
     function testClaimRebaseWithManagedLocks() public {
         _updatePeriodAndModelRebase(); // does nothing
-        AERO.approve(address(escrow), type(uint256).max);
+        irs.approve(address(escrow), type(uint256).max);
         uint256 tokenId = escrow.createLock(TOKEN_1M, MAXTIME);
         escrow.lockPermanent(tokenId);
         uint256 tokenId2 = escrow.createLock(TOKEN_1M, MAXTIME);
@@ -470,19 +470,19 @@ contract RewardsDistributorTest is BaseTest {
             assertEq(distributor.claimable(i), 0);
         }
 
-        assertLt(AERO.balanceOf(address(distributor)), 100); // dust
+        assertLt(irs.balanceOf(address(distributor)), 100); // dust
     }
 
     function testClaimRebaseWithDepositManaged() public {
         _updatePeriodAndModelRebase(); // does nothing
         vm.startPrank(address(owner2));
-        AERO.approve(address(escrow), TOKEN_10M);
+        irs.approve(address(escrow), TOKEN_10M);
         uint256 tokenId = escrow.createLock(TOKEN_10M, MAXTIME);
         escrow.lockPermanent(tokenId);
         vm.stopPrank();
 
         vm.startPrank(address(owner3));
-        AERO.approve(address(escrow), TOKEN_10M);
+        irs.approve(address(escrow), TOKEN_10M);
         uint256 tokenId2 = escrow.createLock(TOKEN_10M, MAXTIME);
         escrow.lockPermanent(tokenId2);
         vm.stopPrank();
@@ -528,7 +528,7 @@ contract RewardsDistributorTest is BaseTest {
     }
 
     function testCannotClaimRebaseWithLockedNFT() public {
-        AERO.approve(address(escrow), TOKEN_1M);
+        irs.approve(address(escrow), TOKEN_1M);
         uint256 tokenId = escrow.createLock(TOKEN_1M, MAXTIME);
         escrow.lockPermanent(tokenId);
         uint256 mTokenId = escrow.createManagedLockFor(address(owner));
@@ -549,7 +549,7 @@ contract RewardsDistributorTest is BaseTest {
     }
 
     function testCannotClaimBeforeUpdatePeriod() public {
-        AERO.approve(address(escrow), type(uint256).max);
+        irs.approve(address(escrow), type(uint256).max);
         uint256 tokenId = escrow.createLock(TOKEN_1M, MAXTIME);
         uint256 tokenId2 = escrow.createLock(TOKEN_1M * 8, MAXTIME);
 
@@ -578,7 +578,7 @@ contract RewardsDistributorTest is BaseTest {
     function testClaimBeforeLockedEnd() public {
         uint256 duration = WEEK * 12;
         vm.startPrank(address(owner));
-        AERO.approve(address(escrow), TOKEN_1M);
+        irs.approve(address(escrow), TOKEN_1M);
         uint256 tokenId = escrow.createLock(TOKEN_1M, duration);
 
         skipToNextEpoch(1);
@@ -599,7 +599,7 @@ contract RewardsDistributorTest is BaseTest {
     function testClaimOnLockedEnd() public {
         uint256 duration = WEEK * 12;
         vm.startPrank(address(owner));
-        AERO.approve(address(escrow), TOKEN_1M);
+        irs.approve(address(escrow), TOKEN_1M);
         uint256 tokenId = escrow.createLock(TOKEN_1M, duration);
 
         skipToNextEpoch(1);
@@ -612,8 +612,8 @@ contract RewardsDistributorTest is BaseTest {
         minter.updatePeriod();
 
         // Rebase should deposit into veNFT one second before expiry
-        uint256 balanceBefore = AERO.balanceOf(address(owner));
+        uint256 balanceBefore = irs.balanceOf(address(owner));
         distributor.claim(tokenId);
-        assertGt(AERO.balanceOf(address(owner)), balanceBefore);
+        assertGt(irs.balanceOf(address(owner)), balanceBefore);
     }
 }

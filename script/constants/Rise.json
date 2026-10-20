@@ -6,7 +6,7 @@
     "WETH": "0x4200000000000000000000000000000000000006",
     "whitelistTokens": [],
     "pools": [],
-    "poolsAero": [],
+    "poolsIrs": [],
     "minter": {
         "liquid": [],
         "locked": []

@@ -1,7 +1,7 @@
 import { deploy, deployLibrary, getContractAt } from "./utils/helpers";
 import { writeFile } from "fs/promises";
 import { join } from "path";
-import { Libraries } from "hardhat/types";
+import { Libraries } from "@nomiclabs/hardhat-ethers/types";
 import { BigNumber } from "ethers";
 import {
   ManagedRewardsFactory,
@@ -14,7 +14,7 @@ import {
   RewardsDistributor,
   AirdropDistributor,
   Router,
-  Aero,
+  IRS,
   Voter,
   VeArtProxy,
   VotingEscrow,
@@ -34,7 +34,7 @@ interface ProtocolOutput {
   Minter: string;
   PoolFactory: string;
   Router: string;
-  AERO: string;
+  IRS: string;
   Voter: string;
   VotingEscrow: string;
   VotingRewardsFactory: string;
@@ -51,8 +51,8 @@ async function main() {
   const AIRDROPPER_BALANCE = 200_000_000;
   const DECIMAL = BigNumber.from(10).pow(18);
 
-  const AERO = await deploy<Aero>("Aero");
-  jsonConstants.whitelistTokens.push(AERO.address);
+  const irs = await deploy<IRS>("IRS");
+  jsonConstants.whitelistTokens.push(irs.address);
   // ====== end _deploySetupBefore() ======
 
   // ====== start _coreSetup() ======
@@ -101,7 +101,7 @@ async function main() {
     "VotingEscrow",
     libraries,
     forwarder.address,
-    AERO.address,
+    irs.address,
     factoryRegistry.address
   );
 
@@ -153,7 +153,7 @@ async function main() {
     distributor.address
   );
   await distributor.setMinter(minter.address);
-  await AERO.setMinter(minter.address);
+  await irs.setMinter(minter.address);
 
   const airdrop = await deploy<AirdropDistributor>(
     "AirdropDistributor",
@@ -228,7 +228,7 @@ async function main() {
     Minter: minter.address,
     PoolFactory: poolFactory.address,
     Router: router.address,
-    AERO: AERO.address,
+    IRS: irs.address,
     Voter: voter.address,
     VotingEscrow: escrow.address,
     VotingRewardsFactory: votingRewardsFactory.address,

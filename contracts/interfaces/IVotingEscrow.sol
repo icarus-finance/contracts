@@ -168,7 +168,7 @@ interface IVotingEscrow is IVotes, IERC4906, IERC6372, IERC721Metadata {
     /// @notice Address of FactoryRegistry.sol
     function factoryRegistry() external view returns (address);
 
-    /// @notice Address of token (AERO) used to create a veNFT
+    /// @notice Address of token (IRS) used to create a veNFT
     function token() external view returns (address);
 
     /// @notice Address of RewardsDistributor.sol

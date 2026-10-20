@@ -17,15 +17,15 @@ contract DeployGaugesAndPools is Script {
 
     PoolFactory public factory;
     Voter public voter;
-    address public AERO;
+    address public irs;
 
-    struct PoolNonAero {
+    struct PoolNonIrs {
         bool stable;
         address tokenA;
         address tokenB;
     }
 
-    struct PoolAero {
+    struct PoolIrs {
         bool stable;
         address token;
     }
@@ -42,19 +42,19 @@ contract DeployGaugesAndPools is Script {
 
         // load in vars
         jsonConstants = vm.readFile(path);
-        PoolNonAero[] memory _pools = abi.decode(jsonConstants.parseRaw(".pools"), (PoolNonAero[]));
-        // PoolAero[] memory poolsAero = abi.decode(jsonConstants.parseRaw(".poolsAero"), (PoolAero[]));
+        PoolNonIrs[] memory _pools = abi.decode(jsonConstants.parseRaw(".pools"), (PoolNonIrs[]));
+        // PoolIrs[] memory poolsIrs = abi.decode(jsonConstants.parseRaw(".poolsIrs"), (PoolIrs[]));
 
         path = string.concat(basePath, "output/DeployCore-");
         path = string.concat(path, outputFilename);
         jsonOutput = vm.readFile(path);
         factory = PoolFactory(abi.decode(jsonOutput.parseRaw(".PoolFactory"), (address)));
         // voter = Voter(abi.decode(jsonOutput.parseRaw(".Voter"), (address)));
-        AERO = abi.decode(jsonOutput.parseRaw(".IRS"), (address));
+        irs = abi.decode(jsonOutput.parseRaw(".IRS"), (address));
 
         vm.startBroadcast(deployerAddress);
 
-        // Deploy all non-AERO pools & gauges
+        // Deploy all non-IRS pools & gauges
         for (uint256 i = 0; i < _pools.length; i++) {
             address newPool = factory.createPool(_pools[i].tokenA, _pools[i].tokenB, _pools[i].stable);
             // address newGauge = voter.createGauge(address(factory), newPool);
@@ -63,9 +63,9 @@ contract DeployGaugesAndPools is Script {
             // gauges.push(newGauge);
         }
 
-        // Deploy all AERO pools & gauges
-        // for (uint256 i = 0; i < poolsAero.length; i++) {
-            // address newPool = factory.createPool(AERO, poolsAero[i].token, poolsAero[i].stable);
+        // Deploy all IRS pools & gauges
+        // for (uint256 i = 0; i < poolsIrs.length; i++) {
+            // address newPool = factory.createPool(irs, poolsIrs[i].token, poolsIrs[i].stable);
             // address newGauge = voter.createGauge(address(factory), newPool);
 
             // pools.push(newPool);

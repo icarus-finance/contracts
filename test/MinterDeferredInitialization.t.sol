@@ -16,7 +16,7 @@ import {BribeVotingReward} from "contracts/rewards/BribeVotingReward.sol";
 import {IGauge, Gauge} from "contracts/gauges/Gauge.sol";
 import {RewardsDistributor, IRewardsDistributor} from "contracts/RewardsDistributor.sol";
 import {IRouter, Router} from "contracts/Router.sol";
-import {IAero, Aero} from "contracts/Aero.sol";
+import {IIRS, IRS} from "contracts/IRS.sol";
 import {IVoter, Voter} from "contracts/Voter.sol";
 import {VeArtProxy} from "contracts/VeArtProxy.sol";
 import {IVotingEscrow, VotingEscrow} from "contracts/VotingEscrow.sol";
@@ -38,7 +38,7 @@ contract MinterDeferredInitializationTest is Test {
     uint256 constant MAXTIME = 4 * 365 * 86400;
 
     // Tokens
-    Aero public AERO;
+    IRS public irs;
     MockERC20 public USDC;
     MockERC20 public FRAX;
     MockWETH public WETH;
@@ -77,7 +77,7 @@ contract MinterDeferredInitializationTest is Test {
         user2 = makeAddr("user2");
 
         // Deploy tokens
-        AERO = new Aero();
+        irs = new IRS();
         USDC = new MockERC20("USDC", "USDC", 6);
         FRAX = new MockERC20("FRAX", "FRAX", 18);
         WETH = new MockWETH();
@@ -98,7 +98,7 @@ contract MinterDeferredInitializationTest is Test {
         forwarder = new Forwarder();
 
         // Deploy VotingEscrow
-        escrow = new VotingEscrow(address(forwarder), address(AERO), address(factoryRegistry));
+        escrow = new VotingEscrow(address(forwarder), address(irs), address(factoryRegistry));
         artProxy = new VeArtProxy(address(escrow));
         escrow.setArtProxy(address(artProxy));
 
@@ -121,13 +121,13 @@ contract MinterDeferredInitializationTest is Test {
         // Deploy Minter - BUT DO NOT INITIALIZE
         minter = new Minter(address(voter), address(escrow), address(distributor));
         distributor.setMinter(address(minter));
-        AERO.setMinter(address(minter));
+        irs.setMinter(address(minter));
 
         // Initialize voter with minter address and whitelisted tokens
         address[] memory tokens = new address[](3);
         tokens[0] = address(USDC);
         tokens[1] = address(FRAX);
-        tokens[2] = address(AERO);
+        tokens[2] = address(irs);
         voter.initialize(tokens, address(minter));
 
         // Setup epoch governor
@@ -150,19 +150,19 @@ contract MinterDeferredInitializationTest is Test {
     }
 
     function testNoIRSTokensExistBeforeInitialization() public view {
-        assertEq(AERO.totalSupply(), 0, "No IRS tokens should exist before initialization");
+        assertEq(irs.totalSupply(), 0, "No IRS tokens should exist before initialization");
     }
 
     function testUpdatePeriodDoesNothingBeforeInitialization() public {
-        uint256 supplyBefore = AERO.totalSupply();
-        uint256 voterBalanceBefore = AERO.balanceOf(address(voter));
+        uint256 supplyBefore = irs.totalSupply();
+        uint256 voterBalanceBefore = irs.balanceOf(address(voter));
         uint256 epochCountBefore = minter.epochCount();
 
         // Try to trigger emissions
         minter.updatePeriod();
 
-        assertEq(AERO.totalSupply(), supplyBefore, "No tokens should be minted");
-        assertEq(AERO.balanceOf(address(voter)), voterBalanceBefore, "Voter should receive no tokens");
+        assertEq(irs.totalSupply(), supplyBefore, "No tokens should be minted");
+        assertEq(irs.balanceOf(address(voter)), voterBalanceBefore, "Voter should receive no tokens");
         assertEq(minter.epochCount(), epochCountBefore, "Epoch count should not change");
     }
 
@@ -170,10 +170,10 @@ contract MinterDeferredInitializationTest is Test {
         // Skip many weeks
         skip(52 weeks);
 
-        uint256 supplyBefore = AERO.totalSupply();
+        uint256 supplyBefore = irs.totalSupply();
         minter.updatePeriod();
 
-        assertEq(AERO.totalSupply(), supplyBefore, "No tokens should be minted even after time passes");
+        assertEq(irs.totalSupply(), supplyBefore, "No tokens should be minted even after time passes");
         assertEq(minter.epochCount(), 0, "Epoch count should remain 0");
     }
 
@@ -230,7 +230,7 @@ contract MinterDeferredInitializationTest is Test {
 
     function testCannotCreateLockWithoutIRSTokens() public {
         // User has no IRS tokens (none exist)
-        assertEq(AERO.balanceOf(user1), 0, "User should have no IRS tokens");
+        assertEq(irs.balanceOf(user1), 0, "User should have no IRS tokens");
         
         // Attempting to create a lock with 0 tokens should revert
         vm.startPrank(user1);
@@ -277,14 +277,14 @@ contract MinterDeferredInitializationTest is Test {
     function testDistributeDoesNotEmitRewardsBeforeInit() public {
         testCanCreateGaugeBeforeInitialization();
 
-        uint256 voterBalanceBefore = AERO.balanceOf(address(voter));
-        uint256 gaugeBalanceBefore = AERO.balanceOf(address(gauge));
+        uint256 voterBalanceBefore = irs.balanceOf(address(voter));
+        uint256 gaugeBalanceBefore = irs.balanceOf(address(gauge));
 
         // Try to distribute
         voter.distribute(0, 1);
 
-        assertEq(AERO.balanceOf(address(voter)), voterBalanceBefore, "Voter balance unchanged");
-        assertEq(AERO.balanceOf(address(gauge)), gaugeBalanceBefore, "Gauge balance unchanged");
+        assertEq(irs.balanceOf(address(voter)), voterBalanceBefore, "Voter balance unchanged");
+        assertEq(irs.balanceOf(address(gauge)), gaugeBalanceBefore, "Gauge balance unchanged");
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -327,8 +327,8 @@ contract MinterDeferredInitializationTest is Test {
         assertTrue(minter.initialized(), "Minter should be initialized");
 
         // Verify tokens distributed
-        assertEq(AERO.balanceOf(user1), 1000 * TOKEN_1, "User1 should have liquid tokens");
-        assertEq(AERO.balanceOf(user2), 500 * TOKEN_1, "User2 should have liquid tokens");
+        assertEq(irs.balanceOf(user1), 1000 * TOKEN_1, "User1 should have liquid tokens");
+        assertEq(irs.balanceOf(user2), 500 * TOKEN_1, "User2 should have liquid tokens");
 
         // Verify veNFT created for locked tokens
         assertEq(escrow.tokenId(), 1, "One veNFT should exist");
@@ -377,14 +377,14 @@ contract MinterDeferredInitializationTest is Test {
         skip(1 weeks);
         vm.roll(block.number + 1);
 
-        uint256 supplyBefore = AERO.totalSupply();
+        uint256 supplyBefore = irs.totalSupply();
 
         // Update period should now work
         minter.updatePeriod();
 
-        assertGt(AERO.totalSupply(), supplyBefore, "Tokens should be minted");
+        assertGt(irs.totalSupply(), supplyBefore, "Tokens should be minted");
         assertEq(minter.epochCount(), 1, "Epoch count should be 1");
-        assertGt(AERO.balanceOf(address(voter)), 0, "Voter should have tokens");
+        assertGt(irs.balanceOf(address(voter)), 0, "Voter should have tokens");
     }
 
     function testVotingWorksAfterInitialization() public {
@@ -406,7 +406,7 @@ contract MinterDeferredInitializationTest is Test {
 
         // User creates lock
         vm.startPrank(user1);
-        AERO.approve(address(escrow), type(uint256).max);
+        irs.approve(address(escrow), type(uint256).max);
         uint256 tokenId = escrow.createLock(1000 * TOKEN_1, MAXTIME);
         vm.stopPrank();
 
@@ -445,7 +445,7 @@ contract MinterDeferredInitializationTest is Test {
 
         // User creates lock and votes
         vm.startPrank(user1);
-        AERO.approve(address(escrow), type(uint256).max);
+        irs.approve(address(escrow), type(uint256).max);
         uint256 tokenId = escrow.createLock(1000 * TOKEN_1, MAXTIME);
         vm.stopPrank();
 
@@ -467,7 +467,7 @@ contract MinterDeferredInitializationTest is Test {
         voter.distribute(0, 1);
 
         // Gauge should have received rewards
-        assertGt(AERO.balanceOf(address(gauge)), 0, "Gauge should have rewards");
+        assertGt(irs.balanceOf(address(gauge)), 0, "Gauge should have rewards");
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -506,7 +506,7 @@ contract MinterDeferredInitializationTest is Test {
         assertEq(voter.length(), 2, "Two gauges should exist");
 
         // Verify no emissions happened
-        assertEq(AERO.totalSupply(), 0, "No IRS tokens yet");
+        assertEq(irs.totalSupply(), 0, "No IRS tokens yet");
         assertEq(minter.epochCount(), 0, "No epochs passed");
 
         // Skip some time to simulate waiting for initialization
@@ -539,8 +539,8 @@ contract MinterDeferredInitializationTest is Test {
 
         // Verify initialization
         assertTrue(minter.initialized());
-        assertEq(AERO.balanceOf(user1), 100000 * TOKEN_1);
-        assertEq(AERO.balanceOf(user2), 50000 * TOKEN_1);
+        assertEq(irs.balanceOf(user1), 100000 * TOKEN_1);
+        assertEq(irs.balanceOf(user2), 50000 * TOKEN_1);
         assertEq(escrow.tokenId(), 2, "Two veNFTs should exist");
 
         // === Phase 3: Post-initialization - Full protocol functionality ===
@@ -576,16 +576,16 @@ contract MinterDeferredInitializationTest is Test {
         // Skip to next epoch
         skipToNextEpoch(1);
 
-        uint256 supplyBefore = AERO.totalSupply();
+        uint256 supplyBefore = irs.totalSupply();
 
         // Distribute to all gauges
         voter.distribute(0, 2);
 
         // Verify emissions occurred
-        assertGt(AERO.totalSupply(), supplyBefore, "New tokens should be minted");
+        assertGt(irs.totalSupply(), supplyBefore, "New tokens should be minted");
         assertEq(minter.epochCount(), 2, "Distribution should process the next emission epoch");
-        assertGt(AERO.balanceOf(address(stableGauge)), 0, "Stable gauge should have rewards");
-        assertGt(AERO.balanceOf(address(volatileGauge)), 0, "Volatile gauge should have rewards");
+        assertGt(irs.balanceOf(address(stableGauge)), 0, "Stable gauge should have rewards");
+        assertGt(irs.balanceOf(address(volatileGauge)), 0, "Volatile gauge should have rewards");
 
         // === Phase 5: LP staking and reward claiming ===
         
@@ -602,12 +602,12 @@ contract MinterDeferredInitializationTest is Test {
         // Skip time and claim rewards (stay within same epoch)
         skip(1 days);
 
-        uint256 aeroBalanceBefore = AERO.balanceOf(user1);
+        uint256 irsBalanceBefore = irs.balanceOf(user1);
         
         vm.prank(user1);
         stableGauge.getReward(user1);
 
-        assertGt(AERO.balanceOf(user1), aeroBalanceBefore, "User should receive rewards");
+        assertGt(irs.balanceOf(user1), irsBalanceBefore, "User should receive rewards");
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -676,7 +676,7 @@ contract MinterDeferredInitializationTest is Test {
         assertEq(voter.length(), 2, "Should have 2 gauges");
 
         // All done before initialization - no tokens minted
-        assertEq(AERO.totalSupply(), 0);
+        assertEq(irs.totalSupply(), 0);
     }
 
     function testTeamFunctionsWorkBeforeInit() public {

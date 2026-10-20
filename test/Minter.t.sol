@@ -12,7 +12,7 @@ contract MinterTest is BaseTest {
     event Nudge(uint256 indexed _period, uint256 _oldRate, uint256 _newRate);
 
     function _setUp() public override {
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         tokenId = escrow.createLock(TOKEN_1, MAXTIME);
         skip(1);
 
@@ -28,6 +28,7 @@ contract MinterTest is BaseTest {
     }
 
     function testMinterDeploy() public {
+        assertEq(address(minter.irs()), address(irs));
         assertEq(minter.MAXIMUM_TAIL_RATE(), 100); // 1%
         assertEq(minter.MINIMUM_TAIL_RATE(), 1); // .01%
         assertEq(minter.WEEKLY_DECAY(), 9_900);
@@ -102,7 +103,7 @@ contract MinterTest is BaseTest {
 
     function testTailEmissionWhenWeeklyEmissionDecaysBelowTailStart() public {
         skipToNextEpoch(1);
-        assertEq(AERO.balanceOf(address(voter)), 0);
+        assertEq(irs.balanceOf(address(voter)), 0);
 
         // 9_059_747 * 1e18 ~= approximate weekly value after 67 epochs
         // (last epoch prior to tail emissions kicking in)
@@ -114,14 +115,14 @@ contract MinterTest is BaseTest {
         minter.updatePeriod();
         // epoch threshold for tail start
         assertApproxEqAbs(minter.weekly(), 8_969_149 * TOKEN_1, TOKEN_1);
-        assertApproxEqRel(AERO.balanceOf(address(voter)), 9_059_747 * TOKEN_1, 1e12);
+        assertApproxEqRel(irs.balanceOf(address(voter)), 9_059_747 * TOKEN_1, 1e12);
         voter.distribute(0, voter.length());
 
         skipToNextEpoch(1);
-        uint256 voterBalanceBefore = AERO.balanceOf(address(voter));
-        uint256 expectedTailEmission = (AERO.totalSupply() * minter.tailEmissionRate()) / minter.MAX_BPS();
+        uint256 voterBalanceBefore = irs.balanceOf(address(voter));
+        uint256 expectedTailEmission = (irs.totalSupply() * minter.tailEmissionRate()) / minter.MAX_BPS();
         minter.updatePeriod();
-        assertEq(AERO.balanceOf(address(voter)) - voterBalanceBefore, expectedTailEmission);
+        assertEq(irs.balanceOf(address(voter)) - voterBalanceBefore, expectedTailEmission);
         assertLt(minter.weekly(), minter.TAIL_START());
     }
 
@@ -277,13 +278,13 @@ contract MinterTest is BaseTest {
         minter.updatePeriod();
         assertEq(minter.weekly(), 10 * TOKEN_1M); // 10M
 
-        uint256 pre = AERO.balanceOf(address(voter));
+        uint256 pre = irs.balanceOf(address(voter));
         skipToNextEpoch(1);
         uint256 expectedClaimable = _expectedCompletedRebase(minter.weekly());
         minter.updatePeriod();
         assertEq(distributor.claimable(tokenId), expectedClaimable);
         // emissions grow by 3% after one epoch
-        uint256 post = AERO.balanceOf(address(voter));
+        uint256 post = irs.balanceOf(address(voter));
         assertEq(post - pre, (10 * TOKEN_1M));
         assertEq(minter.weekly(), ((10 * TOKEN_1M) * 103) / 100);
 
@@ -292,7 +293,7 @@ contract MinterTest is BaseTest {
         vm.roll(vm.getBlockNumber() + 1);
         expectedClaimable = _expectedCompletedRebase(minter.weekly());
         minter.updatePeriod();
-        post = AERO.balanceOf(address(voter));
+        post = irs.balanceOf(address(voter));
 
         // The sole veNFT receives all completed-week rebases, including the prior week's remainder.
         assertEq(distributor.claimable(tokenId), expectedClaimable);
@@ -336,7 +337,7 @@ contract MinterTest is BaseTest {
     ///      Exclude the new rebase portion assigned to the still-open epoch by checkpointToken.
     function _expectedCompletedRebase(uint256 emission) internal view returns (uint256) {
         uint256 epoch = _getEpochStart(block.timestamp);
-        uint256 supply = AERO.totalSupply();
+        uint256 supply = irs.totalSupply();
         uint256 unlockedSupply = supply - escrow.totalSupplyAt(epoch - 1);
         uint256 growth = (((emission * unlockedSupply) / supply) * unlockedSupply) / supply / 2;
         uint256 checkpointTime = distributor.lastTokenTime();

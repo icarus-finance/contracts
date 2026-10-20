@@ -22,7 +22,7 @@ interface IGauge {
     /// @notice Address of the pool LP token which is deposited (staked) for rewards
     function stakingToken() external view returns (address);
 
-    /// @notice Address of the token (AERO) rewarded to stakers
+    /// @notice Address of the token (IRS) rewarded to stakers
     function rewardToken() external view returns (address);
 
     /// @notice Address of the FeesVotingReward contract linked to the gauge
@@ -100,13 +100,14 @@ interface IGauge {
         uint256 lockDuration
     ) external returns (uint256 resultingTokenId);
 
-    /// @notice Deposit LP tokens into gauge for msg.sender
-    /// @param _amount .
+    /// @notice Deposit LP tokens for the effective caller (including trusted-forwarder context).
+    /// @param _amount Nonzero LP token amount pulled from the effective caller
     function deposit(uint256 _amount) external;
 
-    /// @notice Deposit LP tokens into gauge for any user
-    /// @param _amount .
-    /// @param _recipient Recipient to give balance to
+    /// @notice Deposit LP tokens from the effective caller and credit recipient.
+    /// @dev Uses the same accounting as deposit(amount); recipient owns withdrawal and reward rights.
+    /// @param _amount Nonzero LP token amount pulled from the effective caller
+    /// @param _recipient Nonzero account credited with the stake
     function deposit(uint256 _amount, address _recipient) external;
 
     /// @notice Withdraw LP tokens for user

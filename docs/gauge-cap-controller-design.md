@@ -239,7 +239,7 @@ describe fresh Voter subsidy rather than promising a cap on aggregate LP APR.
 
 ## Burn and migration
 
-`contracts/Aero.sol` has no burn API. For fresh deployment add `burn(uint256)` burning caller-owned
+`contracts/IRS.sol` has no burn API. For fresh deployment add `burn(uint256)` burning caller-owned
 IRS and matching interface; Voter burns its own reserves. Avoid `burnFrom` allowance complexity.
 A dead-address transfer does not reduce totalSupply; tail emission and rebase calculations differ.
 Burn tests must cover supply-based Minter economics after expiry, not merely emitted burn events.

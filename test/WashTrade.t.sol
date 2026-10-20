@@ -16,9 +16,9 @@ contract WashTradeTest is BaseTest {
         mintStables();
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = 1e25;
-        mintToken(address(AERO), owners, amounts);
+        mintToken(address(irs), owners, amounts);
 
-        escrow = new VotingEscrow(address(forwarder), address(AERO), address(factoryRegistry));
+        escrow = new VotingEscrow(address(forwarder), address(irs), address(factoryRegistry));
         VeArtProxy artProxy = new VeArtProxy(address(escrow));
         escrow.setArtProxy(address(artProxy));
     }
@@ -26,21 +26,21 @@ contract WashTradeTest is BaseTest {
     function createLock() public {
         deployBaseCoins();
 
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME);
         vm.roll(vm.getBlockNumber() + 1); // fwd 1 block because escrow.balanceOfNFT() returns 0 in same block
         assertGt(escrow.balanceOfNFT(1), 995063075414519385);
-        assertEq(AERO.balanceOf(address(escrow)), TOKEN_1);
+        assertEq(irs.balanceOf(address(escrow)), TOKEN_1);
     }
 
     function votingEscrowMerge() public {
         createLock();
 
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME);
         skipAndRoll(1);
         assertGt(escrow.balanceOfNFT(2), 995063075414519385);
-        assertEq(AERO.balanceOf(address(escrow)), 2 * TOKEN_1);
+        assertEq(irs.balanceOf(address(escrow)), 2 * TOKEN_1);
         escrow.merge(2, 1);
         assertGt(escrow.balanceOfNFT(1), 1990039602248405587);
         assertEq(escrow.balanceOfNFT(2), 0);
@@ -127,7 +127,7 @@ contract WashTradeTest is BaseTest {
         escrow.setVoterAndDistributor(address(voter), address(distributor));
         minter = new Minter(address(voter), address(escrow), address(distributor));
         distributor.setMinter(address(minter));
-        AERO.setMinter(address(minter));
+        irs.setMinter(address(minter));
         minter.initialize(IMinter.AirdropParams({
             liquidWallets: new address[](0),
             liquidAmounts: new uint256[](0),
@@ -138,7 +138,7 @@ contract WashTradeTest is BaseTest {
         tokens[0] = address(USDC);
         tokens[1] = address(FRAX);
         tokens[2] = address(DAI);
-        tokens[3] = address(AERO);
+        tokens[3] = address(irs);
         voter.initialize(tokens, address(minter));
 
         assertEq(voter.length(), 0);
@@ -147,7 +147,7 @@ contract WashTradeTest is BaseTest {
     function deployPoolFactoryGauge() public {
         deployVoter();
 
-        AERO.approve(address(gaugeFactory), 5 * TOKEN_100K);
+        irs.approve(address(gaugeFactory), 5 * TOKEN_100K);
         voter.createGauge(address(factory), address(pool2));
         voter.createGauge(address(factory), address(pool3));
         assertFalse(voter.gauges(address(pool3)) == address(0));

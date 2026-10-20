@@ -80,7 +80,7 @@ contract GaugeClaimAndLockTest is BaseTest {
     }
 
     function _createLock(uint256 duration) internal returns (uint256) {
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         return escrow.createLock(TOKEN_1, duration);
     }
 
@@ -96,16 +96,16 @@ contract GaugeClaimAndLockTest is BaseTest {
 
     function testClaimCreatesNewLockWithoutWalletApproval() public {
         uint256 reward = _accrue();
-        uint256 balanceBefore = AERO.balanceOf(address(this));
-        uint256 escrowBefore = AERO.balanceOf(address(escrow));
+        uint256 balanceBefore = irs.balanceOf(address(this));
+        uint256 escrowBefore = irs.balanceOf(address(escrow));
         voter.setClaimHook(address(hook));
         uint256 id = gauge.getRewardAndLock(address(this), 0, MAXTIME);
         assertEq(escrow.ownerOf(id), address(this));
         assertEq(convert(escrow.locked(id).amount), reward);
         assertEq(escrow.locked(id).end, ((block.timestamp + MAXTIME) / WEEK) * WEEK);
-        assertEq(AERO.balanceOf(address(this)), balanceBefore);
-        assertEq(AERO.balanceOf(address(escrow)), escrowBefore + reward);
-        assertEq(AERO.allowance(address(gauge), address(escrow)), 0);
+        assertEq(irs.balanceOf(address(this)), balanceBefore);
+        assertEq(irs.balanceOf(address(escrow)), escrowBefore + reward);
+        assertEq(irs.allowance(address(gauge), address(escrow)), 0);
         assertEq(gauge.earned(address(this)), 0);
         _assertHook(id, reward);
     }
@@ -114,13 +114,13 @@ contract GaugeClaimAndLockTest is BaseTest {
         uint256 id = _createLock(MAXTIME);
         uint256 expiry = escrow.locked(id).end;
         uint256 reward = _accrue();
-        uint256 balanceBefore = AERO.balanceOf(address(this));
+        uint256 balanceBefore = irs.balanceOf(address(this));
         voter.setClaimHook(address(hook));
         assertEq(gauge.getRewardAndLock(address(this), id, 0), id);
         assertEq(convert(escrow.locked(id).amount), TOKEN_1 + reward);
         assertEq(escrow.locked(id).end, expiry);
-        assertEq(AERO.balanceOf(address(this)), balanceBefore);
-        assertEq(AERO.allowance(address(gauge), address(escrow)), 0);
+        assertEq(irs.balanceOf(address(this)), balanceBefore);
+        assertEq(irs.allowance(address(gauge), address(escrow)), 0);
         _assertHook(id, reward);
     }
 
@@ -137,10 +137,10 @@ contract GaugeClaimAndLockTest is BaseTest {
 
     function testLiquidClaimHookReceivesZeroIdAndZeroLockedAmount() public {
         uint256 reward = _accrue();
-        uint256 balanceBefore = AERO.balanceOf(address(this));
+        uint256 balanceBefore = irs.balanceOf(address(this));
         voter.setClaimHook(address(hook));
         gauge.getReward(address(this));
-        assertEq(AERO.balanceOf(address(this)), balanceBefore + reward);
+        assertEq(irs.balanceOf(address(this)), balanceBefore + reward);
         _assertHook(0, 0);
     }
 
@@ -163,7 +163,7 @@ contract GaugeClaimAndLockTest is BaseTest {
 
     function testCannotLockIntoOtherUsersNftEvenWithApproval() public {
         vm.startPrank(address(owner2));
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         uint256 id = escrow.createLock(TOKEN_1, MAXTIME);
         escrow.approve(address(this), id);
         vm.stopPrank();
@@ -193,7 +193,7 @@ contract GaugeClaimAndLockTest is BaseTest {
         vm.expectRevert(IVotingEscrow.LockDurationTooLong.selector);
         gauge.getRewardAndLock(address(this), 0, MAXTIME + WEEK);
         assertEq(gauge.earned(address(this)), reward);
-        assertEq(AERO.allowance(address(gauge), address(escrow)), 0);
+        assertEq(irs.allowance(address(gauge), address(escrow)), 0);
     }
 
     function testCannotClaimIntoExpiredLock() public {
@@ -209,9 +209,9 @@ contract GaugeClaimAndLockTest is BaseTest {
 
     function testHookRevertPreservesNewLockAndRewards() public {
         uint256 reward = _accrue();
-        uint256 balanceBefore = AERO.balanceOf(address(this));
-        uint256 gaugeBefore = AERO.balanceOf(address(gauge));
-        uint256 escrowBefore = AERO.balanceOf(address(escrow));
+        uint256 balanceBefore = irs.balanceOf(address(this));
+        uint256 gaugeBefore = irs.balanceOf(address(gauge));
+        uint256 escrowBefore = irs.balanceOf(address(escrow));
         uint256 idBefore = escrow.tokenId();
         voter.setClaimHook(address(hook));
         hook.configure(true, false);
@@ -220,10 +220,10 @@ contract GaugeClaimAndLockTest is BaseTest {
         assertEq(escrow.ownerOf(id), address(this));
         assertEq(convert(escrow.locked(id).amount), reward);
         assertEq(gauge.earned(address(this)), 0);
-        assertEq(AERO.balanceOf(address(this)), balanceBefore);
-        assertEq(AERO.balanceOf(address(gauge)), gaugeBefore - reward);
-        assertEq(AERO.balanceOf(address(escrow)), escrowBefore + reward);
-        assertEq(AERO.allowance(address(gauge), address(escrow)), 0);
+        assertEq(irs.balanceOf(address(this)), balanceBefore);
+        assertEq(irs.balanceOf(address(gauge)), gaugeBefore - reward);
+        assertEq(irs.balanceOf(address(escrow)), escrowBefore + reward);
+        assertEq(irs.allowance(address(gauge), address(escrow)), 0);
         assertEq(hook.calls(), 0);
         // A failed callback must not leave the same rewards claimable twice.
         gauge.getRewardAndLock(address(this), id, 0);
@@ -240,28 +240,28 @@ contract GaugeClaimAndLockTest is BaseTest {
         assertEq(convert(escrow.locked(id).amount), TOKEN_1 + reward);
         assertEq(escrow.locked(id).end, expiry);
         assertEq(gauge.earned(address(this)), 0);
-        assertEq(AERO.allowance(address(gauge), address(escrow)), 0);
+        assertEq(irs.allowance(address(gauge), address(escrow)), 0);
     }
 
     function testHookRevertPreservesLiquidClaim() public {
         uint256 reward = _accrue();
-        uint256 balanceBefore = AERO.balanceOf(address(this));
+        uint256 balanceBefore = irs.balanceOf(address(this));
         voter.setClaimHook(address(hook));
         hook.configure(true, false);
         gauge.getReward(address(this));
         assertEq(gauge.earned(address(this)), 0);
-        assertEq(AERO.balanceOf(address(this)), balanceBefore + reward);
+        assertEq(irs.balanceOf(address(this)), balanceBefore + reward);
         gauge.getReward(address(this));
-        assertEq(AERO.balanceOf(address(this)), balanceBefore + reward);
+        assertEq(irs.balanceOf(address(this)), balanceBefore + reward);
     }
 
     function testEmptyHookRevertPreservesLiquidClaim() public {
         uint256 reward = _accrue();
-        uint256 balanceBefore = AERO.balanceOf(address(this));
+        uint256 balanceBefore = irs.balanceOf(address(this));
         voter.setClaimHook(address(new EmptyRevertClaimHook()));
         gauge.getReward(address(this));
         assertEq(gauge.earned(address(this)), 0);
-        assertEq(AERO.balanceOf(address(this)), balanceBefore + reward);
+        assertEq(irs.balanceOf(address(this)), balanceBefore + reward);
     }
 
     function testHookCannotReenterClaim() public {
@@ -353,7 +353,7 @@ contract GaugeClaimAndLockTest is BaseTest {
         skip(1 days);
         reward = gauge.earned(address(this)) + gauge2.earned(address(this));
         uint256 idBefore = escrow.tokenId();
-        uint256 balanceBefore = AERO.balanceOf(address(this));
+        uint256 balanceBefore = irs.balanceOf(address(this));
         address[] memory gauges = new address[](2);
         gauges[0] = address(gauge);
         gauges[1] = address(gauge2);
@@ -361,7 +361,7 @@ contract GaugeClaimAndLockTest is BaseTest {
         assertEq(id, idBefore + 1);
         assertEq(escrow.tokenId(), id);
         assertEq(convert(escrow.locked(id).amount), reward);
-        assertEq(AERO.balanceOf(address(this)), balanceBefore);
+        assertEq(irs.balanceOf(address(this)), balanceBefore);
         assertEq(gauge.earned(address(this)), 0);
         assertEq(gauge2.earned(address(this)), 0);
     }
@@ -392,7 +392,7 @@ contract GaugeClaimAndLockTest is BaseTest {
         skip(1 days);
         uint256 firstReward = gauge.earned(address(this));
         uint256 secondReward = gauge2.earned(address(this));
-        uint256 escrowBefore = AERO.balanceOf(address(escrow));
+        uint256 escrowBefore = irs.balanceOf(address(escrow));
         uint256 idBefore = escrow.tokenId();
         voter.setClaimHook(address(hook));
         hook.setFailGauge(failFirst ? address(gauge) : address(gauge2));
@@ -405,14 +405,14 @@ contract GaugeClaimAndLockTest is BaseTest {
         assertEq(id, idBefore + 1);
         assertEq(escrow.tokenId(), id);
         assertEq(convert(escrow.locked(id).amount), firstReward + secondReward);
-        assertEq(AERO.balanceOf(address(escrow)), escrowBefore + firstReward + secondReward);
-        assertEq(AERO.allowance(address(gauge), address(escrow)), 0);
-        assertEq(AERO.allowance(address(gauge2), address(escrow)), 0);
+        assertEq(irs.balanceOf(address(escrow)), escrowBefore + firstReward + secondReward);
+        assertEq(irs.allowance(address(gauge), address(escrow)), 0);
+        assertEq(irs.allowance(address(gauge2), address(escrow)), 0);
         assertEq(hook.calls(), 1);
     }
 
     function testClaimIntoTeamLock() public {
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         uint256 teamUnlockTs = block.timestamp + WEEK;
         uint256 id = escrow.createTeamLockFor(TOKEN_1, MAXTIME, address(this), teamUnlockTs);
         uint256 reward = _accrue();
@@ -446,13 +446,13 @@ contract GaugeClaimAndLockTest is BaseTest {
         _addRewardToGauge(address(voter), address(gauge), amount);
         skip(delay);
         uint256 reward = gauge.earned(address(this));
-        uint256 gaugeBefore = AERO.balanceOf(address(gauge));
-        uint256 escrowBefore = AERO.balanceOf(address(escrow));
-        uint256 userBefore = AERO.balanceOf(address(this));
+        uint256 gaugeBefore = irs.balanceOf(address(gauge));
+        uint256 escrowBefore = irs.balanceOf(address(escrow));
+        uint256 userBefore = irs.balanceOf(address(this));
         uint256 id = gauge.getRewardAndLock(address(this), 0, MAXTIME);
-        assertEq(AERO.balanceOf(address(gauge)), gaugeBefore - reward);
-        assertEq(AERO.balanceOf(address(escrow)), escrowBefore + reward);
-        assertEq(AERO.balanceOf(address(this)), userBefore);
+        assertEq(irs.balanceOf(address(gauge)), gaugeBefore - reward);
+        assertEq(irs.balanceOf(address(escrow)), escrowBefore + reward);
+        assertEq(irs.balanceOf(address(this)), userBefore);
         assertEq(convert(escrow.locked(id).amount), reward);
         assertEq(gauge.earned(address(this)), 0);
     }
