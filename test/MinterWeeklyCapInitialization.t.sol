@@ -163,7 +163,7 @@ contract MinterWeeklyCapInitializationFlowTest is Test {
         minter.initialize(_params(), initialWeekly);
         assertEq(minter.weekly(), initialWeekly);
         assertTrue(minter.initialized());
-        _assertFirstFunding(2 * WEEK, initialWeekly, initialWeekly * minter.WEEKLY_GROWTH() / minter.MAX_BPS());
+        _assertFirstFunding(2 * WEEK, initialWeekly, (initialWeekly * minter.WEEKLY_GROWTH()) / minter.MAX_BPS());
     }
 
     function testInitialWeeklyOneBaseUnitAboveMaximumReverts() public {
