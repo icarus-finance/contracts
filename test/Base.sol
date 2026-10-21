@@ -109,7 +109,7 @@ abstract contract Base is Script, Test {
                 liquidAmounts: new uint256[](0),
                 lockedWallets: new address[](0),
                 lockedAmounts: new uint256[](0)
-            }));
+            }), 10_000_000 ether);
         }
 
         airdrop = new AirdropDistributor(address(escrow));

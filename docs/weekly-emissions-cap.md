@@ -1,5 +1,5 @@
 ---
-read_when: Configuring weekly emissions caps, operating a cap reporter, or reviewing Minter accounting.
+read_when: Initializing Minter emissions, configuring weekly emissions caps, operating a cap reporter, or reviewing Minter accounting.
 ---
 
 # Global weekly emissions cap
@@ -29,10 +29,34 @@ week. Missing reports deliberately fail open, so reporter outages restore nomina
 
 ## Initialization and first emissions
 
-`initialize()` sets `activePeriod` to the current week. It performs the configured airdrop but
+Team calls `initialize(AirdropParams params, uint256 initialWeekly)` once. `initialWeekly`
+sets `weekly` in raw IRS units (18 decimals); `weekly` is zero before initialization.
+For example, `10_000_000 * 1e18` selects the former 10 million IRS starting schedule.
+Initialization sets `activePeriod` to the current week. It performs the configured airdrop but
 emits no weekly rewards; the first weekly emission is available at the next weekly boundary.
+Initialization remains atomic: a failed airdrop also rolls back the initial weekly amount,
+initialization flag and schedule. Reinitialization cannot change that amount.
+
+At or above `TAIL_START` (`8_969_150 * 1e18`), the first nominal gauge funding equals
+`initialWeekly`, before any weekly cap; the existing growth/decay schedule follows.
+Below `TAIL_START`, including zero, the first emission immediately uses the supply-based
+tail formula instead: `totalSupply * tailEmissionRate / 10_000`. Thus a lower initial
+amount is not an exact first-emission budget, and zero does not pause emissions.
+Rebase and team rewards are additional to gauge funding. Tail funding depends on the
+token supply when the emission is processed, including the initialization airdrop.
 Caps affect weekly emissions, not the initialization airdrop. An empty airdrop is supported:
 when token supply is zero, the first emission has zero rebase (there are no existing holders).
+
+This initialization ABI applies to fresh Minter deployments. Update deployment scripts,
+bindings and initialization calldata to pass the explicit amount; no one-argument overload
+is provided. Existing immutable deployments retain their original ABI and schedule.
+
+`script/hardhat/DeployCore.ts` requires `INITIAL_WEEKLY` in the environment, with no
+default, and checks that it fits `uint256` before deploying contracts. Supply an integer
+in raw IRS units, for example `INITIAL_WEEKLY=10000000000000000000000000` for 10 million
+IRS; do not supply a decimal token amount or a Solidity expression. The commented
+initialization example in `script/DeployCore.s.sol` reads the same variable using
+`vm.envUint("INITIAL_WEEKLY")`.
 
 To cap the first emission:
 

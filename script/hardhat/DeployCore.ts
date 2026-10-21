@@ -46,6 +46,12 @@ interface AirdropInfo {
 }
 
 async function main() {
+  // Raw IRS units (18 decimals); choose explicitly before deploying.
+  if (!process.env.INITIAL_WEEKLY) throw new Error("INITIAL_WEEKLY is required");
+  const initialWeekly = BigNumber.from(process.env.INITIAL_WEEKLY);
+  if (initialWeekly.lt(0) || initialWeekly.gte(BigNumber.from(2).pow(256))) {
+    throw new Error("INITIAL_WEEKLY must fit uint256");
+  }
   // ====== start _deploySetupBefore() ======
   const ONE = "1000000000000000000";
   const AIRDROPPER_BALANCE = 200_000_000;
@@ -189,12 +195,15 @@ async function main() {
     lockedAmounts.push(BigNumber.from(drop.amount / 1e18).mul(DECIMAL));
   });
 
-  await minter.initialize({
-    liquidWallets: liquidWallets,
-    liquidAmounts: liquidAmounts,
-    lockedWallets: lockedWallets,
-    lockedAmounts: lockedAmounts,
-  });
+  await minter.initialize(
+    {
+      liquidWallets: liquidWallets,
+      liquidAmounts: liquidAmounts,
+      lockedWallets: lockedWallets,
+      lockedAmounts: lockedAmounts,
+    },
+    initialWeekly,
+  );
 
   // Set protocol state to team
   await escrow.setTeam(jsonConstants.team);

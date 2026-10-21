@@ -127,7 +127,8 @@ contract DeployCore is Base {
     //             liquidAmounts: liquidAmounts,
     //             lockedWallets: lockedWallets,
     //             lockedAmounts: lockedAmounts
-    //         })
+    //         }),
+    //         vm.envUint("INITIAL_WEEKLY") // Raw IRS units (18 decimals).
     //     );
     // }
 

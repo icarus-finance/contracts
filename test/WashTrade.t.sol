@@ -133,7 +133,7 @@ contract WashTradeTest is BaseTest {
             liquidAmounts: new uint256[](0),
             lockedWallets: new address[](0),
             lockedAmounts: new uint256[](0)
-        }));
+        }), 10_000_000 ether);
         address[] memory tokens = new address[](4);
         tokens[0] = address(USDC);
         tokens[1] = address(FRAX);

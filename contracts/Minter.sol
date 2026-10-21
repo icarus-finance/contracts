@@ -11,7 +11,7 @@ import {IEpochGovernor} from "./interfaces/IEpochGovernor.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @title Minter
-/// @author velodrome.finance, @figs999, @pegahcarter
+/// @author icarus.finance, velodrome.finance, @figs999, @pegahcarter
 /// @notice Controls minting of emissions and rebases for the Protocol
 contract Minter is IMinter {
     using SafeERC20 for IIRS;
@@ -48,7 +48,7 @@ contract Minter is IMinter {
     /// @inheritdoc IMinter
     uint256 public teamRate = 500; // team emissions start at 5%
     /// @inheritdoc IMinter
-    uint256 public weekly = 10_000_000 * 1e18;
+    uint256 public weekly;
     /// @inheritdoc IMinter
     uint256 public activePeriod;
     /// @inheritdoc IMinter
@@ -80,7 +80,7 @@ contract Minter is IMinter {
     }
 
     /// @inheritdoc IMinter
-    function initialize(AirdropParams memory params) external {
+    function initialize(AirdropParams memory params, uint256 initialWeekly) external {
         if (initialized) revert AlreadyInitialized();
         if (msg.sender != team) revert NotTeam();
         if (
@@ -88,6 +88,7 @@ contract Minter is IMinter {
                 || (params.lockedWallets.length != params.lockedAmounts.length)
         ) revert InvalidParams();
         initialized = true;
+        weekly = initialWeekly;
 
         // Liquid Token Mint
         uint256 _len = params.liquidWallets.length;

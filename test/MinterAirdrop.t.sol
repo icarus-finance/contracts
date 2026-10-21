@@ -53,7 +53,8 @@ contract MinterAirdrop is BaseTest {
                 liquidAmounts: liquidAmounts,
                 lockedWallets: lockedWallets,
                 lockedAmounts: lockedAmounts
-            })
+            }),
+            10_000_000 ether
         );
         assertTrue(minter2.initialized());
         // Ensures Liquid Tokens were minted correctly
@@ -97,7 +98,8 @@ contract MinterAirdrop is BaseTest {
                 liquidAmounts: amounts,
                 lockedWallets: new address[](0),
                 lockedAmounts: new uint256[](0)
-            })
+            }),
+            10_000_000 ether
         );
 
         assertTrue(minter2.initialized());
@@ -133,7 +135,8 @@ contract MinterAirdrop is BaseTest {
                 liquidAmounts: new uint256[](0),
                 lockedWallets: wallets,
                 lockedAmounts: amounts
-            })
+            }),
+            10_000_000 ether
         );
 
         assertTrue(minter2.initialized());
@@ -167,7 +170,8 @@ contract MinterAirdrop is BaseTest {
                 liquidAmounts: lockedAmounts,
                 lockedWallets: new address[](0),
                 lockedAmounts: new uint256[](0)
-            })
+            }),
+            10_000_000 ether
         );
 
         vm.expectRevert(IMinter.InvalidParams.selector);
@@ -177,7 +181,8 @@ contract MinterAirdrop is BaseTest {
                 liquidAmounts: new uint256[](0),
                 lockedWallets: lockedWallets,
                 lockedAmounts: liquidAmounts
-            })
+            }),
+            10_000_000 ether
         );
 
         vm.expectRevert(IMinter.InvalidParams.selector);
@@ -187,7 +192,8 @@ contract MinterAirdrop is BaseTest {
                 liquidAmounts: lockedAmounts,
                 lockedWallets: lockedWallets,
                 lockedAmounts: liquidAmounts
-            })
+            }),
+            10_000_000 ether
         );
         vm.stopPrank();
         assertFalse(minter2.initialized());
@@ -205,7 +211,8 @@ contract MinterAirdrop is BaseTest {
                 liquidAmounts: new uint256[](0),
                 lockedWallets: new address[](0),
                 lockedAmounts: new uint256[](0)
-            })
+            }),
+            10_000_000 ether
         );
         assertTrue(minter2.initialized());
 
@@ -216,7 +223,8 @@ contract MinterAirdrop is BaseTest {
                 liquidAmounts: new uint256[](0),
                 lockedWallets: new address[](0),
                 lockedAmounts: new uint256[](0)
-            })
+            }),
+            10_000_000 ether
         );
         vm.stopPrank();
     }
@@ -230,7 +238,8 @@ contract MinterAirdrop is BaseTest {
                 liquidAmounts: new uint256[](0),
                 lockedWallets: new address[](0),
                 lockedAmounts: new uint256[](0)
-            })
+            }),
+            10_000_000 ether
         );
     }
 

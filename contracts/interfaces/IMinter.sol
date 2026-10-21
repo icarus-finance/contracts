@@ -105,7 +105,7 @@ interface IMinter {
     /// @notice Tail emissions rate in basis points
     function tailEmissionRate() external view returns (uint256);
 
-    /// @notice Starting weekly emission of 10M IRS (IRS has 18 decimals)
+    /// @notice Nominal weekly emission in raw IRS units; zero until initialized.
     function weekly() external view returns (uint256);
 
     /// @notice Timestamp of start of epoch that updatePeriod was last called in
@@ -130,7 +130,9 @@ interface IMinter {
 
     /// @notice Mints liquid tokens and permanently locked NFTs to the provided accounts
     /// @param params Struct that stores the wallets and amounts for the Airdrops
-    function initialize(AirdropParams memory params) external;
+    /// @param initialWeekly Initial nominal weekly emissions in raw IRS units (18 decimals).
+    /// @dev Values below TAIL_START select supply-based tail emissions immediately.
+    function initialize(AirdropParams memory params, uint256 initialWeekly) external;
 
     /// @notice Creates a request to change the current team's address
     /// @param _team Address of the new team to be chosen

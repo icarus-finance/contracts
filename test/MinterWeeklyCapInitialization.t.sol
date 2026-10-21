@@ -77,7 +77,7 @@ contract MinterWeeklyCapInitializationFlowTest is Test {
     }
 
     function _initialize() internal {
-        minter.initialize(_params());
+        minter.initialize(_params(), 10_000_000 ether);
         assertEq(token.totalSupply(), INITIAL_SUPPLY, "airdrop unaffected by cap");
         assertEq(token.balanceOf(user), INITIAL_SUPPLY - LOCKED);
         assertEq(token.balanceOf(address(escrow)), LOCKED);
@@ -89,6 +89,10 @@ contract MinterWeeklyCapInitializationFlowTest is Test {
     }
 
     function _assertFirstFunding(uint256 epoch, uint256 emission) internal {
+        _assertFirstFunding(epoch, emission, 10_300_000 ether);
+    }
+
+    function _assertFirstFunding(uint256 epoch, uint256 emission, uint256 expectedWeekly) internal {
         vm.warp(epoch);
         uint256 supplyBefore = token.totalSupply();
         uint256 votingPower = escrow.totalSupplyAt(epoch - 1);
@@ -108,9 +112,55 @@ contract MinterWeeklyCapInitializationFlowTest is Test {
         assertEq(distributor.lastTokenTime(), epoch);
         assertEq(minter.activePeriod(), epoch);
         assertEq(minter.epochCount(), 1);
-        assertEq(minter.weekly(), 10_300_000 ether, "nominal growth unaffected");
+        assertEq(minter.weekly(), expectedWeekly, "nominal schedule after first emission");
         minter.updatePeriod();
         assertEq(token.totalSupply(), supplyBefore + emission + growth + teamReward, "no double funding");
+    }
+
+    function testWeeklyUnsetBeforeInitialization() public view {
+        assertEq(minter.weekly(), 0);
+        assertFalse(minter.initialized());
+    }
+
+    function testCustomInitialWeeklyFundsFirstEpochAndGrows() public {
+        uint256 initialWeekly = 20_000_000 ether;
+        minter.initialize(_params(), initialWeekly);
+        assertEq(minter.weekly(), initialWeekly);
+        assertEq(token.totalSupply(), INITIAL_SUPPLY);
+        assertEq(minter.activePeriod(), WEEK);
+        assertEq(minter.epochCount(), 0);
+        assertEq(minter.updatePeriod(), WEEK);
+        assertEq(token.balanceOf(address(voter)), 0);
+        _assertFirstFunding(2 * WEEK, initialWeekly, initialWeekly * minter.WEEKLY_GROWTH() / minter.MAX_BPS());
+    }
+
+    function testInitialWeeklyAtThresholdUsesNominalEmissionAndGrowth() public {
+        uint256 initialWeekly = minter.TAIL_START();
+        minter.initialize(_params(), initialWeekly);
+        _assertFirstFunding(2 * WEEK, initialWeekly, initialWeekly * minter.WEEKLY_GROWTH() / minter.MAX_BPS());
+    }
+
+    function testInitialWeeklyBelowThresholdUsesSupplyBasedTailImmediately() public {
+        uint256 initialWeekly = minter.TAIL_START() - 1;
+        minter.initialize(_params(), initialWeekly);
+        uint256 emission = INITIAL_SUPPLY * minter.tailEmissionRate() / minter.MAX_BPS();
+        assertTrue(emission != initialWeekly);
+        _assertFirstFunding(2 * WEEK, emission, initialWeekly);
+    }
+
+    function testZeroInitialWeeklyAcceptedAndUsesSupplyBasedTail() public {
+        minter.initialize(_params(), 0);
+        assertTrue(minter.initialized());
+        assertEq(minter.weekly(), 0);
+        uint256 emission = INITIAL_SUPPLY * minter.tailEmissionRate() / minter.MAX_BPS();
+        assertGt(emission, 0, "zero weekly does not disable tail emissions");
+        _assertFirstFunding(2 * WEEK, emission, 0);
+    }
+
+    function testMaximumInitialWeeklyAcceptedWithoutRangeRestriction() public {
+        minter.initialize(_params(), type(uint256).max);
+        assertEq(minter.weekly(), type(uint256).max);
+        assertTrue(minter.initialized());
     }
 
     function testFirstFundedEpochCanBeCappedBeforeInitialization() public {
@@ -226,8 +276,9 @@ contract MinterWeeklyCapInitializationFlowTest is Test {
         IMinter.AirdropParams memory params = _params();
         vm.prank(reporter);
         vm.expectRevert(IMinter.NotTeam.selector);
-        minter.initialize(params);
+        minter.initialize(params, 123 ether);
         assertFalse(minter.initialized());
+        assertEq(minter.weekly(), 0, "failed initialization cannot set weekly");
         assertEq(token.totalSupply(), 0);
         _assertReport(2 * WEEK, CAP);
         _initialize();
@@ -239,8 +290,9 @@ contract MinterWeeklyCapInitializationFlowTest is Test {
         IMinter.AirdropParams memory params = _params();
         params.liquidAmounts = new uint256[](0);
         vm.expectRevert(IMinter.InvalidParams.selector);
-        minter.initialize(params);
+        minter.initialize(params, 123 ether);
         assertFalse(minter.initialized());
+        assertEq(minter.weekly(), 0, "failed initialization cannot set weekly");
         assertEq(token.totalSupply(), 0);
         _assertReport(2 * WEEK, CAP);
         _initialize();
@@ -252,8 +304,9 @@ contract MinterWeeklyCapInitializationFlowTest is Test {
         IMinter.AirdropParams memory params = _params();
         params.lockedAmounts[0] = 0;
         vm.expectRevert(IVotingEscrow.ZeroAmount.selector);
-        minter.initialize(params);
+        minter.initialize(params, 123 ether);
         assertFalse(minter.initialized());
+        assertEq(minter.weekly(), 0, "failed initialization cannot set weekly");
         assertEq(token.totalSupply(), 0, "liquid airdrop mint rolled back");
         assertEq(token.balanceOf(user), 0);
         assertEq(escrow.tokenId(), 0);
@@ -269,7 +322,8 @@ contract MinterWeeklyCapInitializationFlowTest is Test {
         IMinter.AirdropParams memory params = _params();
         vm.warp(WEEK + 1 days);
         vm.expectRevert(IMinter.AlreadyInitialized.selector);
-        minter.initialize(params);
+        minter.initialize(params, 123 ether);
+        assertEq(minter.weekly(), 10_000_000 ether, "repeat initialization cannot reset weekly");
         assertEq(minter.activePeriod(), WEEK);
         assertEq(token.totalSupply(), INITIAL_SUPPLY);
         _assertReport(2 * WEEK, CAP);
@@ -309,7 +363,7 @@ contract MinterWeeklyCapInitializationFlowTest is Test {
             lockedWallets: new address[](0),
             lockedAmounts: new uint256[](0)
         });
-        minter.initialize(params);
+        minter.initialize(params, 10_000_000 ether);
         assertEq(token.totalSupply(), 0);
         assertEq(minter.calculateGrowth(emission), 0);
         assertEq(minter.updatePeriod(), WEEK);

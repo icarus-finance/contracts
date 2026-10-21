@@ -203,7 +203,7 @@ contract MinterDeferredFeeAccrualTest is Test {
             lockedWallets: _singleAddress(irsHolder),
             lockedAmounts: _singleUint(10_000 * TOKEN_1)
         });
-        minter.initialize(params);
+        minter.initialize(params, 10_000_000 ether);
         assertEq(escrow.ownerOf(1), irsHolder);
 
         // Move into voting window and vote for pool
@@ -285,7 +285,7 @@ contract MinterDeferredFeeAccrualTest is Test {
             lockedWallets: _singleAddress(irsHolder),
             lockedAmounts: _singleUint(20_000 * TOKEN_1)
         });
-        minter.initialize(params);
+        minter.initialize(params, 10_000_000 ether);
         assertEq(escrow.ownerOf(1), irsHolder);
 
         // LP locks and makes permanent to ensure meaningful voting power
@@ -383,7 +383,7 @@ contract MinterDeferredFeeAccrualTest is Test {
             lockedWallets: _singleAddress(irsHolder),
             lockedAmounts: _singleUint(20_000 * TOKEN_1)
         });
-        minter.initialize(params);
+        minter.initialize(params, 10_000_000 ether);
         assertEq(escrow.ownerOf(1), irsHolder);
 
         // IRS holder votes in epoch -1

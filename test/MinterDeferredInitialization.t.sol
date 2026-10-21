@@ -321,7 +321,7 @@ contract MinterDeferredInitializationTest is Test {
         });
 
         // Initialize minter
-        minter.initialize(params);
+        minter.initialize(params, 10_000_000 ether);
 
         // Verify initialized
         assertTrue(minter.initialized(), "Minter should be initialized");
@@ -350,7 +350,7 @@ contract MinterDeferredInitializationTest is Test {
         });
 
         vm.expectRevert(IMinter.AlreadyInitialized.selector);
-        minter.initialize(params);
+        minter.initialize(params, 10_000_000 ether);
     }
 
     function testOnlyTeamCanInitialize() public {
@@ -363,7 +363,7 @@ contract MinterDeferredInitializationTest is Test {
 
         vm.prank(user1);
         vm.expectRevert(IMinter.NotTeam.selector);
-        minter.initialize(params);
+        minter.initialize(params, 10_000_000 ether);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -402,7 +402,7 @@ contract MinterDeferredInitializationTest is Test {
             lockedWallets: new address[](0),
             lockedAmounts: new uint256[](0)
         });
-        minter.initialize(params);
+        minter.initialize(params, 10_000_000 ether);
 
         // User creates lock
         vm.startPrank(user1);
@@ -441,7 +441,7 @@ contract MinterDeferredInitializationTest is Test {
             lockedWallets: new address[](0),
             lockedAmounts: new uint256[](0)
         });
-        minter.initialize(params);
+        minter.initialize(params, 10_000_000 ether);
 
         // User creates lock and votes
         vm.startPrank(user1);
@@ -535,7 +535,7 @@ contract MinterDeferredInitializationTest is Test {
             lockedAmounts: lockedAmounts
         });
 
-        minter.initialize(params);
+        minter.initialize(params, 10_000_000 ether);
 
         // Verify initialization
         assertTrue(minter.initialized());
@@ -631,7 +631,7 @@ contract MinterDeferredInitializationTest is Test {
             lockedWallets: new address[](0),
             lockedAmounts: new uint256[](0)
         });
-        minter.initialize(params);
+        minter.initialize(params, 10_000_000 ether);
 
         // Now calculateGrowth should work
         uint256 growth = minter.calculateGrowth(TOKEN_1M);

@@ -20,6 +20,7 @@ allowances or emissions calculations. Token minting APIs and selectors are uncha
 | --- | --- |
 | Token contract / interface | `IRS` / `IIRS` |
 | Minter token getter | `irs() returns (IIRS)` |
+| Minter initialization | `initialize(AirdropParams params, uint256 initialWeekly)`; raw IRS units |
 | AirdropDistributor token getter | `irs() returns (IIRS)` |
 | Deployment JSON token address | `IRS` |
 | Token-paired pool input configuration | `poolsIrs` |
@@ -28,6 +29,11 @@ The two `irs()` getters replace `aero()`; no legacy getter alias is provided.
 Clients must use the ABI matching their deployment. Existing immutable Minter and
 AirdropDistributor deployments retain their old getter until new contracts are deployed.
 Renaming source does not migrate any deployed contract, balance or token address.
+
+New Minter deployments require the explicit starting weekly amount when initialized by
+team. The one-argument initialization selector is not retained. See
+[initialization and first emissions](weekly-emissions-cap.md#initialization-and-first-emissions)
+for the one-time setup, first-week timing and supply-based tail behavior below `TAIL_START`.
 
 Solidity and Hardhat deployment scripts create the `IRS` artifact and use the `IRS`
 output key. Active pool input configurations and their consumers use `poolsIrs`.
