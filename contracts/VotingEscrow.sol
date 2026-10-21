@@ -532,12 +532,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
         uint256 currentCount = ownerToNFTokenCount[_from] - 1;
         uint256 currentIndex = tokenToOwnerIndex[_tokenId];
 
-        if (currentCount == currentIndex) {
-            // update ownerToNFTokenIdList
-            ownerToNFTokenIdList[_from][currentCount] = 0;
-            // update tokenToOwnerIndex
-            tokenToOwnerIndex[_tokenId] = 0;
-        } else {
+        if (currentCount != currentIndex) {
             uint256 lastTokenId = ownerToNFTokenIdList[_from][currentCount];
 
             // Add
@@ -545,13 +540,11 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
             ownerToNFTokenIdList[_from][currentIndex] = lastTokenId;
             // update tokenToOwnerIndex
             tokenToOwnerIndex[lastTokenId] = currentIndex;
-
-            // Delete
-            // update ownerToNFTokenIdList
-            ownerToNFTokenIdList[_from][currentCount] = 0;
-            // update tokenToOwnerIndex
-            tokenToOwnerIndex[_tokenId] = 0;
         }
+
+        // Clear the final slot and removed token's index after any swap.
+        ownerToNFTokenIdList[_from][currentCount] = 0;
+        tokenToOwnerIndex[_tokenId] = 0;
     }
 
     /// @dev Remove a NFT from a given address
