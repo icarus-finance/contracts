@@ -76,7 +76,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     uint256 public tokenId;
 
     /// @param _forwarder address of trusted forwarder
-    /// @param _token `AERO` token address
+    /// @param _token `IRS` token address
     /// @param _factoryRegistry Factory Registry address
     constructor(address _forwarder, address _token, address _factoryRegistry) ERC2771Context(_forwarder) {
         forwarder = _forwarder;
@@ -165,7 +165,10 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVotingEscrow
-    function depositManaged(uint256 _tokenId, uint256 _mTokenId) external nonReentrant onlyVoter noTeamLocked(_tokenId) {
+    function depositManaged(
+        uint256 _tokenId,
+        uint256 _mTokenId
+    ) external nonReentrant onlyVoter noTeamLocked(_tokenId) {
         if (escrowType[_mTokenId] != EscrowType.MANAGED) revert NotManagedNFT();
         if (escrowType[_tokenId] != EscrowType.NORMAL) revert NotNormalNFT();
         if (_balanceOfNFTAt(_tokenId, block.timestamp) == 0) revert ZeroBalance();
@@ -532,12 +535,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
         uint256 currentCount = ownerToNFTokenCount[_from] - 1;
         uint256 currentIndex = tokenToOwnerIndex[_tokenId];
 
-        if (currentCount == currentIndex) {
-            // update ownerToNFTokenIdList
-            ownerToNFTokenIdList[_from][currentCount] = 0;
-            // update tokenToOwnerIndex
-            tokenToOwnerIndex[_tokenId] = 0;
-        } else {
+        if (currentCount != currentIndex) {
             uint256 lastTokenId = ownerToNFTokenIdList[_from][currentCount];
 
             // Add
@@ -545,13 +543,11 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
             ownerToNFTokenIdList[_from][currentIndex] = lastTokenId;
             // update tokenToOwnerIndex
             tokenToOwnerIndex[lastTokenId] = currentIndex;
-
-            // Delete
-            // update ownerToNFTokenIdList
-            ownerToNFTokenIdList[_from][currentCount] = 0;
-            // update tokenToOwnerIndex
-            tokenToOwnerIndex[_tokenId] = 0;
         }
+
+        // Clear the final slot and removed token's index after any swap.
+        ownerToNFTokenIdList[_from][currentCount] = 0;
+        tokenToOwnerIndex[_tokenId] = 0;
     }
 
     /// @dev Remove a NFT from a given address
@@ -854,7 +850,6 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     /// @inheritdoc IVotingEscrow
     function depositFor(uint256 _tokenId, uint256 _value) external nonReentrant {
         if (escrowType[_tokenId] == EscrowType.MANAGED && _msgSender() != distributor) revert NotDistributor();
-        if (_teamLocks[_tokenId].endTs != 0 && _msgSender() != distributor) revert TeamLocked();
         _increaseAmountFor(_tokenId, _value, DepositType.DEPOSIT_FOR_TYPE);
     }
 
@@ -900,11 +895,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVotingEscrow
-    function createTeamLockFor(
-        uint256 _tokenId,
-        address _to,
-        uint256 _teamUnlockTs
-    ) external nonReentrant onlyTeam {
+    function createTeamLockFor(uint256 _tokenId, address _to, uint256 _teamUnlockTs) external nonReentrant onlyTeam {
         if (_ownerOf(_tokenId) != team) revert NotApprovedOrOwner();
         if (_teamUnlockTs <= block.timestamp) revert LockDurationNotInFuture();
 
@@ -973,7 +964,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVotingEscrow
-    function increaseAmount(uint256 _tokenId, uint256 _value) external nonReentrant noTeamLocked(_tokenId) {
+    function increaseAmount(uint256 _tokenId, uint256 _value) external nonReentrant {
         if (!_isApprovedOrOwner(_msgSender(), _tokenId)) revert NotApprovedOrOwner();
         _increaseAmountFor(_tokenId, _value, DepositType.INCREASE_LOCK_AMOUNT);
     }

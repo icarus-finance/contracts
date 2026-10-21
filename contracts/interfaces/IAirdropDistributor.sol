@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 pragma solidity 0.8.30;
 
-import {IAero} from "./IAero.sol";
+import {IIRS} from "./IIRS.sol";
 import {IVotingEscrow} from "./IVotingEscrow.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -11,8 +11,8 @@ interface IAirdropDistributor {
 
     event Airdrop(address indexed _wallet, uint256 _amount, uint256 _tokenId);
 
-    /// @notice Interface of Aero.sol
-    function aero() external view returns (IAero);
+    /// @notice Interface of IRS.sol
+    function irs() external view returns (IIRS);
 
     /// @notice Interface of IVotingEscrow.sol
     function ve() external view returns (IVotingEscrow);

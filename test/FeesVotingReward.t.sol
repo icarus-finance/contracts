@@ -8,14 +8,14 @@ contract FeesVotingRewardTest is BaseTest {
 
     function _setUp() public override {
         // ve
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME);
         vm.startPrank(address(owner2));
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME);
         vm.stopPrank();
         vm.startPrank(address(owner3));
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME);
         vm.stopPrank();
         skip(1);
@@ -1039,6 +1039,8 @@ contract FeesVotingRewardTest is BaseTest {
         voter.vote(1, pools2, weights);
         vm.prank(address(owner3));
         voter.vote(3, pools2, weights);
+        uint256 expectedShare = (TOKEN_1 * 2 * escrow.balanceOfNFT(1)) /
+            (escrow.balanceOfNFT(1) + escrow.balanceOfNFT(3));
 
         // go to next week
         skipToNextEpoch(1 hours + 1);
@@ -1051,13 +1053,13 @@ contract FeesVotingRewardTest is BaseTest {
         earned = feesVotingReward.earned(address(FRAX), 1);
         assertEq(earned, 0);
         earned = feesVotingReward2.earned(address(FRAX), 1);
-        assertEq(earned, TOKEN_1);
+        assertEq(earned, expectedShare);
 
         pre = FRAX.balanceOf(address(owner));
         vm.prank(address(voter));
         feesVotingReward2.getReward(1, rewards);
         post = FRAX.balanceOf(address(owner));
-        assertEq(post - pre, TOKEN_1);
+        assertEq(post - pre, expectedShare);
     }
 
     function testCannotClaimRewardForPoolIfPokedButReset() public {

@@ -11,6 +11,7 @@ interface IVoter {
     error GaugeDoesNotExist(address _pool);
     error GaugeNotAlive(address _gauge);
     error InactiveManagedNFT();
+    error InvalidHook();
     error MaximumVotingNumberTooLow();
     error NonZeroVotes();
     error NotAPool();
@@ -40,6 +41,7 @@ interface IVoter {
     );
     event GaugeKilled(address indexed gauge);
     event GaugeRevived(address indexed gauge);
+    event ClaimHookSet(address indexed oldHook, address indexed newHook);
     event Voted(
         address indexed voter,
         address indexed pool,
@@ -154,6 +156,8 @@ interface IVoter {
     ///         Can only vote or deposit into a managed NFT once per epoch.
     ///         Can only vote for gauges that have not been killed.
     /// @dev Weights are distributed proportional to the sum of the weights in the array.
+    ///      Updates the emission period and claims rebases before reading NFT voting power.
+    ///      Allocations use post-rebase power; _weights may be frontend-computed post-rebase amounts.
     ///      Throws if length of _poolVote and _weights do not match.
     /// @param _tokenId     Id of veNFT you are voting with.
     /// @param _poolVote    Array of pools you are voting for.
@@ -182,9 +186,27 @@ interface IVoter {
     ///         Note that the NFT withdrawn is re-locked to the maximum lock time.
     function withdrawManaged(uint256 _tokenId) external;
 
+    /// @notice Shared callback used by all compatible gauges linked to this Voter.
+    function claimHook() external view returns (address);
+
+    /// @notice Set the callback for all compatible gauges in one transaction; zero disables it.
+    /// @dev Only the current VotingEscrow team; nonzero hooks must have deployed code.
+    function setClaimHook(address hook) external;
+
     /// @notice Claim emissions from gauges.
     /// @param _gauges Array of gauges to collect emissions from.
     function claimRewards(address[] memory _gauges) external;
+
+    /// @notice Claim gauge emissions into one existing or newly created veNFT.
+    /// @param _gauges Gauges supporting claim-and-lock.
+    /// @param _tokenId veNFT owned by the caller, or zero to create one at the first positive claim.
+    /// @param _lockDuration New lock duration in seconds; must be zero for an existing target.
+    /// @return tokenId Target veNFT id, or zero if no rewards created a lock.
+    function claimRewardsAndLock(
+        address[] memory _gauges,
+        uint256 _tokenId,
+        uint256 _lockDuration
+    ) external returns (uint256 tokenId);
 
     /// @notice Claim bribes for a given NFT.
     /// @dev Utility to help batch bribe claims.

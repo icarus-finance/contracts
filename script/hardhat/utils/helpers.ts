@@ -1,6 +1,6 @@
 import { Contract } from "@ethersproject/contracts";
 import { ethers } from "hardhat";
-import { Libraries } from "hardhat/types";
+import { Libraries } from "@nomiclabs/hardhat-ethers/types";
 
 export async function deployLibrary(
   typeName: string,

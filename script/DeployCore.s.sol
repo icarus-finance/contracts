@@ -63,10 +63,10 @@ contract DeployCore is Base {
         // start broadcasting transactions
         vm.startBroadcast(deployerAddress);
 
-        // deploy AERO
-        AERO = new Aero();
+        // deploy IRS
+        irs = new IRS();
 
-        tokens.push(address(AERO));
+        tokens.push(address(irs));
     }
 
     function _deploySetupAfter() public {
@@ -92,7 +92,7 @@ contract DeployCore is Base {
         vm.stopBroadcast();
 
         // write to file
-        vm.writeJson(vm.serializeAddress("v2", "IRS", address(AERO)), path);
+        vm.writeJson(vm.serializeAddress("v2", "IRS", address(irs)), path);
         vm.writeJson(vm.serializeAddress("v2", "VotingEscrow", address(escrow)), path);
         vm.writeJson(vm.serializeAddress("v2", "Forwarder", address(forwarder)), path);
         vm.writeJson(vm.serializeAddress("v2", "ArtProxy", address(artProxy)), path);
@@ -127,7 +127,8 @@ contract DeployCore is Base {
     //             liquidAmounts: liquidAmounts,
     //             lockedWallets: lockedWallets,
     //             lockedAmounts: lockedAmounts
-    //         })
+    //         }),
+    //         vm.envUint("INITIAL_WEEKLY") // Raw IRS units (18 decimals).
     //     );
     // }
 

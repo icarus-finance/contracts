@@ -22,20 +22,20 @@ contract AirdropDistributorTest is BaseTest {
 
     function _setUp() public override {
         // Deal tokens to Airdrop Distributor
-        assertEq(AERO.balanceOf(address(airdrop)), 0);
-        deal(address(AERO), address(airdrop), INITIAL_DISTRIBUTOR_BALANCE);
+        assertEq(irs.balanceOf(address(airdrop)), 0);
+        deal(address(irs), address(airdrop), INITIAL_DISTRIBUTOR_BALANCE);
     }
 
     function testAirdropDistributorDeployment() public {
         assertEq(airdrop.owner(), address(owner));
         assertEq(address(airdrop.ve()), address(escrow));
-        assertEq(address(airdrop.aero()), address(AERO));
-        assertEq(AERO.balanceOf(address(airdrop)), INITIAL_DISTRIBUTOR_BALANCE);
+        assertEq(address(airdrop.irs()), address(irs));
+        assertEq(irs.balanceOf(address(airdrop)), INITIAL_DISTRIBUTOR_BALANCE);
         assertEq(escrow.balanceOf(address(airdrop)), 0);
     }
 
     function testAirdropDistributor() public {
-        uint256 preAeroBal = AERO.balanceOf(address(airdrop));
+        uint256 preIrsBal = irs.balanceOf(address(airdrop));
 
         (address[] memory _wallets, uint256[] memory _amounts) = _getWalletsAmounts(N_TEST_WALLETS, TOKEN_10K);
         uint256 _len = _wallets.length;
@@ -44,7 +44,7 @@ contract AirdropDistributorTest is BaseTest {
         for (uint256 i = 0; i < _len; i++) {
             sum += _amounts[i];
         }
-        assertGe(AERO.balanceOf(address(airdrop)), sum);
+        assertGe(irs.balanceOf(address(airdrop)), sum);
 
         // Expects emission of all events from the Airdrop
         for (uint256 i = 0; i < _len; i++) {
@@ -54,10 +54,10 @@ contract AirdropDistributorTest is BaseTest {
         // Airdrops tokens
         vm.prank(address(owner));
         airdrop.distributeTokens(_wallets, _amounts);
-        uint256 newAeroBal = AERO.balanceOf(address(airdrop));
+        uint256 newIrsBal = irs.balanceOf(address(airdrop));
 
         // Asserts Distributor's token balances
-        assertEq(preAeroBal - sum, newAeroBal);
+        assertEq(preIrsBal - sum, newIrsBal);
         assertEq(escrow.balanceOf(address(airdrop)), 0);
         // Ensures every token is permanently locked, with the rightful amount and predicted TokenId
         for (uint256 i = 0; i < _len; i++) {
@@ -98,11 +98,11 @@ contract AirdropDistributorTest is BaseTest {
         for (uint256 i = 0; i < _len; i++) {
             sum += _amounts[i];
         }
-        stdstore.target(address(AERO)).sig("balanceOf(address)").with_key(address(airdrop)).checked_write(sum - 1);
+        stdstore.target(address(irs)).sig("balanceOf(address)").with_key(address(airdrop)).checked_write(sum - 1);
 
         vm.expectRevert(IAirdropDistributor.InsufficientBalance.selector);
         airdrop.distributeTokens(_wallets, _amounts);
-        assertEq(AERO.balanceOf(address(airdrop)), sum - 1);
+        assertEq(irs.balanceOf(address(airdrop)), sum - 1);
     }
 
     function _getWalletsAmounts(

@@ -24,14 +24,14 @@ contract MinterAirdrop is BaseTest {
     function testInitializeFullAirdrop() public {
         // Use minter2 which is not yet initialized
         vm.prank(address(minter));
-        AERO.setMinter(address(minter2));
+        irs.setMinter(address(minter2));
 
         (address[] memory liquidWallets, uint256[] memory liquidAmounts) = _getWalletsAmounts(WALLET_NUMBER, TOKEN_1M);
         (address[] memory lockedWallets, uint256[] memory lockedAmounts) = _getWalletsAmounts(
             WALLET_NUMBER,
             TOKEN_100K
         );
-        uint256 preAeroBal = AERO.balanceOf(address(this));
+        uint256 preIrsBal = irs.balanceOf(address(this));
 
         // Expects all events from the airdrop
         uint256 liquidLen = liquidWallets.length;
@@ -53,12 +53,13 @@ contract MinterAirdrop is BaseTest {
                 liquidAmounts: liquidAmounts,
                 lockedWallets: lockedWallets,
                 lockedAmounts: lockedAmounts
-            })
+            }),
+            10_000_000 ether
         );
         assertTrue(minter2.initialized());
         // Ensures Liquid Tokens were minted correctly
         for (uint256 i = 0; i < liquidLen; i++) {
-            assertEq(AERO.balanceOf(liquidWallets[i]), liquidAmounts[i]);
+            assertEq(irs.balanceOf(liquidWallets[i]), liquidAmounts[i]);
         }
         // Ensures permanently locked NFTs were distributed correctly
         for (uint256 i = 0; i < lockedLen; i++) {
@@ -70,17 +71,17 @@ contract MinterAirdrop is BaseTest {
             assertEq(locked.end, 0);
         }
         // Minter balance remains unchanged
-        assertEq(AERO.balanceOf(address(this)), preAeroBal);
+        assertEq(irs.balanceOf(address(this)), preIrsBal);
         assertEq(escrow.balanceOf(address(this)), 0);
     }
 
-    function testInitializeAeroAirdrop() public {
+    function testInitializeIrsAirdrop() public {
         // Use minter2 which is not yet initialized
         vm.prank(address(minter));
-        AERO.setMinter(address(minter2));
+        irs.setMinter(address(minter2));
 
         (address[] memory wallets, uint256[] memory amounts) = _getWalletsAmounts(WALLET_NUMBER, TOKEN_1M);
-        uint256 preAeroBal = AERO.balanceOf(address(this));
+        uint256 preIrsBal = irs.balanceOf(address(this));
 
         uint256 len = wallets.length;
         // Expects all events to be emitted
@@ -97,26 +98,27 @@ contract MinterAirdrop is BaseTest {
                 liquidAmounts: amounts,
                 lockedWallets: new address[](0),
                 lockedAmounts: new uint256[](0)
-            })
+            }),
+            10_000_000 ether
         );
 
         assertTrue(minter2.initialized());
         // Ensures tokens were minted correctly
         for (uint256 i = 0; i < len; i++) {
-            assertEq(AERO.balanceOf(wallets[i]), amounts[i]);
+            assertEq(irs.balanceOf(wallets[i]), amounts[i]);
         }
         // Minter balance remains unchanged
-        assertEq(AERO.balanceOf(address(this)), preAeroBal);
+        assertEq(irs.balanceOf(address(this)), preIrsBal);
         assertEq(escrow.balanceOf(address(this)), 0);
     }
 
     function testInitializeVeAirdrop() public {
         // Use minter2 which is not yet initialized
         vm.prank(address(minter));
-        AERO.setMinter(address(minter2));
+        irs.setMinter(address(minter2));
 
         (address[] memory wallets, uint256[] memory amounts) = _getWalletsAmounts(WALLET_NUMBER, TOKEN_100K);
-        uint256 preAeroBal = AERO.balanceOf(address(this));
+        uint256 preIrsBal = irs.balanceOf(address(this));
 
         uint256 len = wallets.length;
         // Expects all events to be emitted
@@ -133,7 +135,8 @@ contract MinterAirdrop is BaseTest {
                 liquidAmounts: new uint256[](0),
                 lockedWallets: wallets,
                 lockedAmounts: amounts
-            })
+            }),
+            10_000_000 ether
         );
 
         assertTrue(minter2.initialized());
@@ -147,7 +150,7 @@ contract MinterAirdrop is BaseTest {
             assertEq(locked.end, 0);
         }
         // Minter balance remains unchanged
-        assertEq(AERO.balanceOf(address(this)), preAeroBal);
+        assertEq(irs.balanceOf(address(this)), preIrsBal);
         assertEq(escrow.balanceOf(address(this)), 0);
     }
 
@@ -167,7 +170,8 @@ contract MinterAirdrop is BaseTest {
                 liquidAmounts: lockedAmounts,
                 lockedWallets: new address[](0),
                 lockedAmounts: new uint256[](0)
-            })
+            }),
+            10_000_000 ether
         );
 
         vm.expectRevert(IMinter.InvalidParams.selector);
@@ -177,7 +181,8 @@ contract MinterAirdrop is BaseTest {
                 liquidAmounts: new uint256[](0),
                 lockedWallets: lockedWallets,
                 lockedAmounts: liquidAmounts
-            })
+            }),
+            10_000_000 ether
         );
 
         vm.expectRevert(IMinter.InvalidParams.selector);
@@ -187,7 +192,8 @@ contract MinterAirdrop is BaseTest {
                 liquidAmounts: lockedAmounts,
                 lockedWallets: lockedWallets,
                 lockedAmounts: liquidAmounts
-            })
+            }),
+            10_000_000 ether
         );
         vm.stopPrank();
         assertFalse(minter2.initialized());
@@ -196,7 +202,7 @@ contract MinterAirdrop is BaseTest {
     function testCannotInitializeAlreadyInitialized() public {
         // Use minter2 which is not yet initialized
         vm.prank(address(minter));
-        AERO.setMinter(address(minter2));
+        irs.setMinter(address(minter2));
 
         vm.startPrank(minter2.team());
         minter2.initialize(
@@ -205,7 +211,8 @@ contract MinterAirdrop is BaseTest {
                 liquidAmounts: new uint256[](0),
                 lockedWallets: new address[](0),
                 lockedAmounts: new uint256[](0)
-            })
+            }),
+            10_000_000 ether
         );
         assertTrue(minter2.initialized());
 
@@ -216,7 +223,8 @@ contract MinterAirdrop is BaseTest {
                 liquidAmounts: new uint256[](0),
                 lockedWallets: new address[](0),
                 lockedAmounts: new uint256[](0)
-            })
+            }),
+            10_000_000 ether
         );
         vm.stopPrank();
     }
@@ -230,7 +238,8 @@ contract MinterAirdrop is BaseTest {
                 liquidAmounts: new uint256[](0),
                 lockedWallets: new address[](0),
                 lockedAmounts: new uint256[](0)
-            })
+            }),
+            10_000_000 ether
         );
     }
 

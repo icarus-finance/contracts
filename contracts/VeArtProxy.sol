@@ -179,12 +179,12 @@ contract VeArtProxy is IVeArtProxy {
         }
     }
 
-    /// @dev Calculates the number of digits before the "decimal point" in an NFT's veAERO balance.
+    /// @dev Calculates the number of digits before the "decimal point" in an NFT's veIRS balance.
     ///      Input expressed in 1e18 format.
     function numBalanceDigits(uint256 _balanceOf) internal pure returns (int256 digitCount) {
-        uint256 convertedveAEROvalue = _balanceOf / 1e18;
-        while (convertedveAEROvalue != 0) {
-            convertedveAEROvalue /= 10;
+        uint256 convertedveIRSvalue = _balanceOf / 1e18;
+        while (convertedveIRSvalue != 0) {
+            convertedveIRSvalue /= 10;
             digitCount++;
         }
     }
@@ -194,7 +194,7 @@ contract VeArtProxy is IVeArtProxy {
         seed = 1 + int256(uint256(keccak256(abi.encodePacked(_tokenId))) % 999);
     }
 
-    /// @dev Determines the number of lines in the SVG. NFTs with less than 10 veAERO balance have zero lines.
+    /// @dev Determines the number of lines in the SVG. NFTs with less than 10 veIRS balance have zero lines.
     function getLineCount(uint256 _balanceOf) internal pure returns (int256 lineCount) {
         int256 threshold = 2;
         int256 balDigits = numBalanceDigits(_balanceOf);

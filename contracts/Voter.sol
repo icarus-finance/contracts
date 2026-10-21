@@ -9,6 +9,7 @@ import {IMinter} from "./interfaces/IMinter.sol";
 import {IPool} from "./interfaces/IPool.sol";
 import {IPoolFactory} from "./interfaces/factories/IPoolFactory.sol";
 import {IReward} from "./interfaces/IReward.sol";
+import {IRewardsDistributor} from "./interfaces/IRewardsDistributor.sol";
 import {IVoter} from "./interfaces/IVoter.sol";
 import {IVotingEscrow} from "./interfaces/IVotingEscrow.sol";
 import {IFactoryRegistry} from "./interfaces/factories/IFactoryRegistry.sol";
@@ -44,6 +45,9 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
     address public epochGovernor;
     /// @inheritdoc IVoter
     address public emergencyCouncil;
+
+    /// @inheritdoc IVoter
+    address public claimHook;
 
     /// @inheritdoc IVoter
     uint256 public totalWeight;
@@ -163,6 +167,15 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVoter
+    function setClaimHook(address _hook) external nonReentrant {
+        if (_msgSender() != IVotingEscrow(ve).team()) revert IVotingEscrow.NotTeam();
+        if (_hook != address(0) && _hook.code.length == 0) revert InvalidHook();
+        address oldHook = claimHook;
+        claimHook = _hook;
+        emit ClaimHookSet(oldHook, _hook);
+    }
+
+    /// @inheritdoc IVoter
     function setMaxVotingNum(uint256 _maxVotingNum) external onlyGovernor {
         if (_maxVotingNum < MIN_MAXVOTINGNUM) revert MaximumVotingNumberTooLow();
         if (_maxVotingNum == maxVotingNum) revert SameValue();
@@ -177,7 +190,7 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
         if (tmpVotingBlacklist[_tokenId] > block.timestamp) revert TeamLockBlacklisted();
         tmpVotingBlacklist[_tokenId] = block.timestamp + 1 days;
     }
-    
+
     /// @inheritdoc IVoter
     function reset(uint256 _tokenId) external onlyNewEpoch(_tokenId) nonReentrant {
         if (!IVotingEscrow(ve).isApprovedOrOwner(_msgSender(), _tokenId)) revert NotApprovedOrOwner();
@@ -282,6 +295,8 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
         if ((_timestamp > ProtocolTimeLibrary.epochVoteEnd(_timestamp)) && !isWhitelistedNFT[_tokenId]) {
             revert NotWhitelistedNFT();
         }
+        IMinter(minter).updatePeriod();
+        IRewardsDistributor(IVotingEscrow(ve).distributor()).claim(_tokenId);
         lastVoted[_tokenId] = _timestamp;
         uint256 _weight = IVotingEscrow(ve).balanceOfNFT(_tokenId);
         _vote(_tokenId, _weight, _poolVote, _weights);
@@ -479,6 +494,20 @@ contract Voter is IVoter, ERC2771Context, ReentrancyGuard {
         uint256 _length = _gauges.length;
         for (uint256 i = 0; i < _length; i++) {
             IGauge(_gauges[i]).getReward(_msgSender());
+        }
+    }
+
+    /// @inheritdoc IVoter
+    function claimRewardsAndLock(
+        address[] memory _gauges,
+        uint256 _tokenId,
+        uint256 _lockDuration
+    ) external nonReentrant returns (uint256 tokenId) {
+        address account = _msgSender();
+        tokenId = _tokenId;
+        if (tokenId != 0 && _lockDuration != 0) revert IGauge.InvalidParams();
+        for (uint256 i = 0; i < _gauges.length; i++) {
+            tokenId = IGauge(_gauges[i]).getRewardAndLock(account, tokenId, tokenId == 0 ? _lockDuration : 0);
         }
     }
 

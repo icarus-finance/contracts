@@ -5,20 +5,20 @@ import "./ExtendedBaseTest.sol";
 
 contract PokeVoteFlow is ExtendedBaseTest {
     function _setUp() public override {
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAX_TIME);
         vm.startPrank(address(owner2));
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAX_TIME);
         vm.stopPrank();
         vm.startPrank(address(owner3));
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAX_TIME);
         vm.stopPrank();
 
         // create smaller veNFTs
         vm.startPrank(address(owner4));
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAX_TIME / 4);
         vm.stopPrank();
         skip(1);

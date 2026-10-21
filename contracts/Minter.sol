@@ -4,20 +4,20 @@ pragma solidity 0.8.30;
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IMinter} from "./interfaces/IMinter.sol";
 import {IRewardsDistributor} from "./interfaces/IRewardsDistributor.sol";
-import {IAero} from "./interfaces/IAero.sol";
+import {IIRS} from "./interfaces/IIRS.sol";
 import {IVoter} from "./interfaces/IVoter.sol";
 import {IVotingEscrow} from "./interfaces/IVotingEscrow.sol";
 import {IEpochGovernor} from "./interfaces/IEpochGovernor.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @title Minter
-/// @author velodrome.finance, @figs999, @pegahcarter
+/// @author icarus.finance, velodrome.finance, @figs999, @pegahcarter
 /// @notice Controls minting of emissions and rebases for the Protocol
 contract Minter is IMinter {
-    using SafeERC20 for IAero;
+    using SafeERC20 for IIRS;
     /// @inheritdoc IMinter
 
-    IAero public immutable aero;
+    IIRS public immutable irs;
     /// @inheritdoc IMinter
     IVoter public immutable voter;
     /// @inheritdoc IMinter
@@ -48,7 +48,7 @@ contract Minter is IMinter {
     /// @inheritdoc IMinter
     uint256 public teamRate = 500; // team emissions start at 5%
     /// @inheritdoc IMinter
-    uint256 public weekly = 10_000_000 * 1e18;
+    uint256 public weekly;
     /// @inheritdoc IMinter
     uint256 public activePeriod;
     /// @inheritdoc IMinter
@@ -61,13 +61,17 @@ contract Minter is IMinter {
     address public pendingTeam;
     /// @inheritdoc IMinter
     bool public initialized;
+    /// @inheritdoc IMinter
+    mapping(address => bool) public capReporters;
+    /// @inheritdoc IMinter
+    mapping(uint256 => WeeklyCap) public weeklyCaps;
 
     constructor(
         address _voter, // the voting & distribution system
         address _ve, // the ve(3,3) system that will be locked into
         address _rewardsDistributor // the distribution system that ensures users aren't diluted
     ) {
-        aero = IAero(IVotingEscrow(_ve).token());
+        irs = IIRS(IVotingEscrow(_ve).token());
         voter = IVoter(_voter);
         ve = IVotingEscrow(_ve);
         team = msg.sender;
@@ -76,19 +80,21 @@ contract Minter is IMinter {
     }
 
     /// @inheritdoc IMinter
-    function initialize(AirdropParams memory params) external {
+    function initialize(AirdropParams memory params, uint256 initialWeekly) external {
         if (initialized) revert AlreadyInitialized();
         if (msg.sender != team) revert NotTeam();
+        if (initialWeekly > 100_000_000 * 1e18) revert InvalidParams();
         if (
             (params.liquidWallets.length != params.liquidAmounts.length) ||
             (params.lockedWallets.length != params.lockedAmounts.length)
         ) revert InvalidParams();
         initialized = true;
+        weekly = initialWeekly;
 
         // Liquid Token Mint
         uint256 _len = params.liquidWallets.length;
         for (uint256 i = 0; i < _len; i++) {
-            aero.mint(params.liquidWallets[i], params.liquidAmounts[i]);
+            irs.mint(params.liquidWallets[i], params.liquidAmounts[i]);
             emit DistributeLiquid(params.liquidWallets[i], params.liquidAmounts[i]);
         }
 
@@ -99,15 +105,15 @@ contract Minter is IMinter {
             _sum += params.lockedAmounts[i];
         }
         uint256 _tokenId;
-        aero.mint(address(this), _sum);
-        aero.safeIncreaseAllowance(address(ve), _sum);
+        irs.mint(address(this), _sum);
+        irs.safeIncreaseAllowance(address(ve), _sum);
         for (uint256 i = 0; i < _len; i++) {
             _tokenId = ve.createLock(params.lockedAmounts[i], WEEK);
             ve.lockPermanent(_tokenId);
             ve.safeTransferFrom(address(this), params.lockedWallets[i], _tokenId);
             emit DistributeLocked(params.lockedWallets[i], params.lockedAmounts[i], _tokenId);
         }
-        aero.forceApprove(address(ve), 0);
+        irs.forceApprove(address(ve), 0);
 
         // Set activePeriod to current week - emissions can now start
         activePeriod = (block.timestamp / WEEK) * WEEK;
@@ -137,10 +143,35 @@ contract Minter is IMinter {
 
     /// @inheritdoc IMinter
     function calculateGrowth(uint256 _minted) public view returns (uint256 _growth) {
+        if (_minted == 0) return 0;
+        uint256 _irsTotal = irs.totalSupply();
+        // An empty initialization has no existing holders to receive a rebase.
+        if (_irsTotal == 0) return 0;
         uint256 _veTotal = ve.totalSupplyAt(activePeriod - 1);
-        uint256 _aeroTotal = aero.totalSupply();
 
-        return (((_minted * (_aeroTotal - _veTotal)) / _aeroTotal) * (_aeroTotal - _veTotal)) / _aeroTotal / 2;
+        return (((_minted * (_irsTotal - _veTotal)) / _irsTotal) * (_irsTotal - _veTotal)) / _irsTotal / 2;
+    }
+
+    /// @inheritdoc IMinter
+    function setCapReporter(address _reporter, bool _allowed) external {
+        if (msg.sender != team) revert NotTeam();
+        if (_reporter == address(0)) revert ZeroAddress();
+        capReporters[_reporter] = _allowed;
+        emit SetCapReporter(_reporter, _allowed);
+    }
+
+    /// @inheritdoc IMinter
+    function setWeeklyCap(uint256 _epoch, uint256 _amount) external {
+        if (!capReporters[msg.sender]) revert NotCapReporter();
+        _validateCapEpoch(_epoch);
+        weeklyCaps[_epoch] = WeeklyCap({amount: _amount, reported: _amount != 0});
+        emit SetWeeklyCap(_epoch, _amount, msg.sender);
+    }
+
+    function _validateCapEpoch(uint256 _epoch) internal view {
+        if (_epoch % WEEK != 0 || _epoch < (block.timestamp / WEEK) * WEEK || (initialized && _epoch <= activePeriod)) {
+            revert InvalidCapEpoch();
+        }
     }
 
     /// @inheritdoc IMinter
@@ -175,7 +206,7 @@ contract Minter is IMinter {
             activePeriod = _period;
             uint256 _weekly = weekly;
             uint256 _emission;
-            uint256 _totalSupply = aero.totalSupply();
+            uint256 _totalSupply = irs.totalSupply();
             bool _tail = _weekly < TAIL_START;
 
             if (_tail) {
@@ -190,25 +221,30 @@ contract Minter is IMinter {
                 weekly = _weekly;
             }
 
+            WeeklyCap memory _cap = weeklyCaps[_period];
+            uint256 _scheduledEmission = _emission;
+            if (_cap.reported) _emission = Math.min(_emission, _cap.amount);
+            emit WeeklyCapApplied(_period, _scheduledEmission, _emission, _cap.reported);
+
             uint256 _growth = calculateGrowth(_emission);
 
             uint256 _rate = teamRate;
-            uint256 _teamEmissions = (_rate * (_growth + _weekly)) / (MAX_BPS - _rate);
+            uint256 _teamEmissions = (_rate * (_growth + _emission)) / (MAX_BPS - _rate);
 
             uint256 _required = _growth + _emission + _teamEmissions;
-            uint256 _balanceOf = aero.balanceOf(address(this));
+            uint256 _balanceOf = irs.balanceOf(address(this));
             if (_balanceOf < _required) {
-                aero.mint(address(this), _required - _balanceOf);
+                irs.mint(address(this), _required - _balanceOf);
             }
 
-            aero.safeTransfer(address(team), _teamEmissions);
-            aero.safeTransfer(address(rewardsDistributor), _growth);
+            irs.safeTransfer(address(team), _teamEmissions);
+            irs.safeTransfer(address(rewardsDistributor), _growth);
             rewardsDistributor.checkpointToken(); // checkpoint token balance that was just minted in rewards distributor
 
-            aero.safeIncreaseAllowance(address(voter), _emission);
+            irs.safeIncreaseAllowance(address(voter), _emission);
             voter.notifyRewardAmount(_emission);
 
-            emit Mint(msg.sender, _emission, aero.totalSupply(), _tail);
+            emit Mint(msg.sender, _emission, irs.totalSupply(), _tail);
         }
     }
 }

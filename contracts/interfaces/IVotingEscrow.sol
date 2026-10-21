@@ -168,7 +168,7 @@ interface IVotingEscrow is IVotes, IERC4906, IERC6372, IERC721Metadata {
     /// @notice Address of FactoryRegistry.sol
     function factoryRegistry() external view returns (address);
 
-    /// @notice Address of token (AERO) used to create a veNFT
+    /// @notice Address of token (IRS) used to create a veNFT
     function token() external view returns (address);
 
     /// @notice Address of RewardsDistributor.sol
@@ -376,6 +376,7 @@ interface IVotingEscrow is IVotes, IERC4906, IERC6372, IERC721Metadata {
     /// @notice Deposit `_value` tokens for `_tokenId` and add to the lock
     /// @dev Anyone (even a smart contract) can deposit for someone else, but
     ///      cannot extend their locktime and deposit for a brand new user
+    ///      Team locks accept deposits; the added balance follows the existing team vesting schedule.
     /// @param _tokenId lock NFT
     /// @param _value Amount to add to user's lock
     function depositFor(uint256 _tokenId, uint256 _value) external;
@@ -399,6 +400,8 @@ interface IVotingEscrow is IVotes, IERC4906, IERC6372, IERC721Metadata {
     ///      until team lock expires. Owner of team locked veNFT can still deposit more tokens and extend
     ///      the unlock time or make it permanent. The `team` address can vote on behalf of this NFT or
     ///      clawback remaining (unvested) balance before the team lock expires.
+    ///      Deposits, incoming merges and rebases increase the full team-locked balance without
+    ///      resetting its vesting schedule. Expiry requires calling unlockTeamLock to clear restrictions.
     /// @param _value Amount to deposit
     /// @param _lockDuration Number of seconds to lock tokens for (rounded down to nearest week)
     /// @param _to Address to deposit
@@ -411,16 +414,12 @@ interface IVotingEscrow is IVotes, IERC4906, IERC6372, IERC721Metadata {
         uint _teamUnlockTs
     ) external returns (uint256);
 
-    /// @notice Transfer lock from `team` to the new owner, and team lock it for `_teamUnlockTs` 
+    /// @notice Transfer lock from `team` to the new owner, and team lock it for `_teamUnlockTs`
     /// @dev Only callable by `team` address.
     /// @param _tokenId lock NFT
     /// @param _to Address to deposit
     /// @param _teamUnlockTs Timestamp of the team unlock
-    function createTeamLockFor(
-        uint256 _tokenId,
-        address _to,
-        uint256 _teamUnlockTs
-    ) external;
+    function createTeamLockFor(uint256 _tokenId, address _to, uint256 _teamUnlockTs) external;
 
     /// @notice Unlock a team lock veNFT if the team lock period has expired.
     /// @param _tokenId tokenId to unlock.
@@ -435,6 +434,7 @@ interface IVotingEscrow is IVotes, IERC4906, IERC6372, IERC721Metadata {
     function clawbackTeamLock(uint256 _tokenId) external returns (uint256 _newTokenId, uint256 _clawbackTokenId);
 
     /// @notice Deposit `_value` additional tokens for `_tokenId` without modifying the unlock time
+    /// @dev Team locks accept additions from approved callers; additions follow existing team vesting.
     /// @param _value Amount of tokens to deposit and add to the lock
     function increaseAmount(uint256 _tokenId, uint256 _value) external;
 
@@ -452,6 +452,7 @@ interface IVotingEscrow is IVotes, IERC4906, IERC6372, IERC721Metadata {
     /// @notice Merges `_from` into `_to`.
     /// @dev Cannot merge `_from` locks that are permanent or have already voted this epoch.
     ///      Cannot merge `_to` locks that have already expired.
+    ///      Team locks may be destinations, but cannot be sources until unlockTeamLock clears them.
     ///      This will burn the veNFT. Any rebases or rewards that are unclaimed
     ///      will no longer be claimable. Claim all rebases and rewards prior to calling this.
     /// @param _from VeNFT to merge from.

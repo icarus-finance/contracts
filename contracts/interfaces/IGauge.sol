@@ -9,17 +9,20 @@ interface IGauge {
     error RewardRateTooHigh();
     error ZeroAmount();
     error ZeroRewardRate();
+    error InvalidParams();
+    error InvalidRewardToken();
 
     event Deposit(address indexed from, address indexed to, uint256 amount);
     event Withdraw(address indexed from, uint256 amount);
     event NotifyReward(address indexed from, uint256 amount);
     event ClaimFees(address indexed from, uint256 claimed0, uint256 claimed1);
     event ClaimRewards(address indexed from, uint256 amount);
+    event ClaimRewardsLocked(address indexed from, uint256 indexed tokenId, uint256 amount);
 
     /// @notice Address of the pool LP token which is deposited (staked) for rewards
     function stakingToken() external view returns (address);
 
-    /// @notice Address of the token (AERO) rewarded to stakers
+    /// @notice Address of the token (IRS) rewarded to stakers
     function rewardToken() external view returns (address);
 
     /// @notice Address of the FeesVotingReward contract linked to the gauge
@@ -84,13 +87,27 @@ interface IGauge {
     /// @param _account .
     function getReward(address _account) external;
 
-    /// @notice Deposit LP tokens into gauge for msg.sender
-    /// @param _amount .
+    /// @notice Claim all accrued rewards into an existing or newly created veNFT.
+    /// @dev Only account or voter. Existing NFTs must be owned by account; escrow restrictions apply.
+    ///      A zero reward performs no lock or callback. Callback reverts do not undo the claim.
+    /// @param account Reward recipient and owner of the resulting veNFT.
+    /// @param tokenId Existing veNFT id, or zero to create a new lock.
+    /// @param lockDuration Duration for a new lock; must be zero for an existing veNFT.
+    /// @return resultingTokenId Existing or newly created id; unchanged when no rewards accrue.
+    function getRewardAndLock(
+        address account,
+        uint256 tokenId,
+        uint256 lockDuration
+    ) external returns (uint256 resultingTokenId);
+
+    /// @notice Deposit LP tokens for the effective caller (including trusted-forwarder context).
+    /// @param _amount Nonzero LP token amount pulled from the effective caller
     function deposit(uint256 _amount) external;
 
-    /// @notice Deposit LP tokens into gauge for any user
-    /// @param _amount .
-    /// @param _recipient Recipient to give balance to
+    /// @notice Deposit LP tokens from the effective caller and credit recipient.
+    /// @dev Uses the same accounting as deposit(amount); recipient owns withdrawal and reward rights.
+    /// @param _amount Nonzero LP token amount pulled from the effective caller
+    /// @param _recipient Nonzero account credited with the stake
     function deposit(uint256 _amount, address _recipient) external;
 
     /// @notice Withdraw LP tokens for user

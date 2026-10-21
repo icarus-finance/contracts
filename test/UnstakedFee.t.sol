@@ -14,11 +14,11 @@ contract UnstakedFeeTest is BaseTest {
     function test_SetUnstakedFee() public {
         // Verify default unstaked fee is 0
         assertEq(factory.unstakedFee(), 0);
-        
+
         // Set unstaked fee to 10% (1000 basis points)
         vm.prank(address(owner));
         factory.setUnstakedFee(1000);
-        
+
         assertEq(factory.unstakedFee(), 1000);
         assertEq(factory.getUnstakedFee(address(pool)), 1000);
     }
@@ -45,7 +45,7 @@ contract UnstakedFeeTest is BaseTest {
         vm.prank(address(owner));
         factory.setUnstakedFee(1000);
         assertEq(factory.unstakedFee(), 1000);
-        
+
         vm.prank(address(owner));
         factory.setUnstakedFee(0);
         assertEq(factory.unstakedFee(), 0);
@@ -56,23 +56,23 @@ contract UnstakedFeeTest is BaseTest {
         // Set unstaked fee to 10%
         vm.prank(address(owner));
         factory.setUnstakedFee(1000);
-        
+
         // Perform a swap to generate fees
         IRouter.Route[] memory routes = new IRouter.Route[](1);
         routes[0] = IRouter.Route(address(FRAX), address(USDC), true, address(0));
-        
+
         uint256[] memory expectedOutput = router.getAmountsOut(TOKEN_1, routes);
-        
+
         vm.startPrank(address(owner));
         FRAX.approve(address(router), TOKEN_1);
         router.swapExactTokensForTokens(TOKEN_1, expectedOutput[1], routes, address(owner), block.timestamp);
         vm.stopPrank();
-        
+
         // Check that gaugeFees has received fees
         address gaugeFees = pool.gaugeFees();
         uint256 gaugeFee0 = IERC20(pool.token0()).balanceOf(gaugeFees);
         uint256 gaugeFee1 = IERC20(pool.token1()).balanceOf(gaugeFees);
-        
+
         // At least one of the tokens should have fees in gaugeFees
         assertGt(gaugeFee0 + gaugeFee1, 0, "GaugeFees should have received fees");
     }
@@ -81,23 +81,23 @@ contract UnstakedFeeTest is BaseTest {
         // Set unstaked fee to 10%
         vm.prank(address(owner));
         factory.setUnstakedFee(1000);
-        
+
         // Perform a swap to generate fees
         IRouter.Route[] memory routes = new IRouter.Route[](1);
         routes[0] = IRouter.Route(address(FRAX), address(USDC), true, address(0));
-        
+
         uint256[] memory expectedOutput = router.getAmountsOut(TOKEN_1, routes);
-        
+
         vm.startPrank(address(owner));
         FRAX.approve(address(router), TOKEN_1);
         router.swapExactTokensForTokens(TOKEN_1, expectedOutput[1], routes, address(owner), block.timestamp);
         vm.stopPrank();
-        
+
         // Check that poolFees has received fees (should be 90% of total fees)
         address poolFees = pool.poolFees();
         uint256 poolFee0 = IERC20(pool.token0()).balanceOf(poolFees);
         uint256 poolFee1 = IERC20(pool.token1()).balanceOf(poolFees);
-        
+
         // At least one of the tokens should have fees in poolFees
         assertGt(poolFee0 + poolFee1, 0, "PoolFees should have received fees");
     }
@@ -106,40 +106,40 @@ contract UnstakedFeeTest is BaseTest {
         // Set unstaked fee to 10%
         vm.prank(address(owner));
         factory.setUnstakedFee(1000);
-        
+
         // Perform a swap to generate fees
         IRouter.Route[] memory routes = new IRouter.Route[](1);
         routes[0] = IRouter.Route(address(FRAX), address(USDC), true, address(0));
-        
+
         uint256[] memory expectedOutput = router.getAmountsOut(TOKEN_1, routes);
-        
+
         vm.startPrank(address(owner));
         FRAX.approve(address(router), TOKEN_1);
         router.swapExactTokensForTokens(TOKEN_1, expectedOutput[1], routes, address(owner), block.timestamp);
         vm.stopPrank();
-        
+
         // Check fee distribution
         address gaugeFees = pool.gaugeFees();
         address poolFees = pool.poolFees();
-        
+
         uint256 gaugeFee0 = IERC20(pool.token0()).balanceOf(gaugeFees);
         uint256 poolFee0 = IERC20(pool.token0()).balanceOf(poolFees);
         uint256 gaugeFee1 = IERC20(pool.token1()).balanceOf(gaugeFees);
         uint256 poolFee1 = IERC20(pool.token1()).balanceOf(poolFees);
-        
+
         uint256 totalFees0 = gaugeFee0 + poolFee0;
         uint256 totalFees1 = gaugeFee1 + poolFee1;
-        
+
         // Check ratio (approximately 10% to gauge, 90% to pool)
         if (totalFees0 > 0) {
             // Allow for rounding errors
-            assertApproxEqRel(gaugeFee0, totalFees0 * 1000 / 10000, 0.01e18, "GaugeFee should be ~10% of total");
-            assertApproxEqRel(poolFee0, totalFees0 * 9000 / 10000, 0.01e18, "PoolFee should be ~90% of total");
+            assertApproxEqRel(gaugeFee0, (totalFees0 * 1000) / 10000, 0.01e18, "GaugeFee should be ~10% of total");
+            assertApproxEqRel(poolFee0, (totalFees0 * 9000) / 10000, 0.01e18, "PoolFee should be ~90% of total");
         }
-        
+
         if (totalFees1 > 0) {
-            assertApproxEqRel(gaugeFee1, totalFees1 * 1000 / 10000, 0.01e18, "GaugeFee should be ~10% of total");
-            assertApproxEqRel(poolFee1, totalFees1 * 9000 / 10000, 0.01e18, "PoolFee should be ~90% of total");
+            assertApproxEqRel(gaugeFee1, (totalFees1 * 1000) / 10000, 0.01e18, "GaugeFee should be ~10% of total");
+            assertApproxEqRel(poolFee1, (totalFees1 * 9000) / 10000, 0.01e18, "PoolFee should be ~90% of total");
         }
     }
 
@@ -148,11 +148,11 @@ contract UnstakedFeeTest is BaseTest {
         // Set unstaked fee to 10%
         vm.prank(address(owner));
         factory.setUnstakedFee(1000);
-        
+
         // Perform swaps to generate fees
         IRouter.Route[] memory routes = new IRouter.Route[](1);
         routes[0] = IRouter.Route(address(FRAX), address(USDC), true, address(0));
-        
+
         vm.startPrank(address(owner));
         FRAX.approve(address(router), TOKEN_1 * 10);
         for (uint256 i = 0; i < 10; i++) {
@@ -160,33 +160,33 @@ contract UnstakedFeeTest is BaseTest {
             router.swapExactTokensForTokens(TOKEN_1, expectedOutput[1], routes, address(owner), block.timestamp);
         }
         vm.stopPrank();
-        
+
         // Capture fees before claim
         address gaugeFees = pool.gaugeFees();
-        
+
         uint256 gaugeFeeBefore0 = IERC20(pool.token0()).balanceOf(gaugeFees);
         uint256 gaugeFeeBefore1 = IERC20(pool.token1()).balanceOf(gaugeFees);
-        
+
         assertGt(gaugeFeeBefore0 + gaugeFeeBefore1, 0, "GaugeFees should have fees");
-        
+
         // Claim fees as gauge
         address gaugeAddress = voter.gauges(address(pool));
         uint256 balanceBefore0 = IERC20(pool.token0()).balanceOf(gaugeAddress);
         uint256 balanceBefore1 = IERC20(pool.token1()).balanceOf(gaugeAddress);
-        
+
         vm.prank(gaugeAddress);
         (uint256 claimed0, uint256 claimed1) = pool.claimFees();
-        
+
         uint256 balanceAfter0 = IERC20(pool.token0()).balanceOf(gaugeAddress);
         uint256 balanceAfter1 = IERC20(pool.token1()).balanceOf(gaugeAddress);
-        
+
         // Gauge should have received fees from both poolFees and gaugeFees
         assertEq(claimed0, balanceAfter0 - balanceBefore0, "Claimed amount should match balance increase");
         assertEq(claimed1, balanceAfter1 - balanceBefore1, "Claimed amount should match balance increase");
-        
+
         // Both gaugeFees and some poolFees should have been claimed
         assertGt(claimed0 + claimed1, 0, "Gauge should have claimed fees");
-        
+
         // GaugeFees should be empty after claim
         assertEq(IERC20(pool.token0()).balanceOf(gaugeFees), 0, "GaugeFees should be empty");
         assertEq(IERC20(pool.token1()).balanceOf(gaugeFees), 0, "GaugeFees should be empty");
@@ -196,11 +196,11 @@ contract UnstakedFeeTest is BaseTest {
         // Set unstaked fee to 10%
         vm.prank(address(owner));
         factory.setUnstakedFee(1000);
-        
+
         // Perform swaps to generate fees
         IRouter.Route[] memory routes = new IRouter.Route[](1);
         routes[0] = IRouter.Route(address(FRAX), address(USDC), true, address(0));
-        
+
         vm.startPrank(address(owner));
         FRAX.approve(address(router), TOKEN_1 * 5);
         for (uint256 i = 0; i < 5; i++) {
@@ -208,25 +208,25 @@ contract UnstakedFeeTest is BaseTest {
             router.swapExactTokensForTokens(TOKEN_1, expectedOutput[1], routes, address(owner), block.timestamp);
         }
         vm.stopPrank();
-        
+
         // Capture gaugeFees before claim
         address gaugeFees = pool.gaugeFees();
         uint256 gaugeFeeBefore0 = IERC20(pool.token0()).balanceOf(gaugeFees);
         uint256 gaugeFeeBefore1 = IERC20(pool.token1()).balanceOf(gaugeFees);
-        
+
         assertGt(gaugeFeeBefore0 + gaugeFeeBefore1, 0, "GaugeFees should have fees");
-        
+
         // Try to claim as owner (non-gauge)
         // uint256 balanceBefore0 = IERC20(pool.token0()).balanceOf(address(owner));
         // uint256 balanceBefore1 = IERC20(pool.token1()).balanceOf(address(owner));
-        
+
         vm.prank(address(owner));
         pool.claimFees();
-        
+
         // Owner should NOT have received gaugeFees
         uint256 gaugeFeesAfter0 = IERC20(pool.token0()).balanceOf(gaugeFees);
         uint256 gaugeFeesAfter1 = IERC20(pool.token1()).balanceOf(gaugeFees);
-        
+
         // GaugeFees should still be there (not claimed by non-gauge)
         assertEq(gaugeFeesAfter0, gaugeFeeBefore0, "GaugeFees should not be claimed by non-gauge");
         assertEq(gaugeFeesAfter1, gaugeFeeBefore1, "GaugeFees should not be claimed by non-gauge");
@@ -236,40 +236,48 @@ contract UnstakedFeeTest is BaseTest {
     function test_StakedUsers_AllFeesToGauge_WithZeroUnstakedFee() public {
         // Verify default unstaked fee is 0
         assertEq(factory.unstakedFee(), 0);
-        
+
         // Add liquidity and stake in gauge
-        _addLiquidityToPool(address(owner2), address(router), address(FRAX), address(USDC), true, TOKEN_100K, USDC_100K);
-        
+        _addLiquidityToPool(
+            address(owner2),
+            address(router),
+            address(FRAX),
+            address(USDC),
+            true,
+            TOKEN_100K,
+            USDC_100K
+        );
+
         vm.startPrank(address(owner2));
         uint256 liquidity = pool.balanceOf(address(owner2));
         pool.approve(address(gauge), liquidity);
         gauge.deposit(liquidity);
         vm.stopPrank();
-        
+
         // Perform swap to generate fees
         IRouter.Route[] memory routes = new IRouter.Route[](1);
         routes[0] = IRouter.Route(address(FRAX), address(USDC), true, address(0));
-        
+
         uint256[] memory expectedOutput = router.getAmountsOut(TOKEN_1, routes);
-        
+
         vm.startPrank(address(owner));
         FRAX.approve(address(router), TOKEN_1);
         router.swapExactTokensForTokens(TOKEN_1, expectedOutput[1], routes, address(owner), block.timestamp);
         vm.stopPrank();
-        
+
         // Check that no gaugeFees exist (all fees go to poolFees)
         address gaugeFees = pool.gaugeFees();
         uint256 gaugeFee0 = IERC20(pool.token0()).balanceOf(gaugeFees);
         uint256 gaugeFee1 = IERC20(pool.token1()).balanceOf(gaugeFees);
-        
+
         assertEq(gaugeFee0, 0, "No fees should be in gaugeFees with 0% unstaked fee");
         assertEq(gaugeFee1, 0, "No fees should be in gaugeFees with 0% unstaked fee");
-        
+
         // All fees should be in poolFees
         address poolFees = pool.poolFees();
         uint256 poolFee0 = IERC20(pool.token0()).balanceOf(poolFees);
         uint256 poolFee1 = IERC20(pool.token1()).balanceOf(poolFees);
-        
+
         assertGt(poolFee0 + poolFee1, 0, "All fees should be in poolFees");
     }
 
@@ -277,27 +285,27 @@ contract UnstakedFeeTest is BaseTest {
         // Set unstaked fee to 20%
         vm.prank(address(owner));
         factory.setUnstakedFee(2000);
-        
+
         IRouter.Route[] memory routes = new IRouter.Route[](1);
         routes[0] = IRouter.Route(address(FRAX), address(USDC), true, address(0));
-        
+
         address gaugeFees = pool.gaugeFees();
         address poolFees = pool.poolFees();
-        
+
         vm.startPrank(address(owner));
         FRAX.approve(address(router), TOKEN_1 * 20);
-        
+
         // Perform multiple swaps and check accumulation
         for (uint256 i = 0; i < 5; i++) {
             uint256 gaugeFeeBefore0 = IERC20(pool.token0()).balanceOf(gaugeFees);
             uint256 poolFeeBefore0 = IERC20(pool.token0()).balanceOf(poolFees);
-            
+
             uint256[] memory expectedOutput = router.getAmountsOut(TOKEN_1, routes);
             router.swapExactTokensForTokens(TOKEN_1, expectedOutput[1], routes, address(owner), block.timestamp);
-            
+
             uint256 gaugeFeeAfter0 = IERC20(pool.token0()).balanceOf(gaugeFees);
             uint256 poolFeeAfter0 = IERC20(pool.token0()).balanceOf(poolFees);
-            
+
             // Fees should increase with each swap
             assertGt(gaugeFeeAfter0, gaugeFeeBefore0, "GaugeFees should increase");
             assertGt(poolFeeAfter0, poolFeeBefore0, "PoolFees should increase");
@@ -307,41 +315,41 @@ contract UnstakedFeeTest is BaseTest {
 
     function test_DifferentUnstakedFeeRatios() public {
         uint256[] memory feeRatios = new uint256[](5);
-        feeRatios[0] = 500;  // 5%
+        feeRatios[0] = 500; // 5%
         feeRatios[1] = 1000; // 10%
         feeRatios[2] = 2000; // 20%
         feeRatios[3] = 3000; // 30%
         feeRatios[4] = 5000; // 50%
-        
+
         for (uint256 i = 0; i < feeRatios.length; i++) {
             // Set unstaked fee
             vm.prank(address(owner));
             factory.setUnstakedFee(feeRatios[i]);
-            
+
             // Perform swap on existing pool
             IRouter.Route[] memory routes = new IRouter.Route[](1);
             routes[0] = IRouter.Route(address(FRAX), address(USDC), true, address(0));
-            
+
             // Capture state before swap
             address gaugeFees = pool.gaugeFees();
             address poolFees = pool.poolFees();
             uint256 gaugeFee0Before = IERC20(pool.token0()).balanceOf(gaugeFees);
             uint256 poolFee0Before = IERC20(pool.token0()).balanceOf(poolFees);
-            
+
             uint256[] memory expectedOutput = router.getAmountsOut(TOKEN_1, routes);
-            
+
             vm.startPrank(address(owner));
             FRAX.approve(address(router), TOKEN_1);
             router.swapExactTokensForTokens(TOKEN_1, expectedOutput[1], routes, address(owner), block.timestamp);
             vm.stopPrank();
-            
+
             // Check fee distribution for this swap
             uint256 gaugeFee0After = IERC20(pool.token0()).balanceOf(gaugeFees);
             uint256 poolFee0After = IERC20(pool.token0()).balanceOf(poolFees);
-            
+
             uint256 gaugeFee0Delta = gaugeFee0After - gaugeFee0Before;
             uint256 poolFee0Delta = poolFee0After - poolFee0Before;
-            
+
             if (gaugeFee0Delta + poolFee0Delta > 0) {
                 uint256 gaugePercentage = (gaugeFee0Delta * 10000) / (gaugeFee0Delta + poolFee0Delta);
                 // Allow for rounding errors
@@ -354,11 +362,11 @@ contract UnstakedFeeTest is BaseTest {
         // Set unstaked fee to 15%
         vm.prank(address(owner));
         factory.setUnstakedFee(1500);
-        
+
         // Perform multiple swaps
         IRouter.Route[] memory routes = new IRouter.Route[](1);
         routes[0] = IRouter.Route(address(FRAX), address(USDC), true, address(0));
-        
+
         vm.startPrank(address(owner));
         FRAX.approve(address(router), TOKEN_1 * 10);
         for (uint256 i = 0; i < 10; i++) {
@@ -366,27 +374,27 @@ contract UnstakedFeeTest is BaseTest {
             router.swapExactTokensForTokens(TOKEN_1, expectedOutput[1], routes, address(owner), block.timestamp);
         }
         vm.stopPrank();
-        
+
         // Get gauge address
         address gaugeAddress = voter.gauges(address(pool));
-        
+
         // Capture balances
         address gaugeFees = pool.gaugeFees();
-        
+
         uint256 gaugeFeesBefore0 = IERC20(pool.token0()).balanceOf(gaugeFees);
         uint256 gaugeFeesBefore1 = IERC20(pool.token1()).balanceOf(gaugeFees);
-        
+
         // Gauge claims fees
         vm.prank(gaugeAddress);
         (uint256 claimed0, uint256 claimed1) = pool.claimFees();
-        
+
         // Verify all fees were claimed
         uint256 gaugeFeesAfter0 = IERC20(pool.token0()).balanceOf(gaugeFees);
         uint256 gaugeFeesAfter1 = IERC20(pool.token1()).balanceOf(gaugeFees);
-        
+
         assertEq(gaugeFeesAfter0, 0, "All gaugeFees should be claimed");
         assertEq(gaugeFeesAfter1, 0, "All gaugeFees should be claimed");
-        
+
         // Claimed amount should include both poolFees portion and all gaugeFees
         assertGt(claimed0 + claimed1, 0, "Fees should have been claimed");
         assertGe(claimed0, gaugeFeesBefore0, "Should include at least all gaugeFees");

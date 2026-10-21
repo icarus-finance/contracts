@@ -1,7 +1,7 @@
 import { deploy, deployLibrary, getContractAt } from "./utils/helpers";
 import { writeFile } from "fs/promises";
 import { join } from "path";
-import { Libraries } from "hardhat/types";
+import { Libraries } from "@nomiclabs/hardhat-ethers/types";
 import { BigNumber } from "ethers";
 import {
   ManagedRewardsFactory,
@@ -14,7 +14,7 @@ import {
   RewardsDistributor,
   AirdropDistributor,
   Router,
-  Aero,
+  IRS,
   Voter,
   VeArtProxy,
   VotingEscrow,
@@ -34,7 +34,7 @@ interface ProtocolOutput {
   Minter: string;
   PoolFactory: string;
   Router: string;
-  AERO: string;
+  IRS: string;
   Voter: string;
   VotingEscrow: string;
   VotingRewardsFactory: string;
@@ -46,13 +46,20 @@ interface AirdropInfo {
 }
 
 async function main() {
+  // Raw IRS units (18 decimals); choose explicitly before deploying.
+  if (!process.env.INITIAL_WEEKLY)
+    throw new Error("INITIAL_WEEKLY is required");
+  const initialWeekly = BigNumber.from(process.env.INITIAL_WEEKLY);
+  if (initialWeekly.lt(0) || initialWeekly.gte(BigNumber.from(2).pow(256))) {
+    throw new Error("INITIAL_WEEKLY must fit uint256");
+  }
   // ====== start _deploySetupBefore() ======
   const ONE = "1000000000000000000";
   const AIRDROPPER_BALANCE = 200_000_000;
   const DECIMAL = BigNumber.from(10).pow(18);
 
-  const AERO = await deploy<Aero>("Aero");
-  jsonConstants.whitelistTokens.push(AERO.address);
+  const irs = await deploy<IRS>("IRS");
+  jsonConstants.whitelistTokens.push(irs.address);
   // ====== end _deploySetupBefore() ======
 
   // ====== start _coreSetup() ======
@@ -101,7 +108,7 @@ async function main() {
     "VotingEscrow",
     libraries,
     forwarder.address,
-    AERO.address,
+    irs.address,
     factoryRegistry.address
   );
 
@@ -153,7 +160,7 @@ async function main() {
     distributor.address
   );
   await distributor.setMinter(minter.address);
-  await AERO.setMinter(minter.address);
+  await irs.setMinter(minter.address);
 
   const airdrop = await deploy<AirdropDistributor>(
     "AirdropDistributor",
@@ -189,12 +196,15 @@ async function main() {
     lockedAmounts.push(BigNumber.from(drop.amount / 1e18).mul(DECIMAL));
   });
 
-  await minter.initialize({
-    liquidWallets: liquidWallets,
-    liquidAmounts: liquidAmounts,
-    lockedWallets: lockedWallets,
-    lockedAmounts: lockedAmounts,
-  });
+  await minter.initialize(
+    {
+      liquidWallets: liquidWallets,
+      liquidAmounts: liquidAmounts,
+      lockedWallets: lockedWallets,
+      lockedAmounts: lockedAmounts,
+    },
+    initialWeekly
+  );
 
   // Set protocol state to team
   await escrow.setTeam(jsonConstants.team);
@@ -228,7 +238,7 @@ async function main() {
     Minter: minter.address,
     PoolFactory: poolFactory.address,
     Router: router.address,
-    AERO: AERO.address,
+    IRS: irs.address,
     Voter: voter.address,
     VotingEscrow: escrow.address,
     VotingRewardsFactory: votingRewardsFactory.address,

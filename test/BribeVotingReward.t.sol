@@ -8,14 +8,14 @@ contract BribeVotingRewardTest is BaseTest {
 
     function _setUp() public override {
         // ve
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME);
         vm.startPrank(address(owner2));
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME);
         vm.stopPrank();
         vm.startPrank(address(owner3));
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME);
         vm.stopPrank();
         skip(1);
@@ -979,6 +979,8 @@ contract BribeVotingRewardTest is BaseTest {
         voter.vote(1, pools2, weights);
         vm.prank(address(owner3));
         voter.vote(3, pools2, weights);
+        uint256 expectedShare = (TOKEN_1 * 2 * escrow.balanceOfNFT(1)) /
+            (escrow.balanceOfNFT(1) + escrow.balanceOfNFT(3));
 
         // go to next week
         skipToNextEpoch(1 hours + 1);
@@ -991,13 +993,13 @@ contract BribeVotingRewardTest is BaseTest {
         earned = bribeVotingReward.earned(address(LR), 1);
         assertEq(earned, 0);
         earned = bribeVotingReward2.earned(address(LR), 1);
-        assertEq(earned, TOKEN_1);
+        assertEq(earned, expectedShare);
 
         pre = LR.balanceOf(address(owner));
         vm.prank(address(voter));
         bribeVotingReward2.getReward(1, rewards);
         post = LR.balanceOf(address(owner));
-        assertEq(post - pre, TOKEN_1);
+        assertEq(post - pre, expectedShare);
     }
 
     function testCannotClaimRewardForPoolIfPokedButReset() public {

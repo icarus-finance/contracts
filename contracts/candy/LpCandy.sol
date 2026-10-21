@@ -90,13 +90,15 @@ contract LpCandy is ILpCandy {
                 }
 
                 address poolAddr = factory.allPools(pindex);
-                
+
                 // Quick filter check: reserve0 > 0 or convertor
                 bool passesFilter;
                 if (poolAddr == convertor) {
                     passesFilter = true;
                 } else if (isCL) {
-                    passesFilter = _safeBalanceOf(ICandyPool(poolAddr).token0(), poolAddr) > 0 || _safeBalanceOf(ICandyPool(poolAddr).token1(), poolAddr) > 0;
+                    passesFilter =
+                        _safeBalanceOf(ICandyPool(poolAddr).token0(), poolAddr) > 0 ||
+                        _safeBalanceOf(ICandyPool(poolAddr).token1(), poolAddr) > 0;
                 } else {
                     passesFilter = ICandyPool(poolAddr).reserve0() > 0;
                 }
@@ -430,9 +432,7 @@ contract LpCandy is ILpCandy {
             IPoolFactory factory = IPoolFactory(_factories[index]);
 
             uint256 poolsCount = factory.allPoolsLength();
-            address nfpmAddr = _factories[index] == CL_FACTORY
-                ? CL_NFPM
-                : address(0);
+            address nfpmAddr = _factories[index] == CL_FACTORY ? CL_NFPM : address(0);
 
             // V2/Basic pool
             if (nfpmAddr == address(0)) {
@@ -452,7 +452,7 @@ contract LpCandy is ILpCandy {
                     uint256 lpBalance = ICandyPool(poolAddr).balanceOf(_account);
                     address gaugeAddr = voter.gauges(poolAddr);
                     uint256 stakedBalance = gaugeAddr != address(0) ? IGauge(gaugeAddr).balanceOf(_account) : 0;
-                    
+
                     // Skip if user has no position in this pool
                     if (lpBalance == 0 && stakedBalance == 0) {
                         continue;
