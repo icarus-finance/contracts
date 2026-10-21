@@ -158,10 +158,37 @@ contract MinterWeeklyCapInitializationFlowTest is Test {
         _assertFirstFunding(2 * WEEK, emission, 0);
     }
 
-    function testMaximumInitialWeeklyAcceptedWithoutRangeRestriction() public {
-        minter.initialize(_params(), type(uint256).max);
-        assertEq(minter.weekly(), type(uint256).max);
+    function testMaximumInitialWeeklyAcceptedAndFundsFirstEpoch() public {
+        uint256 initialWeekly = 100_000_000 ether;
+        minter.initialize(_params(), initialWeekly);
+        assertEq(minter.weekly(), initialWeekly);
         assertTrue(minter.initialized());
+        _assertFirstFunding(2 * WEEK, initialWeekly, initialWeekly * minter.WEEKLY_GROWTH() / minter.MAX_BPS());
+    }
+
+    function testInitialWeeklyOneBaseUnitAboveMaximumReverts() public {
+        _assertInvalidInitialWeekly(100_000_000 ether + 1);
+    }
+
+    function testUint256MaximumInitialWeeklyReverts() public {
+        _assertInvalidInitialWeekly(type(uint256).max);
+    }
+
+    function testFuzzInitialWeeklyAboveMaximumReverts(uint256 initialWeekly) public {
+        initialWeekly = bound(initialWeekly, 100_000_000 ether + 1, type(uint256).max);
+        _assertInvalidInitialWeekly(initialWeekly);
+    }
+
+    function _assertInvalidInitialWeekly(uint256 initialWeekly) internal {
+        IMinter.AirdropParams memory params = _params();
+        vm.expectRevert(IMinter.InvalidParams.selector);
+        minter.initialize(params, initialWeekly);
+        assertFalse(minter.initialized());
+        assertEq(minter.weekly(), 0);
+        assertEq(minter.activePeriod(), type(uint256).max - WEEK);
+        assertEq(token.totalSupply(), 0);
+        assertEq(escrow.tokenId(), 0);
+        _initialize();
     }
 
     function testFirstFundedEpochCanBeCappedBeforeInitialization() public {

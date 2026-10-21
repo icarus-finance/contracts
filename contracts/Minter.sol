@@ -83,6 +83,7 @@ contract Minter is IMinter {
     function initialize(AirdropParams memory params, uint256 initialWeekly) external {
         if (initialized) revert AlreadyInitialized();
         if (msg.sender != team) revert NotTeam();
+        if (initialWeekly > 100_000_000 * 1e18) revert InvalidParams();
         if (
             (params.liquidWallets.length != params.liquidAmounts.length) ||
             (params.lockedWallets.length != params.lockedAmounts.length)

@@ -30,7 +30,8 @@ week. Missing reports deliberately fail open, so reporter outages restore nomina
 ## Initialization and first emissions
 
 Team calls `initialize(AirdropParams params, uint256 initialWeekly)` once. `initialWeekly`
-sets `weekly` in raw IRS units (18 decimals); `weekly` is zero before initialization.
+sets `weekly` in raw IRS units (18 decimals), up to `100_000_000 * 1e18` (100 million IRS).
+Larger values revert with `InvalidParams`; `weekly` is zero before initialization.
 For example, `10_000_000 * 1e18` selects the former 10 million IRS starting schedule.
 Initialization sets `activePeriod` to the current week. It performs the configured airdrop but
 emits no weekly rewards; the first weekly emission is available at the next weekly boundary.

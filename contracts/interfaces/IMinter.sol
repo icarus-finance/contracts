@@ -130,7 +130,7 @@ interface IMinter {
 
     /// @notice Mints liquid tokens and permanently locked NFTs to the provided accounts
     /// @param params Struct that stores the wallets and amounts for the Airdrops
-    /// @param initialWeekly Initial nominal weekly emissions in raw IRS units (18 decimals).
+    /// @param initialWeekly Initial nominal weekly emissions in raw IRS units (18 decimals), at most 100 million IRS.
     /// @dev Values below TAIL_START select supply-based tail emissions immediately.
     function initialize(AirdropParams memory params, uint256 initialWeekly) external;
 
