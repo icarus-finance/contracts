@@ -98,9 +98,10 @@ contract MinterWeeklyCapInitializationFlowTest is Test {
         uint256 votingPower = escrow.totalSupplyAt(epoch - 1);
         assertEq(votingPower, LOCKED, "permanent airdrop voting power");
         // Independently derive funding from pre-mint supply and actual approved emissions.
-        uint256 growth = (((emission * (supplyBefore - votingPower)) / supplyBefore) * (supplyBefore - votingPower))
-            / supplyBefore / 2;
-        uint256 teamReward = 500 * (emission + growth) / 9500;
+        uint256 growth = (((emission * (supplyBefore - votingPower)) / supplyBefore) * (supplyBefore - votingPower)) /
+            supplyBefore /
+            2;
+        uint256 teamReward = (500 * (emission + growth)) / 9500;
         assertEq(minter.updatePeriod(), epoch);
         assertEq(token.balanceOf(address(voter)), emission);
         assertEq(token.balanceOf(address(distributor)), growth);
@@ -131,19 +132,19 @@ contract MinterWeeklyCapInitializationFlowTest is Test {
         assertEq(minter.epochCount(), 0);
         assertEq(minter.updatePeriod(), WEEK);
         assertEq(token.balanceOf(address(voter)), 0);
-        _assertFirstFunding(2 * WEEK, initialWeekly, initialWeekly * minter.WEEKLY_GROWTH() / minter.MAX_BPS());
+        _assertFirstFunding(2 * WEEK, initialWeekly, (initialWeekly * minter.WEEKLY_GROWTH()) / minter.MAX_BPS());
     }
 
     function testInitialWeeklyAtThresholdUsesNominalEmissionAndGrowth() public {
         uint256 initialWeekly = minter.TAIL_START();
         minter.initialize(_params(), initialWeekly);
-        _assertFirstFunding(2 * WEEK, initialWeekly, initialWeekly * minter.WEEKLY_GROWTH() / minter.MAX_BPS());
+        _assertFirstFunding(2 * WEEK, initialWeekly, (initialWeekly * minter.WEEKLY_GROWTH()) / minter.MAX_BPS());
     }
 
     function testInitialWeeklyBelowThresholdUsesSupplyBasedTailImmediately() public {
         uint256 initialWeekly = minter.TAIL_START() - 1;
         minter.initialize(_params(), initialWeekly);
-        uint256 emission = INITIAL_SUPPLY * minter.tailEmissionRate() / minter.MAX_BPS();
+        uint256 emission = (INITIAL_SUPPLY * minter.tailEmissionRate()) / minter.MAX_BPS();
         assertTrue(emission != initialWeekly);
         _assertFirstFunding(2 * WEEK, emission, initialWeekly);
     }
@@ -152,7 +153,7 @@ contract MinterWeeklyCapInitializationFlowTest is Test {
         minter.initialize(_params(), 0);
         assertTrue(minter.initialized());
         assertEq(minter.weekly(), 0);
-        uint256 emission = INITIAL_SUPPLY * minter.tailEmissionRate() / minter.MAX_BPS();
+        uint256 emission = (INITIAL_SUPPLY * minter.tailEmissionRate()) / minter.MAX_BPS();
         assertGt(emission, 0, "zero weekly does not disable tail emissions");
         _assertFirstFunding(2 * WEEK, emission, 0);
     }
@@ -369,7 +370,7 @@ contract MinterWeeklyCapInitializationFlowTest is Test {
         assertEq(minter.updatePeriod(), WEEK);
         vm.warp(2 * WEEK);
         minter.updatePeriod();
-        uint256 teamReward = 500 * emission / 9500;
+        uint256 teamReward = (500 * emission) / 9500;
         assertEq(token.balanceOf(address(voter)), emission);
         assertEq(token.balanceOf(address(this)), teamReward);
         assertEq(token.totalSupply(), emission + teamReward);

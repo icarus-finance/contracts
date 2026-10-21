@@ -27,7 +27,7 @@ contract SimpleBribeVotingRewardFlow is ExtendedBaseTest {
 
     // Rebases change relative lock balances after each owner's claim history diverges.
     function _voteShare(address votePool, uint256 tokenId, uint256 reward) internal view returns (uint256) {
-        return reward * voter.votes(tokenId, votePool) / voter.weights(votePool);
+        return (reward * voter.votes(tokenId, votePool)) / voter.weights(votePool);
     }
 
     function testMultiEpochBribeVotingRewardFlow() public {

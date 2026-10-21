@@ -104,7 +104,13 @@ contract MinterDeferredFeeAccrualTest is Test {
         escrow.setVoterAndDistributor(address(voter), address(distributor));
 
         // Deploy Router
-        router = new Router(address(forwarder), address(factoryRegistry), address(factory), address(voter), address(WETH));
+        router = new Router(
+            address(forwarder),
+            address(factoryRegistry),
+            address(factory),
+            address(voter),
+            address(WETH)
+        );
 
         // Deploy Minter - but do not initialize
         minter = new Minter(address(voter), address(escrow), address(distributor));
@@ -147,20 +153,10 @@ contract MinterDeferredFeeAccrualTest is Test {
         uint256 totalFee0 = preGaugeFee0 + prePoolFee0;
         uint256 totalFee1 = preGaugeFee1 + prePoolFee1;
         if (totalFee0 > 0) {
-            assertApproxEqRel(
-                preGaugeFee0,
-                (totalFee0 * 1000) / 10_000,
-                0.02e18,
-                "gauge fee0 ~= 10%"
-            );
+            assertApproxEqRel(preGaugeFee0, (totalFee0 * 1000) / 10_000, 0.02e18, "gauge fee0 ~= 10%");
         }
         if (totalFee1 > 0) {
-            assertApproxEqRel(
-                preGaugeFee1,
-                (totalFee1 * 1000) / 10_000,
-                0.02e18,
-                "gauge fee1 ~= 10%"
-            );
+            assertApproxEqRel(preGaugeFee1, (totalFee1 * 1000) / 10_000, 0.02e18, "gauge fee1 ~= 10%");
         }
 
         // Create gauge and stake LP

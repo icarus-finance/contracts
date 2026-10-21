@@ -47,7 +47,8 @@ interface AirdropInfo {
 
 async function main() {
   // Raw IRS units (18 decimals); choose explicitly before deploying.
-  if (!process.env.INITIAL_WEEKLY) throw new Error("INITIAL_WEEKLY is required");
+  if (!process.env.INITIAL_WEEKLY)
+    throw new Error("INITIAL_WEEKLY is required");
   const initialWeekly = BigNumber.from(process.env.INITIAL_WEEKLY);
   if (initialWeekly.lt(0) || initialWeekly.gte(BigNumber.from(2).pow(256))) {
     throw new Error("INITIAL_WEEKLY must fit uint256");
@@ -202,7 +203,7 @@ async function main() {
       lockedWallets: lockedWallets,
       lockedAmounts: lockedAmounts,
     },
-    initialWeekly,
+    initialWeekly
   );
 
   // Set protocol state to team

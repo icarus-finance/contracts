@@ -103,13 +103,16 @@ abstract contract Base is Script, Test {
         minter2 = new Minter(address(voter), address(escrow), address(distributor));
         distributor.setMinter(address(minter));
         if (_init) {
-        irs.setMinter(address(minter));
-            minter.initialize(IMinter.AirdropParams({
-                liquidWallets: new address[](0),
-                liquidAmounts: new uint256[](0),
-                lockedWallets: new address[](0),
-                lockedAmounts: new uint256[](0)
-            }), 10_000_000 ether);
+            irs.setMinter(address(minter));
+            minter.initialize(
+                IMinter.AirdropParams({
+                    liquidWallets: new address[](0),
+                    liquidAmounts: new uint256[](0),
+                    lockedWallets: new address[](0),
+                    lockedAmounts: new uint256[](0)
+                }),
+                10_000_000 ether
+            );
         }
 
         airdrop = new AirdropDistributor(address(escrow));

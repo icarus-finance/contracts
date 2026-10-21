@@ -200,7 +200,7 @@ contract MinterWeeklyCapTest is BaseTest {
         assertEq(minter.activePeriod(), epoch);
         assertEq(minter.epochCount(), 1);
         assertEq(distributor.lastTokenTime(), block.timestamp);
-        assertEq(minter.weekly(), scheduled * minter.WEEKLY_GROWTH() / minter.MAX_BPS());
+        assertEq(minter.weekly(), (scheduled * minter.WEEKLY_GROWTH()) / minter.MAX_BPS());
         (uint256 amount, bool reported) = minter.weeklyCaps(epoch);
         assertEq(amount, 0);
         assertFalse(reported);
@@ -212,7 +212,7 @@ contract MinterWeeklyCapTest is BaseTest {
         _report(epoch, TOKEN_1M);
         vm.warp(epoch);
         _assertFunding(TOKEN_1M, 0);
-        uint256 nextScheduled = scheduled * minter.WEEKLY_GROWTH() / minter.MAX_BPS();
+        uint256 nextScheduled = (scheduled * minter.WEEKLY_GROWTH()) / minter.MAX_BPS();
         assertEq(minter.weekly(), nextScheduled);
         vm.warp(epoch + 1 weeks);
         _assertFunding(nextScheduled, 0);
@@ -261,20 +261,20 @@ contract MinterWeeklyCapTest is BaseTest {
         _report(epoch, TOKEN_1M);
         vm.warp(epoch);
         _assertFunding(TOKEN_1M, 0);
-        assertEq(minter.weekly(), scheduled * minter.WEEKLY_DECAY() / minter.MAX_BPS());
+        assertEq(minter.weekly(), (scheduled * minter.WEEKLY_DECAY()) / minter.MAX_BPS());
     }
 
     function testCapAppliesToTailAndMissingReportRestoresSupplyBasedTail() public {
         uint256 weekly = minter.TAIL_START() - 1;
         stdstore.target(address(minter)).sig("weekly()").checked_write(weekly);
         uint256 epoch = _nextEpoch();
-        uint256 nominal = irs.totalSupply() * minter.tailEmissionRate() / minter.MAX_BPS();
+        uint256 nominal = (irs.totalSupply() * minter.tailEmissionRate()) / minter.MAX_BPS();
         _report(epoch, nominal / 2);
         vm.warp(epoch);
         _assertFunding(nominal / 2, 0);
         assertEq(minter.weekly(), weekly);
         vm.warp(epoch + 1 weeks);
-        nominal = irs.totalSupply() * minter.tailEmissionRate() / minter.MAX_BPS();
+        nominal = (irs.totalSupply() * minter.tailEmissionRate()) / minter.MAX_BPS();
         _assertFunding(nominal, 0);
     }
 
@@ -282,7 +282,7 @@ contract MinterWeeklyCapTest is BaseTest {
         uint256 weekly = minter.TAIL_START() - 1;
         stdstore.target(address(minter)).sig("weekly()").checked_write(weekly);
         uint256 epoch = _nextEpoch();
-        uint256 nominal = irs.totalSupply() * minter.tailEmissionRate() / minter.MAX_BPS();
+        uint256 nominal = (irs.totalSupply() * minter.tailEmissionRate()) / minter.MAX_BPS();
         _report(epoch, nominal / 2);
         _report(epoch, 0);
         vm.warp(epoch);
@@ -341,7 +341,7 @@ contract MinterWeeklyCapTest is BaseTest {
         uint256 supply = irs.totalSupply();
         uint256 veSupply = escrow.totalSupplyAt(_getEpochStart(block.timestamp) - 1);
         uint256 growth = (((emission * (supply - veSupply)) / supply) * (supply - veSupply)) / supply / 2;
-        uint256 teamAmount = minter.teamRate() * (emission + growth) / (minter.MAX_BPS() - minter.teamRate());
+        uint256 teamAmount = (minter.teamRate() * (emission + growth)) / (minter.MAX_BPS() - minter.teamRate());
         uint256 required = emission + growth + teamAmount;
         uint256 held = irs.balanceOf(address(minter));
         uint256 voterBefore = irs.balanceOf(address(voter));

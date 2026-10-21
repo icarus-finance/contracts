@@ -165,7 +165,10 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVotingEscrow
-    function depositManaged(uint256 _tokenId, uint256 _mTokenId) external nonReentrant onlyVoter noTeamLocked(_tokenId) {
+    function depositManaged(
+        uint256 _tokenId,
+        uint256 _mTokenId
+    ) external nonReentrant onlyVoter noTeamLocked(_tokenId) {
         if (escrowType[_mTokenId] != EscrowType.MANAGED) revert NotManagedNFT();
         if (escrowType[_tokenId] != EscrowType.NORMAL) revert NotNormalNFT();
         if (_balanceOfNFTAt(_tokenId, block.timestamp) == 0) revert ZeroBalance();
@@ -892,11 +895,7 @@ contract VotingEscrow is IVotingEscrow, ERC2771Context, ReentrancyGuard {
     }
 
     /// @inheritdoc IVotingEscrow
-    function createTeamLockFor(
-        uint256 _tokenId,
-        address _to,
-        uint256 _teamUnlockTs
-    ) external nonReentrant onlyTeam {
+    function createTeamLockFor(uint256 _tokenId, address _to, uint256 _teamUnlockTs) external nonReentrant onlyTeam {
         if (_ownerOf(_tokenId) != team) revert NotApprovedOrOwner();
         if (_teamUnlockTs <= block.timestamp) revert LockDurationNotInFuture();
 

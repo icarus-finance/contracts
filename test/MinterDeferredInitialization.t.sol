@@ -231,7 +231,7 @@ contract MinterDeferredInitializationTest is Test {
     function testCannotCreateLockWithoutIRSTokens() public {
         // User has no IRS tokens (none exist)
         assertEq(irs.balanceOf(user1), 0, "User should have no IRS tokens");
-        
+
         // Attempting to create a lock with 0 tokens should revert
         vm.startPrank(user1);
         vm.expectRevert(IVotingEscrow.ZeroAmount.selector);
@@ -389,13 +389,13 @@ contract MinterDeferredInitializationTest is Test {
 
     function testVotingWorksAfterInitialization() public {
         testCanCreateGaugeBeforeInitialization();
-        
+
         // Initialize minter with tokens for user
         address[] memory liquidWallets = new address[](1);
         liquidWallets[0] = user1;
         uint256[] memory liquidAmounts = new uint256[](1);
         liquidAmounts[0] = 10000 * TOKEN_1;
-        
+
         IMinter.AirdropParams memory params = IMinter.AirdropParams({
             liquidWallets: liquidWallets,
             liquidAmounts: liquidAmounts,
@@ -476,7 +476,7 @@ contract MinterDeferredInitializationTest is Test {
 
     function testFullWorkflowWithDeferredInitialization() public {
         // === Phase 1: Pre-initialization - Deploy and setup infrastructure ===
-        
+
         // Create multiple pools
         deal(address(USDC), address(this), 10000 * USDC_1);
         deal(address(FRAX), address(this), 10000 * TOKEN_1);
@@ -484,17 +484,11 @@ contract MinterDeferredInitializationTest is Test {
         FRAX.approve(address(router), type(uint256).max);
 
         // Stable pool
-        router.addLiquidity(
-            address(FRAX), address(USDC), true,
-            TOKEN_1, USDC_1, 0, 0, address(this), block.timestamp
-        );
+        router.addLiquidity(address(FRAX), address(USDC), true, TOKEN_1, USDC_1, 0, 0, address(this), block.timestamp);
         Pool stablePool = Pool(factory.getPool(address(FRAX), address(USDC), true));
 
         // Volatile pool
-        router.addLiquidity(
-            address(FRAX), address(USDC), false,
-            TOKEN_1, USDC_1, 0, 0, address(this), block.timestamp
-        );
+        router.addLiquidity(address(FRAX), address(USDC), false, TOKEN_1, USDC_1, 0, 0, address(this), block.timestamp);
         Pool volatilePool = Pool(factory.getPool(address(FRAX), address(USDC), false));
 
         assertEq(factory.allPoolsLength(), 2, "Two pools should exist");
@@ -513,7 +507,7 @@ contract MinterDeferredInitializationTest is Test {
         skip(2 weeks);
 
         // === Phase 2: Initialize Minter ===
-        
+
         address[] memory liquidWallets = new address[](2);
         liquidWallets[0] = user1;
         liquidWallets[1] = user2;
@@ -544,7 +538,7 @@ contract MinterDeferredInitializationTest is Test {
         assertEq(escrow.tokenId(), 2, "Two veNFTs should exist");
 
         // === Phase 3: Post-initialization - Full protocol functionality ===
-        
+
         // Skip to voting window (past distribute window)
         skipToNextEpoch(1 hours + 1);
 
@@ -572,7 +566,7 @@ contract MinterDeferredInitializationTest is Test {
         assertEq(minter.epochCount(), 1, "Voting should process the first emission epoch");
 
         // === Phase 4: Emissions begin ===
-        
+
         // Skip to next epoch
         skipToNextEpoch(1);
 
@@ -588,10 +582,10 @@ contract MinterDeferredInitializationTest is Test {
         assertGt(irs.balanceOf(address(volatileGauge)), 0, "Volatile gauge should have rewards");
 
         // === Phase 5: LP staking and reward claiming ===
-        
+
         // User provides liquidity and stakes
         deal(address(stablePool), user1, TOKEN_1);
-        
+
         vm.startPrank(user1);
         IERC20(address(stablePool)).approve(address(stableGauge), TOKEN_1);
         stableGauge.deposit(TOKEN_1);
@@ -603,7 +597,7 @@ contract MinterDeferredInitializationTest is Test {
         skip(1 days);
 
         uint256 irsBalanceBefore = irs.balanceOf(user1);
-        
+
         vm.prank(user1);
         stableGauge.getReward(user1);
 
@@ -658,8 +652,15 @@ contract MinterDeferredInitializationTest is Test {
         // Create 3 pools
         for (uint256 i = 0; i < 3; i++) {
             router.addLiquidity(
-                address(FRAX), address(USDC), i == 0,
-                TOKEN_1, USDC_1, 0, 0, address(this), block.timestamp
+                address(FRAX),
+                address(USDC),
+                i == 0,
+                TOKEN_1,
+                USDC_1,
+                0,
+                0,
+                address(this),
+                block.timestamp
             );
         }
 
@@ -669,7 +670,7 @@ contract MinterDeferredInitializationTest is Test {
         // Create gauges for both
         Pool p1 = Pool(factory.getPool(address(FRAX), address(USDC), true));
         Pool p2 = Pool(factory.getPool(address(FRAX), address(USDC), false));
-        
+
         voter.createGauge(address(factory), address(p1));
         voter.createGauge(address(factory), address(p2));
 

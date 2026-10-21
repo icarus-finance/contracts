@@ -29,7 +29,7 @@ contract LiquidityStakeHelperTest is BaseTest {
     }
 
     function testStakeAndWithdraw() public {
-        (,, uint256 liquidity) = helper.addLiquidityAndStake(params());
+        (, , uint256 liquidity) = helper.addLiquidityAndStake(params());
         assertEq(gauge.balanceOf(address(owner2)), liquidity);
         assertEq(pool.balanceOf(address(helper)), 0);
         assertEq(USDC.allowance(address(helper), address(router)), 0);
@@ -49,7 +49,7 @@ contract LiquidityStakeHelperTest is BaseTest {
         uint256 beforeB = FRAX.balanceOf(address(this));
         LiquidityStakeHelper.AddLiquidityParams memory p = params();
         p.amountBDesired *= 2;
-        (uint256 a, uint256 b,) = helper.addLiquidityAndStake(p);
+        (uint256 a, uint256 b, ) = helper.addLiquidityAndStake(p);
         assertLt(b, p.amountBDesired);
         assertEq(USDC.balanceOf(address(this)), beforeA - a);
         assertEq(FRAX.balanceOf(address(this)), beforeB - b);
@@ -65,7 +65,7 @@ contract LiquidityStakeHelperTest is BaseTest {
         p.tokenB = address(USDC);
         p.amountADesired = TOKEN_1;
         p.amountBDesired = USDC_1;
-        (,, uint256 liquidity) = helper.addLiquidityAndStake(p);
+        (, , uint256 liquidity) = helper.addLiquidityAndStake(p);
         assertEq(gauge2.balanceOf(address(owner2)), liquidity);
     }
 

@@ -35,7 +35,11 @@ contract LiquidityStakeHelper is ReentrancyGuard {
     error InsufficientLiquidity();
 
     event LiquidityStaked(
-        address indexed caller, address indexed recipient, address indexed pool, address gauge, uint256 liquidity
+        address indexed caller,
+        address indexed recipient,
+        address indexed pool,
+        address gauge,
+        uint256 liquidity
     );
 
     constructor(address _router) {
@@ -47,14 +51,17 @@ contract LiquidityStakeHelper is ReentrancyGuard {
     /// @notice Approve desired amounts to this helper before calling. Refunds go to caller.
     /// @dev Requires an existing pool with a live registered gauge. No swaps or permits.
     ///      Fee-on-transfer and rebasing tokens are unsupported.
-    function addLiquidityAndStake(AddLiquidityParams calldata p)
-        external
-        nonReentrant
-        returns (uint256 amountA, uint256 amountB, uint256 liquidity)
-    {
+    function addLiquidityAndStake(
+        AddLiquidityParams calldata p
+    ) external nonReentrant returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
         if (
-            p.tokenA == p.tokenB || p.tokenA == address(0) || p.tokenB == address(0) || p.recipient == address(0)
-                || p.recipient == address(this) || p.amountADesired == 0 || p.amountBDesired == 0
+            p.tokenA == p.tokenB ||
+            p.tokenA == address(0) ||
+            p.tokenB == address(0) ||
+            p.recipient == address(0) ||
+            p.recipient == address(this) ||
+            p.amountADesired == 0 ||
+            p.amountBDesired == 0
         ) revert InvalidParams();
         address pool = router.poolFor(p.tokenA, p.tokenB, p.stable, router.defaultFactory());
         address gauge = voter.gauges(pool);

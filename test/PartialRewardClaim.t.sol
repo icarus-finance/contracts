@@ -336,7 +336,7 @@ contract PartialRewardClaimTest is BaseTest {
 
         // Try to claim with future timestamp - should revert with FutureTimestamp error
         uint256 futureTimestamp = block.timestamp + 365 days;
-        
+
         vm.expectRevert(IReward.FutureTimestamp.selector);
         feesVotingReward.getRewardUntilTs(tokenId, rewardTokens, futureTimestamp);
     }

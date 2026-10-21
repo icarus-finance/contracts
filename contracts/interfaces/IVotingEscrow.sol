@@ -414,16 +414,12 @@ interface IVotingEscrow is IVotes, IERC4906, IERC6372, IERC721Metadata {
         uint _teamUnlockTs
     ) external returns (uint256);
 
-    /// @notice Transfer lock from `team` to the new owner, and team lock it for `_teamUnlockTs` 
+    /// @notice Transfer lock from `team` to the new owner, and team lock it for `_teamUnlockTs`
     /// @dev Only callable by `team` address.
     /// @param _tokenId lock NFT
     /// @param _to Address to deposit
     /// @param _teamUnlockTs Timestamp of the team unlock
-    function createTeamLockFor(
-        uint256 _tokenId,
-        address _to,
-        uint256 _teamUnlockTs
-    ) external;
+    function createTeamLockFor(uint256 _tokenId, address _to, uint256 _teamUnlockTs) external;
 
     /// @notice Unlock a team lock veNFT if the team lock period has expired.
     /// @param _tokenId tokenId to unlock.

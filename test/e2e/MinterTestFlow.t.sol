@@ -106,7 +106,7 @@ contract MinterTestFlow is ExtendedBaseTest {
         // skip to first tail distribution
         skipToNextEpoch(1);
 
-        uint256 expectedTail = irs.totalSupply() * minter.tailEmissionRate() / minter.MAX_BPS();
+        uint256 expectedTail = (irs.totalSupply() * minter.tailEmissionRate()) / minter.MAX_BPS();
         uint256 voterBefore = irs.balanceOf(address(voter));
         minter.updatePeriod();
         assertEq(irs.balanceOf(address(voter)) - voterBefore, expectedTail);
@@ -141,7 +141,7 @@ contract MinterTestFlow is ExtendedBaseTest {
         epochGovernor.execute(targets, values, calldatas, keccak256(bytes(description)));
         assertEq(minter.tailEmissionRate(), 68);
 
-        expectedTail = irs.totalSupply() * minter.tailEmissionRate() / minter.MAX_BPS();
+        expectedTail = (irs.totalSupply() * minter.tailEmissionRate()) / minter.MAX_BPS();
         voterBefore = irs.balanceOf(address(voter));
         minter.updatePeriod();
         assertEq(irs.balanceOf(address(voter)) - voterBefore, expectedTail);
@@ -165,7 +165,7 @@ contract MinterTestFlow is ExtendedBaseTest {
         epochGovernor.execute(targets, values, calldatas, keccak256(bytes(description)));
         assertEq(minter.tailEmissionRate(), 68);
 
-        expectedTail = irs.totalSupply() * minter.tailEmissionRate() / minter.MAX_BPS();
+        expectedTail = (irs.totalSupply() * minter.tailEmissionRate()) / minter.MAX_BPS();
         voterBefore = irs.balanceOf(address(voter));
         minter.updatePeriod();
         assertEq(irs.balanceOf(address(voter)) - voterBefore, expectedTail);
@@ -180,7 +180,7 @@ contract MinterTestFlow is ExtendedBaseTest {
         epochGovernor.execute(targets, values, calldatas, keccak256(bytes(description2)));
         assertEq(minter.tailEmissionRate(), 67);
 
-        expectedTail = irs.totalSupply() * minter.tailEmissionRate() / minter.MAX_BPS();
+        expectedTail = (irs.totalSupply() * minter.tailEmissionRate()) / minter.MAX_BPS();
         voterBefore = irs.balanceOf(address(voter));
         minter.updatePeriod();
         assertEq(irs.balanceOf(address(voter)) - voterBefore, expectedTail);

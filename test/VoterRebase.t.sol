@@ -103,8 +103,12 @@ contract VoterRebaseTest is BaseTest {
 
     function testVoteCompoundsTeamLockUnderExistingVestingSchedule() public {
         irs.approve(address(escrow), TOKEN_1M);
-        uint256 tokenId =
-            escrow.createTeamLockFor(TOKEN_1M, MAXTIME, address(owner2), vm.getBlockTimestamp() + 2 * 365 days);
+        uint256 tokenId = escrow.createTeamLockFor(
+            TOKEN_1M,
+            MAXTIME,
+            address(owner2),
+            vm.getBlockTimestamp() + 2 * 365 days
+        );
         IVotingEscrow.TeamLock memory teamBefore = escrow.teamLocks(tokenId);
         skipToNextEpoch(1 hours + 1);
         (uint256 rebase, uint256 expectedPower) = _preview(tokenId);

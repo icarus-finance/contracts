@@ -65,11 +65,11 @@ contract DeployGaugesAndPools is Script {
 
         // Deploy all IRS pools & gauges
         // for (uint256 i = 0; i < poolsIrs.length; i++) {
-            // address newPool = factory.createPool(irs, poolsIrs[i].token, poolsIrs[i].stable);
-            // address newGauge = voter.createGauge(address(factory), newPool);
+        // address newPool = factory.createPool(irs, poolsIrs[i].token, poolsIrs[i].stable);
+        // address newGauge = voter.createGauge(address(factory), newPool);
 
-            // pools.push(newPool);
-            // gauges.push(newGauge);
+        // pools.push(newPool);
+        // gauges.push(newGauge);
         // }
 
         vm.stopBroadcast();

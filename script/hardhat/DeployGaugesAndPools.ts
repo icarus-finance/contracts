@@ -15,7 +15,8 @@ async function readProtocolOutput(): Promise<ProtocolOutput> {
   const output: unknown = JSON.parse(await readFile(outputPath, "utf8"));
   for (const key of ["PoolFactory", "Voter", "IRS"] as const) {
     if (
-      typeof output !== "object" || output === null ||
+      typeof output !== "object" ||
+      output === null ||
       !(key in output) ||
       typeof (output as Record<string, unknown>)[key] !== "string" ||
       !/^0x[0-9a-fA-F]{40}$/.test((output as Record<string, string>)[key])

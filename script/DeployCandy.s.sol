@@ -48,12 +48,7 @@ contract DeployCandy is Script {
 
         vm.startBroadcast(deployerAddress);
 
-        candy = new LpCandy(
-            address(voter),
-            address(factoryRegistry),
-            address(convertor),
-            address(slipstreamHelper)
-        );
+        candy = new LpCandy(address(voter), address(factoryRegistry), address(convertor), address(slipstreamHelper));
 
         // rewards = new RewardsCandy(
         //     address(voter),
