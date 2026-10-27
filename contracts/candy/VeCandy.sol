@@ -93,28 +93,28 @@ contract VeCandy {
         VeNFT[] memory tempCol = new VeNFT[](_limit);
         uint256 colCount = 0;
         uint256 toSkip = _offset;
-        
+
         for (uint256 index = 0; index < MAX_RESULTS && colCount < _limit; index++) {
             if (ve.ownerOf(index) == address(0)) {
                 continue;
             }
-            
+
             // Skip veNFTs for offset (applied after filtering)
             if (toSkip > 0) {
                 toSkip--;
                 continue;
             }
-            
+
             tempCol[colCount] = _byId(index);
             colCount++;
         }
-        
+
         // Resize array to actual size
         VeNFT[] memory col = new VeNFT[](colCount);
         for (uint256 i = 0; i < colCount; i++) {
             col[i] = tempCol[i];
         }
-        
+
         return col;
     }
 
@@ -129,39 +129,39 @@ contract VeCandy {
         if (_account == address(0)) {
             return new VeNFT[](0);
         }
-        
+
         VeNFT[] memory tempCol = new VeNFT[](_limit);
         uint256 colCount = 0;
         uint256 toSkip = _offset;
-        
+
         for (uint256 index = 0; index < MAX_RESULTS && colCount < _limit; index++) {
             uint256 venft_id = ve.ownerToNFTokenIdList(_account, index);
-            
+
             if (venft_id == 0) {
                 break;
             }
-            
+
             // Skip veNFTs for offset
             if (toSkip > 0) {
                 toSkip--;
                 continue;
             }
-            
+
             tempCol[colCount] = _byId(venft_id);
             colCount++;
         }
-        
+
         // If limit is reached just return the array
         if (colCount == _limit) {
             return tempCol;
         }
-        
+
         // Resize array to actual size
         VeNFT[] memory col = new VeNFT[](colCount);
         for (uint256 i = 0; i < colCount; i++) {
             col[i] = tempCol[i];
         }
-        
+
         return col;
     }
 
@@ -181,47 +181,48 @@ contract VeCandy {
      */
     function _byId(uint256 _id) internal view returns (VeNFT memory) {
         address account = ve.ownerOf(_id);
-        
+
         if (account == address(0)) {
-            return VeNFT({
-                id: 0,
-                account: address(0),
-                decimals: 0,
-                amount: 0,
-                voting_amount: 0,
-                governance_amount: 0,
-                rebase_amount: 0,
-                expires_at: 0,
-                voted_at: 0,
-                votes: new LpVotes[](0),
-                token: address(0),
-                permanent: false,
-                delegate_id: 0,
-                managed_id: 0
-            });
+            return
+                VeNFT({
+                    id: 0,
+                    account: address(0),
+                    decimals: 0,
+                    amount: 0,
+                    voting_amount: 0,
+                    governance_amount: 0,
+                    rebase_amount: 0,
+                    expires_at: 0,
+                    voted_at: 0,
+                    votes: new LpVotes[](0),
+                    token: address(0),
+                    permanent: false,
+                    delegate_id: 0,
+                    managed_id: 0
+                });
         }
-        
+
         (uint128 amount, uint256 expires_at, bool perma) = ve.locked(_id);
         uint256 last_voted = 0;
         uint256 governance_amount = 0;
         uint8 escrowType = ve.escrowType(_id);
-        
+
         // Skip gov amount fetching for (m)veNFTs
         if (address(gov) != address(0) && escrowType < 2) {
             governance_amount = gov.getVotes(_id, block.timestamp);
         }
-        
+
         uint256 delegate_id = ve.delegates(_id);
         uint256 managed_id = ve.idToManaged(_id);
-        
+
         if (managed_id != 0 || ve.voted(_id)) {
             last_voted = voter.lastVoted(_id);
         }
-        
+
         uint256 vote_weight = voter.usedWeights(_id);
         // Since we don't have a way to see how many pools we voted...
         uint256 left_weight = vote_weight;
-        
+
         // Count actual votes first to size the array properly
         uint256 voteCount = 0;
         for (uint256 index = 0; index < MAX_PAIRS && left_weight > 0; index++) {
@@ -235,45 +236,43 @@ contract VeCandy {
                 left_weight = left_weight > weight ? left_weight - weight : 0;
             }
         }
-        
+
         // Now create the votes array with the correct size
         LpVotes[] memory votes = new LpVotes[](voteCount);
         left_weight = vote_weight;
         uint256 voteIndex = 0;
-        
+
         for (uint256 index = 0; index < MAX_PAIRS && left_weight > 0 && voteIndex < voteCount; index++) {
             address lp = voter.poolVote(_id, index);
             if (lp == address(0)) {
                 break;
             }
-            
+
             uint256 weight = voter.votes(_id, lp);
             if (weight > 0) {
-                votes[voteIndex] = LpVotes({
-                    lp: lp,
-                    weight: weight
-                });
+                votes[voteIndex] = LpVotes({lp: lp, weight: weight});
                 voteIndex++;
                 // Remove counted weight to see if there are other pool votes left...
                 left_weight = left_weight > weight ? left_weight - weight : 0;
             }
         }
-        
-        return VeNFT({
-            id: _id,
-            account: account,
-            decimals: ve.decimals(),
-            amount: amount,
-            voting_amount: ve.balanceOfNFT(_id),
-            governance_amount: governance_amount,
-            rebase_amount: dist.claimable(_id),
-            expires_at: expires_at,
-            voted_at: last_voted,
-            votes: votes,
-            token: token,
-            permanent: perma,
-            delegate_id: delegate_id,
-            managed_id: managed_id
-        });
+
+        return
+            VeNFT({
+                id: _id,
+                account: account,
+                decimals: ve.decimals(),
+                amount: amount,
+                voting_amount: ve.balanceOfNFT(_id),
+                governance_amount: governance_amount,
+                rebase_amount: dist.claimable(_id),
+                expires_at: expires_at,
+                voted_at: last_voted,
+                votes: votes,
+                token: token,
+                permanent: perma,
+                delegate_id: delegate_id,
+                managed_id: managed_id
+            });
     }
 }

@@ -1,23 +1,23 @@
 // SPDX-License-Identifier: GPL-2.0
 pragma solidity 0.8.30;
 
-import {IAero} from "./interfaces/IAero.sol";
+import {IIRS} from "./interfaces/IIRS.sol";
 import {IVotingEscrow} from "./interfaces/IVotingEscrow.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IAirdropDistributor} from "./interfaces/IAirdropDistributor.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract AirdropDistributor is IAirdropDistributor, Ownable {
-    using SafeERC20 for IAero;
+    using SafeERC20 for IIRS;
     /// @inheritdoc IAirdropDistributor
 
-    IAero public immutable aero;
+    IIRS public immutable irs;
     /// @inheritdoc IAirdropDistributor
     IVotingEscrow public immutable ve;
 
     constructor(address _ve) Ownable(msg.sender) {
         ve = IVotingEscrow(_ve);
-        aero = IAero(IVotingEscrow(_ve).token());
+        irs = IIRS(IVotingEscrow(_ve).token());
     }
 
     /// @inheritdoc IAirdropDistributor
@@ -29,8 +29,8 @@ contract AirdropDistributor is IAirdropDistributor, Ownable {
             _sum += _amounts[i];
         }
 
-        if (_sum > aero.balanceOf(address(this))) revert InsufficientBalance();
-        aero.safeIncreaseAllowance(address(ve), _sum);
+        if (_sum > irs.balanceOf(address(this))) revert InsufficientBalance();
+        irs.safeIncreaseAllowance(address(ve), _sum);
         address _wallet;
         uint256 _amount;
         uint256 _tokenId;
@@ -42,6 +42,6 @@ contract AirdropDistributor is IAirdropDistributor, Ownable {
             ve.safeTransferFrom(address(this), _wallet, _tokenId);
             emit Airdrop(_wallet, _amount, _tokenId);
         }
-        aero.forceApprove(address(ve), 0);
+        irs.forceApprove(address(ve), 0);
     }
 }

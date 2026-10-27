@@ -19,7 +19,7 @@ contract DistributeAirdrops is Script {
     string public path;
 
     AirdropDistributor public airdrop;
-    Aero public AERO;
+    IRS public irs;
 
     struct AirdropInfo {
         uint256 amount;
@@ -33,7 +33,7 @@ contract DistributeAirdrops is Script {
         path = string.concat(path, outputFilename);
         jsonConstants = vm.readFile(path);
 
-        AERO = Aero(abi.decode(jsonConstants.parseRaw(".IRS"), (address)));
+        irs = IRS(abi.decode(jsonConstants.parseRaw(".IRS"), (address)));
         airdrop = AirdropDistributor(abi.decode(jsonConstants.parseRaw(".AirdropDistributor"), (address)));
 
         path = string.concat(basePath, airdropFilename);
@@ -51,8 +51,8 @@ contract DistributeAirdrops is Script {
         for (uint256 i = 0; i < walletsLength; i++) {
             sum += amounts[i];
         }
-        uint256 aeroBal = AERO.balanceOf(address(airdrop));
-        if (sum > aeroBal) amounts[0] = amounts[0] - (sum - aeroBal); // remove dust from first airdrop if needed
+        uint256 irsBal = irs.balanceOf(address(airdrop));
+        if (sum > irsBal) amounts[0] = amounts[0] - (sum - irsBal); // remove dust from first airdrop if needed
 
         path = string.concat(basePath, "output/AirdropDistribution-");
         path = string.concat(path, outputFilename);

@@ -14,7 +14,7 @@ contract PartialRewardClaimTest is BaseTest {
 
     function _setUp() public override {
         // Create a lock
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         tokenId = escrow.createLock(TOKEN_1, MAXTIME);
 
         // Setup pools and weights for voting
@@ -336,7 +336,7 @@ contract PartialRewardClaimTest is BaseTest {
 
         // Try to claim with future timestamp - should revert with FutureTimestamp error
         uint256 futureTimestamp = block.timestamp + 365 days;
-        
+
         vm.expectRevert(IReward.FutureTimestamp.selector);
         feesVotingReward.getRewardUntilTs(tokenId, rewardTokens, futureTimestamp);
     }

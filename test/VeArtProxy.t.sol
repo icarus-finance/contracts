@@ -9,13 +9,13 @@ contract VeArtProxyTest is BaseTest {
     /**
      * Assumptions
      * 1 <= seed <= 1000
-     * 4 <= lineCount <= 32 (8 digits or 10M aero) - must be multiple of 4
+     * 4 <= lineCount <= 32 (8 digits or 10M irs) - must be multiple of 4
      * viewbox is (0, 0) to (4000, 4000)
      */
     function _setUp() public override {
         // create tokenId
         skipAndRoll(1 hours);
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         tokenId = escrow.createLock(TOKEN_1, MAXTIME);
     }
 

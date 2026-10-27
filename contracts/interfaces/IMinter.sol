@@ -1,12 +1,38 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {IAero} from "./IAero.sol";
+import {IIRS} from "./IIRS.sol";
 import {IVoter} from "./IVoter.sol";
 import {IVotingEscrow} from "./IVotingEscrow.sol";
 import {IRewardsDistributor} from "./IRewardsDistributor.sol";
 
 interface IMinter {
+    struct WeeklyCap {
+        uint256 amount;
+        bool reported;
+    }
+
+    error NotCapReporter();
+    error InvalidCapEpoch();
+
+    event SetCapReporter(address indexed reporter, bool allowed);
+    event SetWeeklyCap(uint256 indexed epoch, uint256 amount, address indexed reporter);
+    event WeeklyCapApplied(uint256 indexed epoch, uint256 scheduledEmission, uint256 emission, bool reported);
+
+    /// @notice Accounts authorized by team to publish or remove epoch caps.
+    function capReporters(address reporter) external view returns (bool);
+
+    /// @notice Gauge funding cap in raw token units. Zero amount and reported=false mean no cap.
+    function weeklyCaps(uint256 epoch) external view returns (uint256 amount, bool reported);
+
+    /// @notice Team grants/revokes reporting authority. Revocation does not delete existing reports.
+    function setCapReporter(address reporter, bool allowed) external;
+
+    /// @notice Publish/replace a cap for a week-aligned current or future epoch before it is processed.
+    /// @dev Amount zero removes the report and restores scheduled funding. Missing reports never inherit
+    ///      a previous epoch's cap. Team must also be whitelisted to report.
+    function setWeeklyCap(uint256 epoch, uint256 amount) external;
+
     struct AirdropParams {
         // List of addresses to receive Liquid Tokens from the airdrop
         address[] liquidWallets;
@@ -34,8 +60,8 @@ interface IMinter {
     event DistributeLiquid(address indexed _destination, uint256 _amount);
     event AcceptTeam(address indexed _newTeam);
 
-    /// @notice Interface of Aero.sol
-    function aero() external view returns (IAero);
+    /// @notice Interface of IRS.sol
+    function irs() external view returns (IIRS);
 
     /// @notice Interface of Voter.sol
     function voter() external view returns (IVoter);
@@ -79,7 +105,7 @@ interface IMinter {
     /// @notice Tail emissions rate in basis points
     function tailEmissionRate() external view returns (uint256);
 
-    /// @notice Starting weekly emission of 10M AERO (AERO has 18 decimals)
+    /// @notice Nominal weekly emission in raw IRS units; zero until initialized.
     function weekly() external view returns (uint256);
 
     /// @notice Timestamp of start of epoch that updatePeriod was last called in
@@ -104,7 +130,9 @@ interface IMinter {
 
     /// @notice Mints liquid tokens and permanently locked NFTs to the provided accounts
     /// @param params Struct that stores the wallets and amounts for the Airdrops
-    function initialize(AirdropParams memory params) external;
+    /// @param initialWeekly Initial nominal weekly emissions in raw IRS units (18 decimals), at most 100 million IRS.
+    /// @dev Values below TAIL_START select supply-based tail emissions immediately.
+    function initialize(AirdropParams memory params, uint256 initialWeekly) external;
 
     /// @notice Creates a request to change the current team's address
     /// @param _team Address of the new team to be chosen
@@ -131,10 +159,11 @@ interface IMinter {
     function nudge() external;
 
     /// @notice Calculates rebases according to the formula
-    ///         weekly * ((aero.totalsupply - ve.totalSupply) / aero.totalsupply) ^ 2 / 2
+    ///         weekly * ((irs.totalsupply - ve.totalSupply) / irs.totalsupply) ^ 2 / 2
     ///         Note that ve.totalSupply is the locked ve supply
-    ///         aero.totalSupply is the total ve supply minted
-    /// @param _minted Amount of AERO minted this epoch
+    ///         irs.totalSupply is the total ve supply minted
+    /// @dev Returns zero when the emission or existing token supply is zero.
+    /// @param _minted Amount of IRS minted this epoch
     /// @return _growth Rebases
     function calculateGrowth(uint256 _minted) external view returns (uint256 _growth);
 

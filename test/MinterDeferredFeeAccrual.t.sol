@@ -14,7 +14,7 @@ import {FeesVotingReward} from "contracts/rewards/FeesVotingReward.sol";
 import {Gauge} from "contracts/gauges/Gauge.sol";
 import {RewardsDistributor} from "contracts/RewardsDistributor.sol";
 import {IRouter, Router} from "contracts/Router.sol";
-import {Aero} from "contracts/Aero.sol";
+import {IRS} from "contracts/IRS.sol";
 import {Voter} from "contracts/Voter.sol";
 import {VeArtProxy} from "contracts/VeArtProxy.sol";
 import {VotingEscrow} from "contracts/VotingEscrow.sol";
@@ -33,7 +33,7 @@ contract MinterDeferredFeeAccrualTest is Test {
     uint256 constant MAXTIME = 4 * 365 * 86400;
 
     // Tokens
-    Aero public AERO;
+    IRS public irs;
     MockERC20 public USDC;
     MockERC20 public FRAX;
     MockWETH public WETH;
@@ -72,7 +72,7 @@ contract MinterDeferredFeeAccrualTest is Test {
         irsHolder = makeAddr("irsHolder");
 
         // Deploy tokens
-        AERO = new Aero();
+        irs = new IRS();
         USDC = new MockERC20("USDC", "USDC", 6);
         FRAX = new MockERC20("FRAX", "FRAX", 18);
         WETH = new MockWETH();
@@ -93,7 +93,7 @@ contract MinterDeferredFeeAccrualTest is Test {
         forwarder = new Forwarder();
 
         // Deploy VotingEscrow
-        escrow = new VotingEscrow(address(forwarder), address(AERO), address(factoryRegistry));
+        escrow = new VotingEscrow(address(forwarder), address(irs), address(factoryRegistry));
         artProxy = new VeArtProxy(address(escrow));
         escrow.setArtProxy(address(artProxy));
 
@@ -104,18 +104,24 @@ contract MinterDeferredFeeAccrualTest is Test {
         escrow.setVoterAndDistributor(address(voter), address(distributor));
 
         // Deploy Router
-        router = new Router(address(forwarder), address(factoryRegistry), address(factory), address(voter), address(WETH));
+        router = new Router(
+            address(forwarder),
+            address(factoryRegistry),
+            address(factory),
+            address(voter),
+            address(WETH)
+        );
 
         // Deploy Minter - but do not initialize
         minter = new Minter(address(voter), address(escrow), address(distributor));
         distributor.setMinter(address(minter));
-        AERO.setMinter(address(minter));
+        irs.setMinter(address(minter));
 
         // Initialize voter with minter and whitelist tokens
         address[] memory tokens = new address[](3);
         tokens[0] = address(USDC);
         tokens[1] = address(FRAX);
-        tokens[2] = address(AERO);
+        tokens[2] = address(irs);
         voter.initialize(tokens, address(minter));
 
         // Setup epoch governor
@@ -147,20 +153,10 @@ contract MinterDeferredFeeAccrualTest is Test {
         uint256 totalFee0 = preGaugeFee0 + prePoolFee0;
         uint256 totalFee1 = preGaugeFee1 + prePoolFee1;
         if (totalFee0 > 0) {
-            assertApproxEqRel(
-                preGaugeFee0,
-                (totalFee0 * 1000) / 10_000,
-                0.02e18,
-                "gauge fee0 ~= 10%"
-            );
+            assertApproxEqRel(preGaugeFee0, (totalFee0 * 1000) / 10_000, 0.02e18, "gauge fee0 ~= 10%");
         }
         if (totalFee1 > 0) {
-            assertApproxEqRel(
-                preGaugeFee1,
-                (totalFee1 * 1000) / 10_000,
-                0.02e18,
-                "gauge fee1 ~= 10%"
-            );
+            assertApproxEqRel(preGaugeFee1, (totalFee1 * 1000) / 10_000, 0.02e18, "gauge fee1 ~= 10%");
         }
 
         // Create gauge and stake LP
@@ -203,7 +199,7 @@ contract MinterDeferredFeeAccrualTest is Test {
             lockedWallets: _singleAddress(irsHolder),
             lockedAmounts: _singleUint(10_000 * TOKEN_1)
         });
-        minter.initialize(params);
+        minter.initialize(params, 10_000_000 ether);
         assertEq(escrow.ownerOf(1), irsHolder);
 
         // Move into voting window and vote for pool
@@ -285,12 +281,12 @@ contract MinterDeferredFeeAccrualTest is Test {
             lockedWallets: _singleAddress(irsHolder),
             lockedAmounts: _singleUint(20_000 * TOKEN_1)
         });
-        minter.initialize(params);
+        minter.initialize(params, 10_000_000 ether);
         assertEq(escrow.ownerOf(1), irsHolder);
 
         // LP locks and makes permanent to ensure meaningful voting power
         vm.startPrank(lp);
-        AERO.approve(address(escrow), type(uint256).max);
+        irs.approve(address(escrow), type(uint256).max);
         uint256 lpTokenId = escrow.createLock(20_000 * TOKEN_1, MAXTIME);
         escrow.lockPermanent(lpTokenId);
         vm.stopPrank();
@@ -383,7 +379,7 @@ contract MinterDeferredFeeAccrualTest is Test {
             lockedWallets: _singleAddress(irsHolder),
             lockedAmounts: _singleUint(20_000 * TOKEN_1)
         });
-        minter.initialize(params);
+        minter.initialize(params, 10_000_000 ether);
         assertEq(escrow.ownerOf(1), irsHolder);
 
         // IRS holder votes in epoch -1
@@ -411,15 +407,15 @@ contract MinterDeferredFeeAccrualTest is Test {
         vm.warp(epoch0Start + 1 days);
         vm.roll(block.number + 1);
 
-        uint256 aeroBefore = AERO.balanceOf(lp);
+        uint256 irsBefore = irs.balanceOf(lp);
         vm.prank(lp);
         gauge.getReward(lp);
-        uint256 aeroAfter = AERO.balanceOf(lp);
-        assertGt(aeroAfter - aeroBefore, 0, "lp earned emissions");
+        uint256 irsAfter = irs.balanceOf(lp);
+        assertGt(irsAfter - irsBefore, 0, "lp earned emissions");
 
         vm.startPrank(lp);
-        AERO.approve(address(escrow), type(uint256).max);
-        uint256 lpTokenId = escrow.createLock(aeroAfter - aeroBefore, MAXTIME);
+        irs.approve(address(escrow), type(uint256).max);
+        uint256 lpTokenId = escrow.createLock(irsAfter - irsBefore, MAXTIME);
         escrow.lockPermanent(lpTokenId);
         vm.stopPrank();
 

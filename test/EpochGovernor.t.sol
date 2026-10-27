@@ -11,24 +11,24 @@ contract EpochGovernorTest is BaseTest {
     using stdStorage for StdStorage;
 
     function _setUp() public override {
-        AERO.approve(address(escrow), 2 * TOKEN_1);
+        irs.approve(address(escrow), 2 * TOKEN_1);
         escrow.createLock(2 * TOKEN_1, MAXTIME); // 1
         vm.roll(vm.getBlockNumber() + 1);
 
         vm.startPrank(address(owner2));
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME); // 2
         vm.stopPrank();
         vm.roll(vm.getBlockNumber() + 1);
 
         vm.startPrank(address(owner3));
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME); // 3
         vm.stopPrank();
         vm.roll(vm.getBlockNumber() + 1);
 
         vm.startPrank(address(owner4));
-        AERO.approve(address(escrow), TOKEN_1);
+        irs.approve(address(escrow), TOKEN_1);
         escrow.createLock(TOKEN_1, MAXTIME); // 4
         vm.stopPrank();
         vm.roll(vm.getBlockNumber() + 1);

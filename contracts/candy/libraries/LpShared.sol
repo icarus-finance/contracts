@@ -83,7 +83,12 @@ library LpShared {
 
                 address gaugeAddr = _voter.gauges(poolAddr);
 
-                poolsData[poolCount] = ILpCandy.PoolData({factory: address(factory), pool: poolAddr, gauge: gaugeAddr, nfpm: nfpm});
+                poolsData[poolCount] = ILpCandy.PoolData({
+                    factory: address(factory),
+                    pool: poolAddr,
+                    gauge: gaugeAddr,
+                    nfpm: nfpm
+                });
                 poolCount++;
 
                 if (_toFind != address(0) && _toFind == poolAddr) {

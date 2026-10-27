@@ -143,11 +143,12 @@ contract PoolFactory is IPoolFactory {
     /// @inheritdoc IPoolFactory
     function getUnstakedFee(address pool) external view returns (uint256) {
         uint256 fee = customUnstakedFee[pool];
-        return fee == ZERO_UNSTAKED_FEE_INDICATOR
-            ? 0
-            :fee != 0
-                ? fee
-                : unstakedFee;
+        return
+            fee == ZERO_UNSTAKED_FEE_INDICATOR
+                ? 0
+                : fee != 0
+                    ? fee
+                    : unstakedFee;
     }
 
     /// @inheritdoc IPoolFactory

@@ -34,8 +34,9 @@
     "viem": "^2.37.6"
   },
   "scripts": {
+    "hooks:install": "git config core.hooksPath .githooks",
     "format": "prettier --write 'contracts/**/*.(sol|json)' 'test/**/*.(sol|json)' 'script/**/*.(sol|ts)'",
-    "format:check": "prettier --check 'contracts/**/*.*(sol|json)' 'test/**/*.(sol|json)' 'script/**/*.(sol|ts)'",
+    "format:check": "prettier --check 'contracts/**/*.(sol|json)' 'test/**/*.(sol|json)' 'script/**/*.(sol|ts)'",
     "lint": "solhint --fix 'contracts/**/*.sol' 'test/**/*.sol' 'script/**/*.sol'",
     "lint:check": "solhint 'contracts/**/*.sol' 'test/**/*.sol' 'script/**/*.sol'"
   }

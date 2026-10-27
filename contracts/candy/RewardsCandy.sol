@@ -46,37 +46,33 @@ contract RewardsCandy is IRewardsCandy {
      * @param _offset The amount of alive pools to skip
      * @return Array for LpEpoch structs
      */
-    function epochsLatest(uint256 _limit, uint256 _offset) 
-        external 
-        view 
-        returns (LpEpoch[] memory) 
-    {
+    function epochsLatest(uint256 _limit, uint256 _offset) external view returns (LpEpoch[] memory) {
         // Fetch more pools than needed to account for dead gauges being filtered out
         // We fetch from offset 0 and apply offset manually after filtering
         uint256 fetchLimit = (_limit + _offset) * 2; // Fetch extra to handle dead pools
         if (fetchLimit > 500) fetchLimit = 500; // Cap to avoid gas issues
-        
+
         ILpCandy.PoolData[] memory pools = LpShared.pools(fetchLimit, 0, address(0), registry, voter, convertor);
         uint256 poolsCount = pools.length;
         uint256 toSkip = _offset;
-        
+
         LpEpoch[] memory tempCol = new LpEpoch[](_limit);
         uint256 actualCount = 0;
-        
+
         for (uint256 index = 0; index < poolsCount && actualCount < _limit; index++) {
             ILpCandy.PoolData memory poolData = pools[index];
-            
+
             // Only process alive gauges
             if (!voter.isAlive(poolData.gauge)) {
                 continue;
             }
-            
+
             // Skip alive pools for offset (applied after filtering)
             if (toSkip > 0) {
                 toSkip--;
                 continue;
             }
-            
+
             tempCol[actualCount] = _epochLatestByAddress(poolData.pool, poolData.gauge);
             actualCount++;
         }
@@ -84,13 +80,13 @@ contract RewardsCandy is IRewardsCandy {
         if (actualCount == _limit) {
             return tempCol;
         }
-        
+
         // Resize array to actual size
         LpEpoch[] memory col = new LpEpoch[](actualCount);
         for (uint256 i = 0; i < actualCount; i++) {
             col[i] = tempCol[i];
         }
-        
+
         return col;
     }
 
@@ -101,11 +97,11 @@ contract RewardsCandy is IRewardsCandy {
      * @param _address The address to lookup
      * @return Array for LpEpoch structs
      */
-    function epochsByAddress(uint256 _limit, uint256 _offset, address _address) 
-        external 
-        view 
-        returns (LpEpoch[] memory) 
-    {
+    function epochsByAddress(
+        uint256 _limit,
+        uint256 _offset,
+        address _address
+    ) external view returns (LpEpoch[] memory) {
         return _epochsByAddress(_limit, _offset, _address);
     }
 
@@ -115,32 +111,26 @@ contract RewardsCandy is IRewardsCandy {
      * @param _gauge The pool gauge
      * @return A LpEpoch struct
      */
-    function _epochLatestByAddress(address _address, address _gauge) 
-        internal 
-        view 
-        returns (LpEpoch memory) 
-    {
+    function _epochLatestByAddress(address _address, address _gauge) internal view returns (LpEpoch memory) {
         IGauge gauge = IGauge(_gauge);
         IReward bribe = IReward(voter.gaugeToBribe(_gauge));
-        
-        uint256 epoch_start_ts = block.timestamp / WEEK * WEEK;
+
+        uint256 epoch_start_ts = (block.timestamp / WEEK) * WEEK;
         uint256 epoch_end_ts = epoch_start_ts + WEEK - 1;
-        
+
         IReward.SupplyCheckpoint memory sc = IBribe(address(bribe)).supplyCheckpoints(
             bribe.getPriorSupplyIndex(epoch_end_ts)
         );
-        
-        return LpEpoch({
-            ts: epoch_start_ts,
-            lp: _address,
-            votes: sc.supply,
-            emissions: gauge.rewardRateByEpoch(epoch_start_ts),
-            bribes: _epochRewards(epoch_start_ts, address(bribe)),
-            fees: _epochRewards(
-                epoch_start_ts, 
-                voter.gaugeToFees(_gauge)
-            )
-        });
+
+        return
+            LpEpoch({
+                ts: epoch_start_ts,
+                lp: _address,
+                votes: sc.supply,
+                emissions: gauge.rewardRateByEpoch(epoch_start_ts),
+                bribes: _epochRewards(epoch_start_ts, address(bribe)),
+                fees: _epochRewards(epoch_start_ts, voter.gaugeToFees(_gauge))
+            });
     }
 
     /**
@@ -150,60 +140,57 @@ contract RewardsCandy is IRewardsCandy {
      * @param _address The address to lookup
      * @return Array for LpEpoch structs
      */
-    function _epochsByAddress(uint256 _limit, uint256 _offset, address _address) 
-        internal 
-        view 
-        returns (LpEpoch[] memory) 
-    {
+    function _epochsByAddress(
+        uint256 _limit,
+        uint256 _offset,
+        address _address
+    ) internal view returns (LpEpoch[] memory) {
         require(_address != address(0), "Invalid address!");
-        
+
         LpEpoch[] memory epochs = new LpEpoch[](_limit);
         uint256 epochCount = 0;
-        
+
         address gauge_addr = voter.gauges(_address);
         IGauge gauge = IGauge(gauge_addr);
-        
+
         if (!voter.isAlive(gauge_addr)) {
             return new LpEpoch[](0);
         }
-        
+
         IReward bribe = IReward(voter.gaugeToBribe(gauge_addr));
-        
-        uint256 curr_epoch_start_ts = block.timestamp / WEEK * WEEK;
-        
+
+        uint256 curr_epoch_start_ts = (block.timestamp / WEEK) * WEEK;
+
         for (uint256 noWeeks = _offset; noWeeks < _offset + MAX_EPOCHS && epochCount < _limit; noWeeks++) {
             uint256 epoch_start_ts = curr_epoch_start_ts - (noWeeks * WEEK);
             uint256 epoch_end_ts = epoch_start_ts + WEEK - 1;
-            
+
             uint256 bribe_supply_index = bribe.getPriorSupplyIndex(epoch_end_ts);
             IReward.SupplyCheckpoint memory sc = IBribe(address(bribe)).supplyCheckpoints(bribe_supply_index);
-            
+
             epochs[epochCount] = LpEpoch({
                 ts: epoch_start_ts,
                 lp: _address,
                 votes: sc.supply,
                 emissions: gauge.rewardRateByEpoch(epoch_start_ts),
                 bribes: _epochRewards(epoch_start_ts, address(bribe)),
-                fees: _epochRewards(
-                    epoch_start_ts,
-                    voter.gaugeToFees(gauge_addr)
-                )
+                fees: _epochRewards(epoch_start_ts, voter.gaugeToFees(gauge_addr))
             });
-            
+
             epochCount++;
-            
+
             // If we reach the last supply index...
             if (bribe_supply_index == 0) {
                 break;
             }
         }
-        
+
         // Resize array to actual size
         LpEpoch[] memory finalEpochs = new LpEpoch[](epochCount);
         for (uint256 i = 0; i < epochCount; i++) {
             finalEpochs[i] = epochs[i];
         }
-        
+
         return finalEpochs;
     }
 
@@ -213,46 +200,39 @@ contract RewardsCandy is IRewardsCandy {
      * @param _reward The reward address
      * @return An array of LpEpochReward structs
      */
-    function _epochRewards(uint256 _ts, address _reward) 
-        internal 
-        view 
-        returns (LpEpochReward[] memory) 
-    {
+    function _epochRewards(uint256 _ts, address _reward) internal view returns (LpEpochReward[] memory) {
         if (_reward == address(0)) {
             return new LpEpochReward[](0);
         }
-        
+
         IReward reward = IReward(_reward);
         uint256 rewards_len = reward.rewardsListLength();
 
         if (rewards_len > MAX_REWARDS) {
             rewards_len = MAX_REWARDS;
         }
-        
+
         LpEpochReward[] memory tempRewards = new LpEpochReward[](rewards_len);
         uint256 rewardCount = 0;
-        
+
         for (uint256 rindex = 0; rindex < rewards_len; rindex++) {
             address reward_token = IRewards(address(reward)).rewards(rindex);
             uint256 reward_amount = reward.tokenRewardsPerEpoch(reward_token, _ts);
-            
+
             if (reward_amount == 0) {
                 continue;
             }
-            
-            tempRewards[rewardCount] = LpEpochReward({
-                token: reward_token,
-                amount: reward_amount
-            });
+
+            tempRewards[rewardCount] = LpEpochReward({token: reward_token, amount: reward_amount});
             rewardCount++;
         }
-        
+
         // Resize array to actual size
         LpEpochReward[] memory epochRewards = new LpEpochReward[](rewardCount);
         for (uint256 i = 0; i < rewardCount; i++) {
             epochRewards[i] = tempRewards[i];
         }
-        
+
         return epochRewards;
     }
 
@@ -263,37 +243,33 @@ contract RewardsCandy is IRewardsCandy {
      * @param _venft_id The veNFT ID to get rewards for
      * @return Array for VeNFT Reward structs
      */
-    function rewards(uint256 _limit, uint256 _offset, uint256 _venft_id) 
-        external 
-        view 
-        returns (Reward[] memory) 
-    {
+    function rewards(uint256 _limit, uint256 _offset, uint256 _venft_id) external view returns (Reward[] memory) {
         ILpCandy.PoolData[] memory pools = LpShared.pools(_limit, _offset, address(0), registry, voter, convertor);
         uint256 pools_count = pools.length;
         uint256 counted = 0;
-        
+
         Reward[] memory tempCol = new Reward[](MAX_POOLS);
         uint256 colIndex = 0;
-        
+
         for (uint256 pindex = 0; pindex < pools_count && counted < _limit; pindex++) {
             ILpCandy.PoolData memory pool_data = pools[pindex];
             Reward[] memory pcol = _pool_rewards(_venft_id, pool_data.pool, pool_data.gauge);
-            
+
             // Merge pool rewards to the rest of the rewards
             for (uint256 cindex = 0; cindex < pcol.length && colIndex < MAX_POOLS; cindex++) {
                 tempCol[colIndex] = pcol[cindex];
                 colIndex++;
             }
-            
+
             counted++;
         }
-        
+
         // Resize array to actual size
         Reward[] memory col = new Reward[](colIndex);
         for (uint256 i = 0; i < colIndex; i++) {
             col[i] = tempCol[i];
         }
-        
+
         return col;
     }
 
@@ -303,11 +279,7 @@ contract RewardsCandy is IRewardsCandy {
      * @param _pool The pool address to get rewards for
      * @return Array for VeNFT Reward structs
      */
-    function rewardsByAddress(uint256 _venft_id, address _pool) 
-        external 
-        view 
-        returns (Reward[] memory) 
-    {
+    function rewardsByAddress(uint256 _venft_id, address _pool) external view returns (Reward[] memory) {
         address gauge_addr = voter.gauges(_pool);
         return _pool_rewards(_venft_id, _pool, gauge_addr);
     }
@@ -319,28 +291,24 @@ contract RewardsCandy is IRewardsCandy {
      * @param _gauge The pool gauge address
      * @return Array of Reward structs
      */
-    function _pool_rewards(uint256 _venft_id, address _pool, address _gauge) 
-        internal 
-        view 
-        returns (Reward[] memory) 
-    {
+    function _pool_rewards(uint256 _venft_id, address _pool, address _gauge) internal view returns (Reward[] memory) {
         if (_pool == address(0) || _gauge == address(0)) {
             return new Reward[](0);
         }
-        
+
         ICandyPool pool = ICandyPool(_pool);
         IReward fee = IReward(voter.gaugeToFees(_gauge));
         IReward bribe = IReward(voter.gaugeToBribe(_gauge));
-        
+
         address token0 = pool.token0();
         address token1 = pool.token1();
-        
+
         uint256 fee0_amount = fee.earned(token0, _venft_id);
         uint256 fee1_amount = fee.earned(token1, _venft_id);
-        
+
         Reward[] memory tempCol = new Reward[](MAX_POOLS);
         uint256 colIndex = 0;
-        
+
         if (fee0_amount > 0) {
             tempCol[colIndex] = Reward({
                 venft_id: _venft_id,
@@ -352,7 +320,7 @@ contract RewardsCandy is IRewardsCandy {
             });
             colIndex++;
         }
-        
+
         if (fee1_amount > 0) {
             tempCol[colIndex] = Reward({
                 venft_id: _venft_id,
@@ -364,21 +332,21 @@ contract RewardsCandy is IRewardsCandy {
             });
             colIndex++;
         }
-        
+
         if (address(bribe) != address(0)) {
             uint256 bribes_len = bribe.rewardsListLength();
             if (bribes_len > MAX_REWARDS) {
                 bribes_len = MAX_REWARDS;
             }
-            
+
             for (uint256 bindex = 0; bindex < bribes_len; bindex++) {
                 address bribe_token = IRewards(address(bribe)).rewards(bindex);
                 uint256 bribe_amount = bribe.earned(bribe_token, _venft_id);
-                
+
                 if (bribe_amount == 0) {
                     continue;
                 }
-                
+
                 tempCol[colIndex] = Reward({
                     venft_id: _venft_id,
                     lp: _pool,
@@ -388,19 +356,19 @@ contract RewardsCandy is IRewardsCandy {
                     bribe: address(bribe)
                 });
                 colIndex++;
-                
+
                 if (colIndex >= MAX_POOLS) {
                     break;
                 }
             }
         }
-        
+
         // Resize array to actual size
         Reward[] memory col = new Reward[](colIndex);
         for (uint256 i = 0; i < colIndex; i++) {
             col[i] = tempCol[i];
         }
-        
+
         return col;
     }
 }
